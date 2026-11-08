@@ -1,11 +1,11 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MemberScreen } from "@/components/member-screen";
 import { PageHeading } from "@/components/project-parts";
 import { VideoPlayer } from "@/components/player/video-player";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Comments, selectComment, timeLabel } from "@/components/comments";
+import { Comments, timeLabel } from "@/components/comments";
 import { reviewQuery, type Comment, type ReviewPage } from "@/lib/review";
 
 export const Route = createFileRoute("/videos/$videoId")({ component: Review });
@@ -26,23 +26,23 @@ function Review() {
 }
 
 function ReviewContent({ page, videoId }: { page: ReviewPage; videoId: string }) {
-  const player = useRef<HTMLDivElement>(null);
+  const [seek, setSeek] = useState<{ timeMs: number }>();
   const [timeMs, setTimeMs] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const revision = page.revision!;
-  function select(comment: Comment) { selectComment(player, comment); setSelectedId(comment.id); setTimeMs(comment.timecodeMs); }
+  function select(comment: Comment) { setSeek({ timeMs: comment.timecodeMs }); setSelectedId(comment.id); setTimeMs(comment.timecodeMs); }
   return <div className="review-layout">
-    <div ref={player} className="review-player" onTimeUpdate={(event) => {
+    <div className="review-player" onTimeUpdate={(event) => {
       if (event.target instanceof HTMLVideoElement) setTimeMs(Math.round(event.target.currentTime * 1000));
     }}>
-      <VideoPlayer videoId={videoId} revisionId={revision.id} frameRate={revision.frameRate} playback={page.playback!} />
-      <div role="group" aria-label="Comment timeline markers" className="relative mt-2 h-12 border-b-2 border-current">
+      <VideoPlayer videoId={videoId} revisionId={revision.id} frameRate={revision.frameRate} playback={page.playback!} seek={seek}
+        timelineMarkers={<div role="group" aria-label="Comment timeline markers" className="relative mt-2 h-12 border-b-2 border-current">
         {page.comments.map((comment) => <button key={comment.id} type="button"
           className="absolute bottom-0 min-h-11 min-w-6 -translate-x-1/2 border-current text-center focus-visible:outline-2"
           style={{ left: `${Math.max(2, Math.min(98, comment.timecodeMs / (revision.durationMs || 1) * 100))}%` }}
           aria-label={`Comment at ${timeLabel(comment.timecodeMs)}: ${comment.body}`} aria-current={selectedId === comment.id ? "true" : undefined}
           onClick={() => select(comment)}>◆</button>)}
-      </div>
+      </div>} />
     </div>
     <Comments page={page} videoId={videoId} timeMs={timeMs} select={select} selectedId={selectedId} />
   </div>;

@@ -9,7 +9,7 @@ const writes = (videoId: string) => ["video-write", videoId];
 export const reviewQuery = (videoId: string, client?: QueryClient) => queryOptions({
   queryKey: ["review", videoId], queryFn: () => getReview({ data: { videoId } }), retry: false,
   refetchInterval: () => client?.isMutating({ mutationKey: writes(videoId) }) ? false : 30_000,
-  refetchOnWindowFocus: () => !client?.isMutating({ mutationKey: writes(videoId) }),
+  refetchOnWindowFocus: () => client?.isMutating({ mutationKey: writes(videoId) }) ? false : "always",
 });
 
 type Write =

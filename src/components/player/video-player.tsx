@@ -1,6 +1,6 @@
 // Source lifecycle and position recovery adapted from Lawn (MIT); see LICENSE.lawn.
 import Hls from "hls.js";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { getReview } from "@/server/playback";
 import type { Playback } from "@/server/mux/gateway";
@@ -14,8 +14,9 @@ type SafariVideo = HTMLVideoElement & {
   webkitDisplayingFullscreen?: boolean;
 };
 
-export function VideoPlayer({ videoId, revisionId, frameRate, playback }: {
+export function VideoPlayer({ videoId, revisionId, frameRate, playback, seek, timelineMarkers }: {
   videoId: string; revisionId: string; frameRate: number | null; playback: Playback;
+  seek?: { timeMs: number }; timelineMarkers?: ReactNode;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -26,6 +27,12 @@ export function VideoPlayer({ videoId, revisionId, frameRate, playback }: {
   const [attempt, setAttempt] = useState(0);
   const [poster, setPoster] = useState(playback.posterUrl);
   const [storyboardUrl, setStoryboardUrl] = useState(playback.storyboardUrl);
+
+  useEffect(() => {
+    if (!seek || !videoRef.current) return;
+    shuttleRef.current?.pause();
+    videoRef.current.currentTime = seek.timeMs / 1000;
+  }, [seek]);
 
   useEffect(() => {
     const video = videoRef.current!;
@@ -181,8 +188,9 @@ export function VideoPlayer({ videoId, revisionId, frameRate, playback }: {
     <div ref={rootRef} role="region" aria-label="Video player" className="rounded-lg bg-black p-2 text-white" style={{ colorScheme: "dark" }}>
       <video ref={videoRef} controls controlsList="nodownload" crossOrigin="anonymous" playsInline
         aria-label="Revision playback" poster={poster} className="max-h-[50dvh] w-full bg-black"
-        style={{ maxHeight: isFullscreen ? "calc(100dvh - 8rem)" : undefined }} />
+        style={{ maxHeight: isFullscreen ? `calc(100dvh - ${timelineMarkers ? 11 : 8}rem)` : undefined }} />
       <Timeline videoRef={videoRef} storyboardUrl={storyboardUrl} frameRate={frameRate} onSeek={() => shuttleRef.current?.pause()} />
+      {timelineMarkers}
       <div className="flex flex-wrap gap-2 pt-2">
         <button className="min-h-11 rounded border border-white px-3 focus-visible:outline-2" onClick={() => step(-1)}>Previous frame</button>
         <button className="min-h-11 rounded border border-white px-3 focus-visible:outline-2" onClick={() => step(1)}>Next frame</button>

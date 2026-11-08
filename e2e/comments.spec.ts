@@ -101,8 +101,12 @@ test("polling and returning to the screen replace the full Comment list includin
   await page.clock.fastForward(31_000);
   await expect(page.getByRole("listitem").filter({ hasText: "Arrived from another screen" })).toBeVisible();
   removeSeededComment(commentId);
-  await page.clock.fastForward(31_000);
-  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+    document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+    document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+  });
   await expect(page.getByRole("listitem").filter({ hasText: "Arrived from another screen" })).toHaveCount(0);
 });
 

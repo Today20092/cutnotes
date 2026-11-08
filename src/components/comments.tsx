@@ -1,4 +1,4 @@
-import { useRef, useState, type RefObject } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { canWrite } from "@/components/project-parts";
 import { useCommentWrite, type Comment, type ReviewPage } from "@/lib/review";
@@ -85,10 +85,4 @@ export function Comments({ page, videoId, timeMs, select, selectedId }: {
       <Button type="submit" disabled={write.isPending}>Send Comment</Button>
     </form>}
   </section>;
-}
-
-/** Markers use the existing HTML video interface; player controls stay independent. */
-export function selectComment(player: RefObject<HTMLDivElement | null>, comment: Comment) {
-  const video = player.current?.querySelector("video");
-  if (video) { video.pause(); video.currentTime = comment.timecodeMs / 1000; }
 }

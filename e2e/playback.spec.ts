@@ -36,6 +36,72 @@ async function accessible(page: Page) {
   }
 }
 
+test("timeline is keyboard operable and previews signed storyboard tiles", async ({ page }) => {
+  await page.route("https://stream.mux.com/**", (route) => route.fulfill({ body: playlist, contentType: "application/vnd.apple.mpegurl", headers: cors }));
+  await page.route("https://stream.mux.com/sample.ts", (route) => route.fulfill({ body: sampleStream, contentType: "video/mp2t", headers: cors }));
+  await openReview(page);
+  await page.route("https://image.mux.com/**/storyboard.json?*", (route) => route.fulfill({ json: { url: "https://image.mux.com/sample/storyboard.jpg", tile_width: 160, tile_height: 90, duration: 8, tiles: [{ start: 0, x: 0, y: 0 }, { start: 4, x: 160, y: 0 }] }, headers: cors }));
+  await page.reload();
+  const timeline = page.getByRole("slider", { name: "Playback position" });
+  await expect(timeline).toBeEnabled();
+  await timeline.focus();
+  await timeline.press("ArrowRight");
+  await expect.poll(() => page.locator("video").evaluate((video: HTMLVideoElement) => video.currentTime)).toBeCloseTo(0.04, 2);
+  await expect(timeline).toHaveAttribute("aria-valuetext", /seconds/);
+  await expect(page.getByRole("img", { name: /Preview at/ })).toBeVisible();
+  await timeline.press("ArrowRight");
+  await page.emulateMedia({ forcedColors: "active" });
+  await expect(timeline).toBeVisible();
+  await page.emulateMedia({ forcedColors: "none" });
+  await timeline.press("End");
+  await expect(timeline).toHaveValue("8");
+  await timeline.press("Home");
+  await page.getByRole("button", { name: "Next frame" }).click();
+  await page.keyboard.press("l");
+  await page.keyboard.press("l");
+  await page.keyboard.press("j");
+  await page.getByRole("button", { name: "Next frame" }).click();
+  const stopped = await page.locator("video").evaluate((video: HTMLVideoElement) => video.currentTime);
+  await page.waitForTimeout(350);
+  expect(await page.locator("video").evaluate((video: HTMLVideoElement) => video.currentTime)).toBe(stopped);
+  await accessible(page);
+});
+
+test("full screen button exposes state and retains the player controls", async ({ page }) => {
+  await page.route("https://stream.mux.com/**", (route) => route.fulfill({ body: playlist, contentType: "application/vnd.apple.mpegurl", headers: cors }));
+  await page.route("https://stream.mux.com/sample.ts", (route) => route.fulfill({ body: sampleStream, contentType: "video/mp2t", headers: cors }));
+  await openReview(page);
+  const control = page.getByRole("button", { name: "Full screen", exact: true });
+  await control.focus();
+  await control.press("Enter");
+  await expect(control).toHaveAttribute("aria-pressed", "true");
+  expect(await page.evaluate(() => document.fullscreenElement?.getAttribute("aria-label"))).toBe("Video player");
+  await expect(page.getByRole("button", { name: "Next frame" })).toBeVisible();
+  await control.press("Enter");
+  await expect(control).toHaveAttribute("aria-pressed", "false");
+});
+
+test("phone rotation requests full screen and portrait leaves it", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "Landscape auto-full-screen is for touch devices");
+  await page.addInitScript(() => {
+    let current: Element | null = null;
+    Object.defineProperty(document, "fullscreenElement", { get: () => current });
+    HTMLElement.prototype.requestFullscreen = async () => {
+      current = document.querySelector('[aria-label="Video player"]');
+      document.dispatchEvent(new Event("fullscreenchange"));
+    };
+    document.exitFullscreen = async () => {
+      current = null; document.dispatchEvent(new Event("fullscreenchange"));
+    };
+  });
+  await page.route("https://stream.mux.com/**", (route) => route.fulfill({ body: playlist, contentType: "application/vnd.apple.mpegurl", headers: cors }));
+  await openReview(page);
+  await page.setViewportSize({ width: 850, height: 393 });
+  await expect(page.getByRole("button", { name: "Full screen", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.setViewportSize({ width: 393, height: 850 });
+  await expect(page.getByRole("button", { name: "Full screen", exact: true })).toHaveAttribute("aria-pressed", "false");
+});
+
 test("review unavailable states remain accessible", async ({ page }) => {
   await openReview(page, false);
   await expect(page.getByRole("status").filter({ hasText: "No Revision is ready" })).toBeVisible();

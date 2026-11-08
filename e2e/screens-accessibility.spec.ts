@@ -25,6 +25,10 @@ async function expectAccessible(page: Page, state: string) {
           .map((motion) => motion.finished.catch(() => undefined)),
       ),
     );
+    // An inherited colour transition restarts and cancels the one awaited above, so check none remain.
+    await page.waitForFunction(() =>
+      document.getAnimations().every((motion) => motion.effect?.getComputedTiming().iterations === Infinity),
+    );
     const { violations } = await new AxeBuilder({ page }).withTags(wcag22AA).analyze();
     expect
       .soft(

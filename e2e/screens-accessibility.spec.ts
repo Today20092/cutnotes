@@ -333,7 +333,8 @@ test("deleting a Project: confirmation, cancellation, failure and disappearance"
 });
 
 test("completing and reopening a Project", async ({ page }, testInfo) => {
-  const person = { clerkUserId: `user_complete_${testInfo.project.name}_${Date.now()}`, email: "complete@example.com" };
+  // Seeded by an Editor: a second Owner would break the last-Owner test in the next browser project.
+  const uploader = `user_complete_${testInfo.project.name}_${Date.now()}`;
   seedMember(person.clerkUserId, "owner");
   const id = seedReview(person.clerkUserId); // The seeded Project and Video share an ID.
   await signInAs(page, person);

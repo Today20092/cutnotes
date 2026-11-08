@@ -62,7 +62,10 @@ test("an Owner revokes a pending Invite, and its link stops working", async ({
 }, testInfo) => {
   const url = await createInviteLink(page, "Editor");
 
+  // A fresh list, so the newest Invite is first.
+  await page.reload();
   const revoke = page.getByRole("button", { name: /^Revoke Editor Invite/ }).first();
+  await expect(revoke).toBeVisible();
   const before = await page.getByRole("button", { name: /^Revoke/ }).count();
   await revoke.click();
   await expect(page.getByRole("button", { name: /^Revoke/ })).toHaveCount(before - 1);

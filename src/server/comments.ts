@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { and, eq, sql } from "drizzle-orm";
 import { refuse, requireMember } from "@/server/access";
+import { bodyOf } from "@/server/comment-rules";
 import { getDb } from "@/server/db";
 import { comments, type Member } from "@/server/db/schema";
 
@@ -9,10 +10,6 @@ export type NewComment = CommentTarget & { body: string; timecodeMs: number };
 
 const validTarget = (data: CommentTarget) => {
   if (![data?.id, data?.videoId, data?.revisionId].every((id) => typeof id === "string" && id.length > 0 && id.length <= 128)) refuse(400, "invalid-request");
-};
-const bodyOf = (body: string) => {
-  if (typeof body !== "string" || !body.trim() || body.length > 5000) refuse(400, "invalid-request");
-  return body;
 };
 
 const writableRevision = (data: CommentTarget, member: Member) => sql`EXISTS (

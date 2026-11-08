@@ -14,7 +14,9 @@ type SafariVideo = HTMLVideoElement & {
   webkitDisplayingFullscreen?: boolean;
 };
 
-export function VideoPlayer({ videoId, revisionId, frameRate, playback, seek, timelineMarkers }: {
+export function VideoPlayer({ videoId, revisionId, frameRate, playback, seek, timelineMarkers, renewPlayback }: {
+  /** Fetches fresh credentials for a caller who is not a Member. */
+  renewPlayback?: () => Promise<{ playback: Playback | null }>;
   videoId: string; revisionId: string; frameRate: number | null; playback: Playback;
   seek?: { timeMs: number }; timelineMarkers?: ReactNode;
 }) {
@@ -61,7 +63,7 @@ export function VideoPlayer({ videoId, revisionId, frameRate, playback, seek, ti
       resume = { time: video.currentTime, playing: !video.paused };
       hls?.stopLoad();
       try {
-        const result = await getReview({ data: { videoId, revisionId } });
+        const result = renewPlayback ? await renewPlayback() : await getReview({ data: { videoId, revisionId } });
         if (disposed) return;
         if (!result.playback) return failed();
         current = result.playback;

@@ -5,7 +5,8 @@ import { MemberScreen } from "@/components/member-screen";
 import { PageHeading } from "@/components/project-parts";
 import { VideoPlayer } from "@/components/player/video-player";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Comments, timeLabel } from "@/components/comments";
+import { CommentMarkers, Comments } from "@/components/comments";
+import { ShareLinksSheet } from "@/components/share-links";
 import { reviewQuery, type Comment, type ReviewPage } from "@/lib/review";
 import { Button } from "@/components/ui/button";
 import { UploadSheet } from "@/components/upload-parts";
@@ -25,6 +26,7 @@ function Review() {
       {page.member.role !== "viewer" && page.video.completedAt === null && <UploadSheet
         destination={{ kind: "existing", videoId, title: page.video.title }}
         trigger={<Button variant="outline">Upload new Revision</Button>} />}
+      {page.member.role !== "viewer" && page.video.completedAt === null && <ShareLinksSheet videoId={videoId} />}
       <div role="group" aria-label="Revision history" className="flex flex-wrap gap-2">
         {page.history.map((cut) => <Button key={cut.id} variant="outline" aria-pressed={page.revision?.id === cut.id}
           onClick={() => setRevisionId(cut.id)}>Revision {cut.number}</Button>)}
@@ -59,13 +61,7 @@ function ReviewContent({ page, videoId, cacheRevisionId }: { page: ReviewPage; v
       if (event.target instanceof HTMLVideoElement) setTimeMs(Math.round(event.target.currentTime * 1000));
     }}>
       <VideoPlayer videoId={videoId} revisionId={revision.id} frameRate={revision.frameRate} playback={page.playback!} seek={seek}
-        timelineMarkers={<div role="group" aria-label="Comment timeline markers" className="relative mt-2 h-12 border-b-2 border-current">
-        {page.comments.map((comment) => <button key={comment.id} type="button"
-          className="absolute bottom-0 min-h-11 min-w-6 -translate-x-1/2 border-current text-center focus-visible:outline-2"
-          style={{ left: `${Math.max(2, Math.min(98, comment.timecodeMs / (revision.durationMs || 1) * 100))}%` }}
-          aria-label={`Comment at ${timeLabel(comment.timecodeMs)}: ${comment.body}`} aria-current={selectedId === comment.id ? "true" : undefined}
-          onClick={() => select(comment)}>◆</button>)}
-      </div>} />
+        timelineMarkers={<CommentMarkers comments={page.comments} durationMs={revision.durationMs} selectedId={selectedId} select={select} />} />
     </div>
     <Comments page={page} videoId={videoId} timeMs={timeMs} select={select} selectedId={selectedId} cacheRevisionId={cacheRevisionId} />
   </div>;

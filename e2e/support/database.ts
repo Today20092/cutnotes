@@ -35,6 +35,17 @@ export function seedReadyRevision(videoId: string, memberId: string, number: num
   return id;
 }
 
+export function shareTokenFor(videoId: string) {
+  const result = spawnSync(
+    "bun",
+    ["scripts/node.ts", "node_modules/wrangler/bin/wrangler.js", "d1", "execute", "DB", "--local", "--persist-to", ".wrangler/e2e", "--json", "--command",
+      `SELECT token FROM share_links WHERE video_id = '${videoId}'`],
+    { encoding: "utf8" },
+  );
+  if (result.status !== 0) throw new Error(result.stderr || result.stdout);
+  return (JSON.parse(result.stdout) as { results: { token: string }[] }[])[0]!.results[0]!.token;
+}
+
 function executeSql(command: string) {
   const result = spawnSync(
     "bun",

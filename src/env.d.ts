@@ -4,6 +4,8 @@ declare namespace Cloudflare {
   }
   interface Env {
     DB: D1Database;
+    SHARE_LINK_COMMENT_LIMIT: RateLimit;
+    SHARE_ADDRESS_LIMIT: RateLimit;
     APP_ORIGIN: string;
     TEAM_NAME: string;
     TEAM_LOGO_URL: string;

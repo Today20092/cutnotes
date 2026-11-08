@@ -8,10 +8,13 @@ import "@/server/projects";
 import "@/server/videos";
 import "@/server/playback";
 import "@/server/comments";
+import "@/server/sharing";
 
 export type CallOptions = {
   bearer?: string;
   cookie?: string;
+  /** The client address Cloudflare reports. */
+  address?: string;
   /** Overrides the Origin header, to forge a cross-site call. */
   origin?: string;
   /** The server function's input, serialized as Start's client does. */
@@ -34,6 +37,14 @@ const invitesFile = "/src/server/invites.ts";
 const videosFile = "/src/server/videos.ts";
 const membersFile = "/src/server/members.ts";
 
+const sharingFile = "/src/server/sharing.ts";
+
+/** Public by design: the Share Link token is the credential. */
+export const guestServerFunctionIds = {
+  getGuestReview: serverFnId(sharingFile, "getGuestReview"),
+  createGuestComment: serverFnId(sharingFile, "createGuestComment"),
+} as const;
+
 /** Only an Owner may call these. */
 export const ownerServerFunctionIds = {
   deleteProject: serverFnId("/src/server/projects.ts", "deleteProject"),
@@ -48,6 +59,9 @@ export const ownerServerFunctionIds = {
 /** These need an active Member. */
 export const memberServerFunctionIds = {
   markVideoRead: serverFnId("/src/server/playback.ts", "markVideoRead"),
+  createShareLink: serverFnId(sharingFile, "createShareLink"),
+  listShareLinks: serverFnId(sharingFile, "listShareLinks"),
+  revokeShareLink: serverFnId(sharingFile, "revokeShareLink"),
   createComment: serverFnId("/src/server/comments.ts", "createComment"),
   editComment: serverFnId("/src/server/comments.ts", "editComment"),
   deleteComment: serverFnId("/src/server/comments.ts", "deleteComment"),
@@ -71,6 +85,7 @@ export const serverFunctionIds = {
   ...memberServerFunctionIds,
   // The one exception to Member-only: this is how a signed-in person becomes a Member.
   redeemInvite: serverFnId(invitesFile, "redeemInvite"),
+  ...guestServerFunctionIds,
 } as const;
 
 /** Calls a server function over HTTP against the real Worker, as the browser would. */
@@ -81,6 +96,7 @@ export function callServerFn(id: string, options: CallOptions = {}) {
   });
   if (options.bearer) headers.set("authorization", `Bearer ${options.bearer}`);
   if (options.cookie) headers.set("cookie", options.cookie);
+  if (options.address) headers.set("cf-connecting-ip", options.address);
   if (options.data !== undefined) headers.set("content-type", "application/json");
   return exports.default.fetch(
     new Request(`${env.APP_ORIGIN}/_serverFn/${id}`, {

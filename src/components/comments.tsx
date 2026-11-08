@@ -6,6 +6,18 @@ import type { NewComment } from "@/server/comments";
 
 export const timeLabel = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
 
+export function CommentMarkers<Row extends { id: string; timecodeMs: number; body: string }>({ comments, durationMs, selectedId, select }: {
+  comments: Row[]; durationMs: number | null; selectedId: string | null; select: (comment: Row) => void;
+}) {
+  return <div role="group" aria-label="Comment timeline markers" className="relative mt-2 h-12 border-b-2 border-current">
+    {comments.map((comment) => <button key={comment.id} type="button"
+      className="absolute bottom-0 min-h-11 min-w-6 -translate-x-1/2 border-current text-center focus-visible:outline-2"
+      style={{ left: `${Math.max(2, Math.min(98, comment.timecodeMs / (durationMs || 1) * 100))}%` }}
+      aria-label={`Comment at ${timeLabel(comment.timecodeMs)}: ${comment.body}`} aria-current={selectedId === comment.id ? "true" : undefined}
+      onClick={() => select(comment)}>◆</button>)}
+  </div>;
+}
+
 export function Comments({ page, videoId, timeMs, select, selectedId, cacheRevisionId }: {
   page: ReviewPage; videoId: string; timeMs: number; select: (comment: Comment) => void; selectedId: string | null; cacheRevisionId?: string;
 }) {

@@ -1,9 +1,10 @@
 import { auth } from "@clerk/tanstack-react-start/server";
+import { getRequestHeader } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { and, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { getDb, type Db } from "@/server/db";
-import { members, roles, type Member, type Role } from "@/server/db/schema";
+import { members, projects, revisions, roles, shareLinks, videos, type Member, type Role } from "@/server/db/schema";
 
 export type RefusalCode =
   | "signed-out"
@@ -11,14 +12,15 @@ export type RefusalCode =
   | "insufficient-role"
   | "invalid-request"
   | "not-found"
-  | "last-owner";
+  | "last-owner"
+  | "rate-limited";
 
 type BatchResults<Reads extends readonly unknown[]> = {
   -readonly [Index in keyof Reads]: Awaited<Reads[Index]>;
 };
 
 export function refuse(
-  status: 400 | 401 | 403 | 404 | 409,
+  status: 400 | 401 | 403 | 404 | 409 | 429,
   code: RefusalCode,
 ): never {
   throw Response.json({ code }, { status });
@@ -54,6 +56,41 @@ export async function readAsMember<const Reads extends readonly BatchItem<"sqlit
     refuse(403, "insufficient-role");
   }
   return { member, results };
+}
+
+/**
+ * The Guest counterpart of `readAsMember`: the token alone picks the Video and
+ * its latest ready Revision. Every dead link gets the same refusal.
+ */
+export async function readShareLink(token: unknown) {
+  const address = getRequestHeader("cf-connecting-ip");
+  if (address && !(await env.SHARE_ADDRESS_LIMIT.limit({ key: address })).success) refuse(429, "rate-limited");
+  if (typeof token !== "string" || !/^[0-9A-Za-z]{32}$/.test(token)) refuse(404, "not-found");
+  const [link] = await getDb()
+    .select({
+      id: shareLinks.id,
+      permission: shareLinks.permission,
+      title: videos.title,
+      revisionId: revisions.id,
+      number: revisions.number,
+      frameRate: revisions.frameRate,
+      durationMs: revisions.durationMs,
+      playbackId: revisions.muxPlaybackId,
+    })
+    .from(shareLinks)
+    .innerJoin(videos, eq(videos.id, shareLinks.videoId))
+    .innerJoin(projects, eq(projects.id, videos.projectId))
+    .innerJoin(revisions, sql`${revisions.id} = (SELECT latest.id FROM revisions AS latest
+      WHERE latest.video_id = ${videos.id} AND latest.state = 'ready' ORDER BY latest.number DESC LIMIT 1)`)
+    .where(and(
+      eq(shareLinks.token, token),
+      isNull(shareLinks.revokedAt),
+      isNull(videos.deletedAt),
+      isNull(projects.deletedAt),
+      isNull(projects.completedAt),
+    ));
+  if (!link || link.playbackId === null || link.durationMs === null) refuse(404, "not-found");
+  return { ...link, playbackId: link.playbackId, durationMs: link.durationMs };
 }
 
 export type SignedInPerson = { clerkUserId: string; displayName: string };

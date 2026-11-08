@@ -132,3 +132,18 @@ export const videoReads = sqliteTable("video_reads", {
   videoId: text("video_id").notNull().references(() => videos.id, { onDelete: "cascade" }),
   lastReadAt: integer("last_read_at").notNull(),
 }, (table) => [primaryKey({ columns: [table.memberId, table.videoId] })]);
+
+export const sharePermissions = ["view", "comment"] as const;
+export type SharePermission = (typeof sharePermissions)[number];
+
+export const shareLinks = sqliteTable("share_links", {
+  id: text("id").primaryKey(),
+  videoId: text("video_id").notNull().references(() => videos.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  // Plain text so the link can be copied again; see the spec's storage decision.
+  token: text("token").notNull().unique(),
+  permission: text("permission", { enum: sharePermissions }).notNull(),
+  createdBy: text("created_by").notNull().references(() => members.id),
+  createdAt: integer("created_at").notNull(),
+  revokedAt: integer("revoked_at"),
+}, (table) => [index("share_links_video_id_idx").on(table.videoId)]);

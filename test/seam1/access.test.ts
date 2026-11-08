@@ -6,11 +6,13 @@ import {
   memberServerFunctionIds,
   ownerServerFunctionIds,
   resultOf,
+  guestServerFunctionIds,
   serverFunctionIds,
 } from "./support/worker";
 
 const { getAppShell } = serverFunctionIds;
-const everyServerFunction = Object.entries(serverFunctionIds);
+const guestIds: string[] = Object.values(guestServerFunctionIds);
+const everyServerFunction = Object.entries(serverFunctionIds).filter(([, id]) => !guestIds.includes(id));
 const memberServerFunctions = Object.entries(memberServerFunctionIds);
 const ownerServerFunctions = Object.entries(ownerServerFunctionIds);
 
@@ -176,7 +178,7 @@ describe("refusals", () => {
       .join("\n")
       .match(/createServerFn\(/g);
 
-    expect(declared).toHaveLength(everyServerFunction.length);
+    expect(declared).toHaveLength(Object.keys(serverFunctionIds).length);
   });
 });
 

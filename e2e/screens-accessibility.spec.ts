@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page, type TestInfo } from "@playwright/test";
 import { fakeSignature } from "../test/seam1/support/fake-mux";
-import { seedMember } from "./support/database";
+import { seedMember, seedReview, shareTokenFor } from "./support/database";
 import { signInAs, type Person } from "./support/session";
 
 // Sorted after app-shell.spec.ts, so the first Owner already exists.
@@ -377,4 +377,41 @@ test("the Invites and accept-Invite screens", async ({ page, browser }, testInfo
   await expect(revoked.getByRole("heading", { name: "This Invite was cancelled" })).toBeVisible();
   await expectAccessible(revoked, "invite, revoked");
   await revoked.context().close();
+});
+
+test("Share Links sheet and Guest pages", async ({ page, browser }, testInfo) => {
+  const person = { clerkUserId: `user_share_${testInfo.project.name}_${Date.now()}`, email: "share@example.com" };
+  seedMember(person.clerkUserId, "editor");
+  const videoId = seedReview(person.clerkUserId);
+  await signInAs(page, person);
+  await page.goto(`/videos/${videoId}`);
+  const share = page.getByRole("button", { name: "Share", exact: true });
+  await share.click();
+  await page.getByLabel("Who is this link for?").fill("Client");
+  await page.getByRole("button", { name: "Create Share Link" }).click();
+  await expect(page.getByRole("button", { name: "Revoke link for Client" })).toBeVisible();
+  await expect(page.getByText("already issued keeps working until it expires")).toBeVisible();
+  await expectAccessible(page, "Share Links sheet");
+
+  const token = shareTokenFor(videoId);
+  const guest = await (await browser.newContext()).newPage();
+  await guest.goto(`/share/${token}`);
+  await expect(guest.getByText("No account needed")).toBeVisible();
+  await expectAccessible(guest, "Guest welcome");
+  await guest.getByRole("button", { name: "Continue" }).click();
+  await expect(guest.getByRole("alert")).toHaveText("Enter your name.");
+  await guest.getByLabel("Your name").fill("Dana");
+  await guest.getByRole("button", { name: "Continue" }).click();
+  await expect(guest.getByRole("heading", { name: "Playback cut" })).toBeVisible();
+  await expect(guest.getByText(/Resolve Comment/)).toHaveCount(0);
+  await guest.getByLabel("Comment text").fill("Too dark here");
+  await guest.getByRole("button", { name: "Send Comment" }).click();
+  await expect(guest.getByText("Dana · Guest")).toBeVisible();
+  await expectAccessible(guest, "Guest review");
+
+  const dead = await (await browser.newContext()).newPage();
+  await dead.addInitScript(() => localStorage.setItem("cutnotes-guest-name", "Dana"));
+  await dead.goto(`/share/${"0".repeat(32)}`);
+  await expect(dead.getByRole("heading", { name: "This link is unavailable" })).toBeVisible();
+  await expectAccessible(dead, "Guest unavailable");
 });

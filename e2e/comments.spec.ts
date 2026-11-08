@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { removeSeededComment, seedComment, seedMember, seedReview, seedReadyRevision } from "./support/database";
+import { removeSeededComment, seedComment, seedMember, seedReview, seedReadyRevision, shareTokenFor } from "./support/database";
 import { signInAs } from "./support/session";
 import { sampleStream } from "./support/sample-stream";
 
@@ -317,4 +317,38 @@ test("rapid writes are serialized per Video and only the last pending write refr
   expect(reads).toBe(1);
   await page.reload();
   await expect(page.getByRole("listitem").filter({ hasText: "Rapid submission" })).toHaveCount(1);
+});
+
+test("a Guest goes from the welcome screen to a saved Comment, then sees a plain retry message when limited", async ({ page, browser }, testInfo) => {
+  test.setTimeout(90_000);
+  const person = { clerkUserId: `user_guest_${testInfo.project.name}_${Date.now()}`, email: "guest-flow@example.com" };
+  seedMember(person.clerkUserId, "editor");
+  const videoId = seedReview(person.clerkUserId);
+  await signInAs(page, person);
+  await page.goto(`/videos/${videoId}`);
+  await page.getByRole("button", { name: "Share", exact: true }).click();
+  await page.getByLabel("Who is this link for?").fill("Client");
+  await page.getByRole("button", { name: "Create Share Link" }).click();
+  await expect(page.getByRole("button", { name: "Revoke link for Client" })).toBeVisible();
+
+  const guest = await (await browser.newContext()).newPage();
+  await guest.goto(`/share/${shareTokenFor(videoId)}`);
+  await guest.getByLabel("Your name").fill("  Dana  ");
+  await guest.getByRole("button", { name: "Continue" }).click();
+  const text = guest.getByLabel("Comment text");
+  const send = async (body: string) => { await text.fill(body); await guest.getByRole("button", { name: "Send Comment" }).click(); };
+  await send("Too dark here");
+  await expect(text).toHaveValue("");
+  await guest.reload();
+  await expect(guest.getByText("Dana · Guest")).toBeVisible();
+  await expect(guest.getByText(/Too dark here/)).toBeVisible();
+  await expect(guest.getByRole("button", { name: /^(Edit|Delete)/ })).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByText("Dana · Guest")).toBeVisible();
+
+  for (let index = 1; index < 30; index++) { await send(`Note ${index}`); await expect(text).toHaveValue(""); }
+  await send("One too many");
+  await expect(guest.getByText("Too many Comments right now. Your text is kept; wait a minute and try again.")).toBeVisible();
+  await expect(text).toHaveValue("One too many");
 });

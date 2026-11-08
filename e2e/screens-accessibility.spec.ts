@@ -335,9 +335,9 @@ test("deleting a Project: confirmation, cancellation, failure and disappearance"
 test("completing and reopening a Project", async ({ page }, testInfo) => {
   // Seeded by an Editor: a second Owner would break the last-Owner test in the next browser project.
   const uploader = `user_complete_${testInfo.project.name}_${Date.now()}`;
-  seedMember(person.clerkUserId, "owner");
-  const id = seedReview(person.clerkUserId); // The seeded Project and Video share an ID.
-  await signInAs(page, person);
+  seedMember(uploader, "editor");
+  const id = seedReview(uploader); // The seeded Project and Video share an ID.
+  await signInAs(page, owner);
   await page.goto(`/projects/${id}`);
   const heading = page.getByRole("heading", { level: 1, name: "Playback project" });
   await page.getByRole("button", { name: "Complete Playback project" }).click();

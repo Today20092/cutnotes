@@ -7,6 +7,7 @@ import "@/server/members";
 import "@/server/projects";
 import "@/server/videos";
 import "@/server/playback";
+import "@/server/comments";
 
 export type CallOptions = {
   bearer?: string;
@@ -46,6 +47,10 @@ export const ownerServerFunctionIds = {
 
 /** These need an active Member. */
 export const memberServerFunctionIds = {
+  createComment: serverFnId("/src/server/comments.ts", "createComment"),
+  editComment: serverFnId("/src/server/comments.ts", "editComment"),
+  deleteComment: serverFnId("/src/server/comments.ts", "deleteComment"),
+  resolveComment: serverFnId("/src/server/comments.ts", "resolveComment"),
   getReview: serverFnId("/src/server/playback.ts", "getReview"),
   deleteVideo: serverFnId(videosFile, "deleteVideo"),
   getAppShell: serverFnId("/src/server/app-shell.ts", "getAppShell"),

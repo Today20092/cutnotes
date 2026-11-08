@@ -29,7 +29,7 @@ _Avoid_: Archive
 ### Feedback
 
 **Comment**:
-A note attached to a moment in a Revision.
+A note attached to a moment in one Revision. Comments are flat, with no replies, and do not move to newer Revisions.
 _Avoid_: Note, annotation
 
 **Drawing**:
@@ -39,6 +39,9 @@ _Avoid_: Annotation, markup
 **Resolved**:
 A Comment an Owner or Editor has marked as dealt with.
 _Avoid_: Done, closed
+
+**To do**:
+Comments that have not been marked Resolved. Resolving a Comment moves it to the Resolved filter; unresolving it returns it to To do.
 
 ### People
 

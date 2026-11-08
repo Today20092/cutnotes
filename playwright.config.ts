@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 import { e2eKeys } from "./e2e/support/keys";
+import { e2ePort } from "./e2e/support/port";
 
-const baseURL = "http://127.0.0.1:5199";
+const baseURL = `http://127.0.0.1:${e2ePort}`;
 
 export default defineConfig({
   testDir: "./e2e",

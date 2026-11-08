@@ -1,6 +1,7 @@
 import { createSign } from "node:crypto";
 import type { Page } from "@playwright/test";
 import { e2eKeys } from "./keys";
+import { e2ePort } from "./port";
 
 export type Person = { clerkUserId: string; email: string };
 
@@ -13,7 +14,7 @@ export function sessionToken(person: Person, expiresInSeconds = 3600) {
     sub: person.clerkUserId,
     sid: `sess_${person.clerkUserId}`,
     iss: "https://clerk.example.test",
-    azp: "http://127.0.0.1:5199",
+    azp: `http://127.0.0.1:${e2ePort}`,
     iat: now - 10,
     nbf: now - 10,
     exp: now + expiresInSeconds,

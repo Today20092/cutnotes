@@ -14,7 +14,11 @@ test("the first Owner reaches the app shell with the Team name", async ({
   await signInAs(page, owner);
   await page.goto("/");
 
-  await expect(page.getByText(/No Projects yet/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
+  // Phone runs first, on the empty database both widths share.
+  if (testInfo.project.name === "phone") {
+    await expect(page.getByText(/No Projects yet/)).toBeVisible();
+  }
   await expect(page.getByText("Haithem Studio").first()).toBeVisible();
   await expect(page.locator('img[src^="data:image/gif"]').first()).toBeAttached();
 
@@ -51,7 +55,7 @@ test("every server call carries a Bearer token, even with an expired cookie", as
   await page.goto("/");
 
   expect((await call).headers().authorization).toMatch(/^Bearer /);
-  await expect(page.getByText(/No Projects yet/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
 });
 
 test("a signed-in non-Member sees the Not a Member screen", async ({ page }) => {
@@ -76,7 +80,7 @@ test("the app follows the device dark setting", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await signInAs(page, owner);
   await page.goto("/");
-  await expect(page.getByText(/No Projects yet/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
 
   const dark = await page.evaluate(
     () => getComputedStyle(document.body).backgroundColor,

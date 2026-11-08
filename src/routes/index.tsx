@@ -1,41 +1,152 @@
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { useAuthStatus } from "@/auth/client";
-import { AppShell } from "@/components/app-shell";
-import { NotAMemberScreen, SignInScreen } from "@/components/gate-screens";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useTeam } from "@/lib/team";
-import { getAppShell } from "@/server/app-shell";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Plus } from "lucide-react";
+import { useState } from "react";
+import { MemberScreen } from "@/components/member-screen";
+import {
+  canWrite,
+  PageHeading,
+  ProjectNameSheet,
+  RenameProjectButton,
+  VideoCard,
+  videoGridClass,
+  VideoGridSkeleton,
+  WriteFeedback,
+} from "@/components/project-parts";
+import { Button } from "@/components/ui/button";
+import {
+  isPendingProject,
+  projectListQuery,
+  useCreateProject,
+  useRenameProject,
+  type ProjectList,
+} from "@/lib/projects";
 
 export const Route = createFileRoute("/")({ component: Home });
 
-const isRefusal = (error: unknown, status: number) =>
-  error instanceof Response && error.status === status;
-
 function Home() {
-  const { isLoaded, isSignedIn } = useAuthStatus();
-  const team = useTeam();
-  const shell = useQuery({
-    queryKey: ["app-shell"],
-    queryFn: () => getAppShell(),
-    enabled: isLoaded && isSignedIn,
-    retry: false,
-  });
+  return (
+    <MemberScreen query={projectListQuery} skeleton={<VideoGridSkeleton />}>
+      {(list) => <ProjectListView list={list} />}
+    </MemberScreen>
+  );
+}
 
-  if (!isLoaded || !team.data) return <Skeleton className="m-6 h-40" />;
-  if (!isSignedIn || isRefusal(shell.error, 401)) {
-    return <SignInScreen team={team.data} />;
+function ProjectListView({ list }: { list: ProjectList }) {
+  const createProject = useCreateProject();
+  const renameProject = useRenameProject();
+  const [status, setStatus] = useState("");
+  const [failure, setFailure] = useState("");
+  const writable = canWrite(list.member.role);
+
+  function create(name: string) {
+    setFailure("");
+    createProject.mutate(name, {
+      onSuccess: () => setStatus(`Project ${name} created`),
+      onError: () =>
+        setFailure(`Could not create ${name}. Nothing was saved. Try again.`),
+    });
   }
-  if (isRefusal(shell.error, 403)) {
-    return <NotAMemberScreen team={team.data} />;
-  }
-  if (shell.isError) {
-    return (
-      <p role="alert" className="p-6">
-        Something went wrong. Please reload the page.
-      </p>
+
+  function rename(projectId: string, previous: string, name: string) {
+    setFailure("");
+    renameProject.mutate(
+      { projectId, name },
+      {
+        onSuccess: () => setStatus(`Project renamed to ${name}`),
+        onError: () =>
+          setFailure(`Could not rename ${previous}. Nothing changed. Try again.`),
+      },
     );
   }
-  if (!shell.data) return <Skeleton className="m-6 h-40" />;
-  return <AppShell team={team.data} member={shell.data.member} />;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeading title="Projects">
+        {/* Upload joins New project here with its own ticket. */}
+        {writable && (
+          <ProjectNameSheet
+            title="New project"
+            submitLabel="Create Project"
+            onSubmit={create}
+            trigger={
+              <Button variant="outline">
+                <Plus aria-hidden /> New project
+              </Button>
+            }
+          />
+        )}
+      </PageHeading>
+      <WriteFeedback status={status} failure={failure} />
+
+      {list.projects.length === 0 ? (
+        <p className="text-muted-foreground">
+          No Projects yet.{" "}
+          {writable
+            ? "Use New project to create the first one."
+            : "An Owner or Editor will create the first one."}
+        </p>
+      ) : (
+        <section aria-labelledby="projects-heading" className="flex flex-col gap-2">
+          <h2 id="projects-heading" className="font-medium">
+            All Projects
+          </h2>
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {list.projects.map((project) => (
+              <li
+                key={project.id}
+                className="flex items-center justify-between gap-2 rounded-md border p-2 pl-3"
+              >
+                {isPendingProject(project) ? (
+                  <span className="min-w-0 font-medium wrap-anywhere">
+                    {project.name}
+                  </span>
+                ) : (
+                  <Link
+                    to="/projects/$projectId"
+                    params={{ projectId: project.id }}
+                    className="min-w-0 font-medium wrap-anywhere underline-offset-4 hover:underline"
+                  >
+                    {project.name}
+                  </Link>
+                )}
+                {project.completedAt !== null ? (
+                  <span className="shrink-0 text-xs">Complete</span>
+                ) : (
+                  writable &&
+                  !isPendingProject(project) && (
+                    <RenameProjectButton
+                      name={project.name}
+                      onRename={(name) => rename(project.id, project.name, name)}
+                    />
+                  )
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {list.videos.length > 0 && (
+        <section aria-labelledby="videos-heading" className="flex flex-col gap-2">
+          <h2 id="videos-heading" className="font-medium">
+            Videos
+          </h2>
+          <ul className={videoGridClass}>
+            {list.videos.map((video) => (
+              <li key={video.id} className="min-w-0">
+                <Link
+                  to="/projects/$projectId"
+                  params={{ projectId: video.projectId }}
+                  aria-label={`${video.title}, in ${video.projectName}`}
+                  className="block"
+                >
+                  <VideoCard video={video} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
 }

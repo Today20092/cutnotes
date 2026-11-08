@@ -1,4 +1,6 @@
+import { Link } from "@tanstack/react-router";
 import { FolderOpen, LogOut } from "lucide-react";
+import type { ReactNode } from "react";
 import { useSignOut } from "@/auth/client";
 import {
   Sidebar,
@@ -17,10 +19,10 @@ import { TeamLogo, type Team } from "@/lib/team";
 
 export function AppShell({
   team,
-  member,
+  children,
 }: {
   team: Team;
-  member: { displayName: string };
+  children: ReactNode;
 }) {
   const signOut = useSignOut();
   return (
@@ -38,7 +40,7 @@ export function AppShell({
           <SidebarGroup>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton isActive>
+                <SidebarMenuButton isActive render={<Link to="/" />}>
                   <FolderOpen />
                   <span>Projects</span>
                 </SidebarMenuButton>
@@ -64,25 +66,19 @@ export function AppShell({
             <TeamLogo team={team} />
             <span>{team.name}</span>
           </div>
-          <h1 className="hidden font-semibold md:block">Projects</h1>
         </header>
-        <main className="flex-1 p-4 pb-20 md:pb-4">
-          <p className="text-muted-foreground">
-            Welcome, {member.displayName}. No Projects yet.
-          </p>
-        </main>
+        <div className="flex-1 p-4 pb-20 md:pb-4">{children}</div>
         <nav
           aria-label="Main"
           className="fixed inset-x-0 bottom-0 grid grid-cols-2 border-t bg-background md:hidden"
         >
-          <button
-            type="button"
-            aria-current="page"
-            className="flex h-14 flex-col items-center justify-center gap-0.5 text-xs text-foreground"
+          <Link
+            to="/"
+            className="flex h-14 flex-col items-center justify-center gap-0.5 text-xs text-foreground aria-[current=page]:font-semibold aria-[current=page]:underline aria-[current=page]:underline-offset-4"
           >
             <FolderOpen className="size-5" aria-hidden />
             Projects
-          </button>
+          </Link>
           <button
             type="button"
             onClick={signOut}

@@ -5,6 +5,7 @@ import "@/server/app-shell";
 import "@/server/invites";
 import "@/server/members";
 import "@/server/projects";
+import "@/server/videos";
 
 export type CallOptions = {
   bearer?: string;
@@ -28,6 +29,7 @@ const serverFnId = (file: string, exportName: string) =>
     .replace(/=+$/, "");
 
 const invitesFile = "/src/server/invites.ts";
+const videosFile = "/src/server/videos.ts";
 const membersFile = "/src/server/members.ts";
 
 /** Only an Owner may call these. */
@@ -47,6 +49,10 @@ export const memberServerFunctionIds = {
   getProject: serverFnId("/src/server/projects.ts", "getProject"),
   createProject: serverFnId("/src/server/projects.ts", "createProject"),
   renameProject: serverFnId("/src/server/projects.ts", "renameProject"),
+  startUpload: serverFnId(videosFile, "startUpload"),
+  cancelUpload: serverFnId(videosFile, "cancelUpload"),
+  renameVideo: serverFnId(videosFile, "renameVideo"),
+  setVideoStatus: serverFnId(videosFile, "setVideoStatus"),
   ...ownerServerFunctionIds,
 } as const;
 
@@ -74,6 +80,19 @@ export function callServerFn(id: string, options: CallOptions = {}) {
         options.data === undefined
           ? undefined
           : JSON.stringify(toJSON({ data: options.data })),
+    }),
+  );
+}
+
+/** Delivers a webhook to the real endpoint, as Mux would. */
+export function postWebhook(rawBody: string, signature: string | null) {
+  const headers = new Headers({ "content-type": "application/json" });
+  if (signature !== null) headers.set("mux-signature", signature);
+  return exports.default.fetch(
+    new Request(`${env.APP_ORIGIN}/api/mux/webhook`, {
+      method: "POST",
+      headers,
+      body: rawBody,
     }),
   );
 }

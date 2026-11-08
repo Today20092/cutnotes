@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { useState } from "react";
 import { MemberScreen } from "@/components/member-screen";
 import {
@@ -7,11 +7,12 @@ import {
   PageHeading,
   ProjectNameSheet,
   RenameProjectButton,
-  VideoCard,
   videoGridClass,
   VideoGridSkeleton,
   WriteFeedback,
 } from "@/components/project-parts";
+import { UploadSheet } from "@/components/upload-parts";
+import { VideoTile } from "@/components/video-tile";
 import { Button } from "@/components/ui/button";
 import {
   isPendingProject,
@@ -62,18 +63,33 @@ function ProjectListView({ list }: { list: ProjectList }) {
   return (
     <div className="flex flex-col gap-6">
       <PageHeading title="Projects">
-        {/* Upload joins New project here with its own ticket. */}
         {writable && (
-          <ProjectNameSheet
-            title="New project"
-            submitLabel="Create Project"
-            onSubmit={create}
-            trigger={
-              <Button variant="outline">
-                <Plus aria-hidden /> New project
-              </Button>
-            }
-          />
+          <>
+            <ProjectNameSheet
+              title="New project"
+              submitLabel="Create Project"
+              onSubmit={create}
+              trigger={
+                <Button variant="outline">
+                  <Plus aria-hidden /> New project
+                </Button>
+              }
+            />
+            <UploadSheet
+              destination={{
+                kind: "new",
+                projects: list.projects.filter(
+                  (project) =>
+                    project.completedAt === null && !isPendingProject(project),
+                ),
+              }}
+              trigger={
+                <Button>
+                  <Upload aria-hidden /> Upload
+                </Button>
+              }
+            />
+          </>
         )}
       </PageHeading>
       <WriteFeedback status={status} failure={failure} />
@@ -134,14 +150,7 @@ function ProjectListView({ list }: { list: ProjectList }) {
           <ul className={videoGridClass}>
             {list.videos.map((video) => (
               <li key={video.id} className="min-w-0">
-                <Link
-                  to="/projects/$projectId"
-                  params={{ projectId: video.projectId }}
-                  aria-label={`${video.title}, in ${video.projectName}`}
-                  className="block"
-                >
-                  <VideoCard video={video} />
-                </Link>
+                <VideoTile video={video} writable={writable} linkToProject />
               </li>
             ))}
           </ul>

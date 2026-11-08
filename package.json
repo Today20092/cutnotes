@@ -12,7 +12,9 @@
     "test:seam1": "bun scripts/node.ts node_modules/vitest/vitest.mjs run",
     "test:seam2": "bun scripts/node.ts node_modules/@playwright/test/cli.js test",
     "test:player": "bun test test/player",
-    "check": "bun run typecheck && bun run lint && bun run test:player && bun run test:seam1 && bun run test:seam2"
+    "test:setup": "bun test test/setup",
+    "setup": "bun scripts/setup.ts",
+    "check": "bun run typecheck && bun run lint && bun run test:player && bun run test:setup && bun run test:seam1 && bun run test:seam2"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",

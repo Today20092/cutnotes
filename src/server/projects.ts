@@ -31,7 +31,7 @@ const projectSummary = {
   completedAt: projects.completedAt,
 };
 
-const selectVideos = (db: ScreenDb) =>
+const selectVideos = (db: ScreenDb, clerkUserId: string) =>
   db
     .select({
       id: videos.id,
@@ -42,6 +42,17 @@ const selectVideos = (db: ScreenDb) =>
       projectId: videos.projectId,
       projectName: projects.name,
       projectCompletedAt: projects.completedAt,
+      unread: sql<number>`EXISTS (
+        SELECT 1 FROM members AS reader
+        WHERE reader.clerk_user_id = ${clerkUserId} AND reader.removed_at IS NULL AND (
+          EXISTS (SELECT 1 FROM revisions AS activity WHERE activity.video_id = ${videos.id}
+            AND activity.state = 'ready' AND activity.uploaded_by <> reader.id
+            AND COALESCE(activity.ready_at, activity.created_at) > COALESCE((SELECT last_read_at FROM video_reads WHERE member_id = reader.id AND video_id = ${videos.id}), 0))
+          OR EXISTS (SELECT 1 FROM comments AS feedback JOIN revisions AS cut ON cut.id = feedback.revision_id
+            WHERE cut.video_id = ${videos.id} AND (feedback.member_id IS NULL OR feedback.member_id <> reader.id)
+            AND feedback.created_at > COALESCE((SELECT last_read_at FROM video_reads WHERE member_id = reader.id AND video_id = ${videos.id}), 0))
+        )
+      )`.mapWith(Boolean),
       latestRevision: sql<number | null>`(SELECT max(number) FROM revisions WHERE revisions.video_id = ${videos.id})`,
       latestRevisionState: sql<RevisionState | null>`(SELECT state FROM revisions WHERE revisions.video_id = ${videos.id} ORDER BY number DESC LIMIT 1)`,
       latestRevisionError: sql<string | null>`(SELECT error_code FROM revisions WHERE revisions.video_id = ${videos.id} ORDER BY number DESC LIMIT 1)`,
@@ -80,13 +91,13 @@ async function withPosters<Video extends { posterPlaybackId: string | null }>(
 
 export const listProjects = createServerFn({ method: "POST" }).handler(
   async () => {
-    const { member, results } = await readAsMember("viewer", (db) => [
+    const { member, results } = await readAsMember("viewer", (db, clerkUserId) => [
       db
         .select(projectSummary)
         .from(projects)
         .where(isNull(projects.deletedAt))
         .orderBy(desc(projects.createdAt)),
-      selectVideos(db).where(liveVideo).orderBy(desc(videos.updatedAt)),
+      selectVideos(db, clerkUserId).where(liveVideo).orderBy(desc(videos.updatedAt)),
     ]);
     return {
       member: { id: member.id, displayName: member.displayName, role: member.role },
@@ -100,12 +111,12 @@ export const getProject = createServerFn({ method: "POST" })
   .validator((data: { projectId: string }) => data)
   .handler(async ({ data }) => {
     const projectId = parseProjectId(data);
-    const { member, results } = await readAsMember("viewer", (db) => [
+    const { member, results } = await readAsMember("viewer", (db, clerkUserId) => [
       db
         .select(projectSummary)
         .from(projects)
         .where(and(eq(projects.id, projectId), isNull(projects.deletedAt))),
-      selectVideos(db)
+      selectVideos(db, clerkUserId)
         .where(and(eq(videos.projectId, projectId), liveVideo))
         .orderBy(desc(videos.updatedAt)),
     ]);

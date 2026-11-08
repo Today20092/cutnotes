@@ -265,6 +265,7 @@ export function VideoCard({
       <div className="mt-2 flex items-start justify-between gap-2">
         <div className="min-w-0 wrap-anywhere">
           <div className="font-medium">{video.title}</div>
+          {video.unread && <span className="text-sm font-semibold">Unread activity</span>}
           <div className="text-sm text-muted-foreground">
             {video.projectName} · {revision} · {formatUpdated(video.updatedAt)}
           </div>

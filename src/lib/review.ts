@@ -6,8 +6,8 @@ export type ReviewPage = Awaited<ReturnType<typeof getReview>>;
 export type Comment = ReviewPage["comments"][number];
 const writes = (videoId: string) => ["video-write", videoId];
 
-export const reviewQuery = (videoId: string, client?: QueryClient) => queryOptions({
-  queryKey: ["review", videoId], queryFn: () => getReview({ data: { videoId } }), retry: false,
+export const reviewQuery = (videoId: string, client?: QueryClient, revisionId?: string) => queryOptions({
+  queryKey: ["review", videoId, revisionId ?? "latest"], queryFn: () => getReview({ data: { videoId, revisionId } }), retry: false,
   refetchInterval: () => client?.isMutating({ mutationKey: writes(videoId) }) ? false : 30_000,
   refetchOnWindowFocus: () => client?.isMutating({ mutationKey: writes(videoId) }) ? false : "always",
 });
@@ -18,9 +18,9 @@ type Write =
   | { action: "delete"; data: CommentTarget }
   | { action: "resolve"; data: CommentTarget & { resolved: boolean } };
 
-export function useCommentWrite(videoId: string) {
+export function useCommentWrite(videoId: string, revisionId?: string) {
   const client = useQueryClient();
-  const queryKey = reviewQuery(videoId).queryKey;
+  const queryKey = reviewQuery(videoId, undefined, revisionId).queryKey;
   const mutationKey = writes(videoId);
   return useMutation({
     mutationKey, scope: { id: `video-${videoId}` },
@@ -53,7 +53,7 @@ export function useCommentWrite(videoId: string) {
       ].sort((a, b) => a.timecodeMs - b.timecodeMs || a.createdAt - b.createdAt) });
     },
     onSettled: () => {
-      if (client.isMutating({ mutationKey }) === 1) return client.invalidateQueries({ queryKey });
+      if (client.isMutating({ mutationKey }) === 1) return client.invalidateQueries({ queryKey: ["review", videoId] });
     },
   });
 }

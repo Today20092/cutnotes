@@ -39,7 +39,7 @@ test("an Owner invites someone, who joins by opening the link once", async ({
   };
 
   const joined = await openAs(browser, invitee, url);
-  await expect(joined.getByText(/No Projects yet/)).toBeVisible();
+  await expect(joined.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
   await expect(joined.getByRole("link", { name: "Invites" })).toHaveCount(0);
 
   await joined.goto("/invites");

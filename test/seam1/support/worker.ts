@@ -3,6 +3,7 @@ import { fromCrossJSON, toJSON } from "seroval";
 // Start only registers a server function once its module is compiled.
 import "@/server/app-shell";
 import "@/server/invites";
+import "@/server/projects";
 
 export type CallOptions = {
   bearer?: string;
@@ -37,6 +38,10 @@ export const ownerServerFunctionIds = {
 /** These need an active Member. */
 export const memberServerFunctionIds = {
   getAppShell: serverFnId("/src/server/app-shell.ts", "getAppShell"),
+  listProjects: serverFnId("/src/server/projects.ts", "listProjects"),
+  getProject: serverFnId("/src/server/projects.ts", "getProject"),
+  createProject: serverFnId("/src/server/projects.ts", "createProject"),
+  renameProject: serverFnId("/src/server/projects.ts", "renameProject"),
   ...ownerServerFunctionIds,
 } as const;
 

@@ -1,4 +1,11 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  real,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 export const roles = ["viewer", "editor", "owner"] as const;
 export type Role = (typeof roles)[number];
@@ -27,3 +34,73 @@ export const invites = sqliteTable("invites", {
   usedBy: text("used_by").references(() => members.id, { onDelete: "cascade" }),
   revokedAt: integer("revoked_at"),
 });
+
+export const projects = sqliteTable(
+  "projects",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    createdBy: text("created_by").notNull().references(() => members.id),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+    completedAt: integer("completed_at"),
+    deleteAfter: integer("delete_after"),
+    deletedAt: integer("deleted_at"),
+  },
+  (table) => [index("projects_delete_after_idx").on(table.deleteAfter)],
+);
+
+export type Project = typeof projects.$inferSelect;
+
+export const videoStatuses = ["review", "rework", "done"] as const;
+export type VideoStatus = (typeof videoStatuses)[number];
+
+export const videos = sqliteTable(
+  "videos",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    status: text("status", { enum: videoStatuses }).notNull(),
+    createdBy: text("created_by").notNull().references(() => members.id),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+    deletedAt: integer("deleted_at"),
+  },
+  (table) => [index("videos_project_id_idx").on(table.projectId)],
+);
+
+export const revisionStates = [
+  "uploading",
+  "processing",
+  "ready",
+  "errored",
+] as const;
+
+export const revisions = sqliteTable(
+  "revisions",
+  {
+    id: text("id").primaryKey(),
+    videoId: text("video_id")
+      .notNull()
+      .references(() => videos.id, { onDelete: "cascade" }),
+    number: integer("number").notNull(),
+    state: text("state", { enum: revisionStates }).notNull(),
+    uploadedBy: text("uploaded_by").notNull().references(() => members.id),
+    muxUploadId: text("mux_upload_id"),
+    muxAssetId: text("mux_asset_id"),
+    muxPlaybackId: text("mux_playback_id"),
+    durationMs: integer("duration_ms"),
+    frameRate: real("frame_rate"),
+    aspectRatio: text("aspect_ratio"),
+    errorCode: text("error_code"),
+    createdAt: integer("created_at").notNull(),
+    readyAt: integer("ready_at"),
+  },
+  (table) => [
+    uniqueIndex("revisions_video_id_number_idx").on(table.videoId, table.number),
+    index("revisions_state_idx").on(table.state),
+  ],
+);

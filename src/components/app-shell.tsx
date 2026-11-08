@@ -29,16 +29,20 @@ export function AppShell({
   team,
   member,
   title,
+  pageHeading = false,
   children,
 }: {
   team: Team;
-  member: ShellMember;
+  /** Unknown while a screen's first read is in flight; Owner destinations wait for it. */
+  member?: ShellMember;
   title: (typeof destinations)[number]["label"];
+  /** The screen renders its own h1, so the shell does not add a second. */
+  pageHeading?: boolean;
   children: ReactNode;
 }) {
   const signOut = useSignOut();
   const visible = destinations.filter(
-    (destination) => !destination.ownerOnly || member.role === "owner",
+    (destination) => !destination.ownerOnly || member?.role === "owner",
   );
   return (
     <SidebarProvider>
@@ -86,11 +90,11 @@ export function AppShell({
             <TeamLogo team={team} />
             <span>{team.name}</span>
           </div>
-          <h1 className="sr-only font-semibold md:not-sr-only">{title}</h1>
+          {!pageHeading && (
+            <h1 className="sr-only font-semibold md:not-sr-only">{title}</h1>
+          )}
         </header>
-        <main className="flex-1 p-4 pb-20 md:pb-4">
-          {children}
-        </main>
+        <div className="flex-1 p-4 pb-20 md:pb-4">{children}</div>
         <nav
           aria-label="Main"
           className="fixed inset-x-0 bottom-0 flex border-t bg-background md:hidden"
@@ -99,7 +103,7 @@ export function AppShell({
             <Link
               key={to}
               to={to}
-              className="flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs text-muted-foreground aria-[current=page]:font-semibold aria-[current=page]:text-foreground aria-[current=page]:underline"
+              className="flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs text-muted-foreground aria-[current=page]:font-semibold aria-[current=page]:text-foreground aria-[current=page]:underline aria-[current=page]:underline-offset-4"
             >
               <Icon className="size-5" aria-hidden />
               {label}

@@ -15,6 +15,13 @@
       "when": 1794146053778,
       "tag": "0001_invites",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794146833649,
+      "tag": "0002_projects",
+      "breakpoints": true
     }
   ]
 }

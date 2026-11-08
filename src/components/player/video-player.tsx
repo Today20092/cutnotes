@@ -6,16 +6,26 @@ import { getReview } from "@/server/playback";
 import type { Playback } from "@/server/mux/gateway";
 import { bindPlaybackShortcuts, createShuttleController } from "./shuttle";
 import { createVideoPlaybackHealthState, observeVideoPlayback } from "./videoPlaybackHealth";
+import { Timeline } from "./timeline";
+
+type SafariVideo = HTMLVideoElement & {
+  webkitEnterFullscreen?: () => void;
+  webkitExitFullscreen?: () => void;
+  webkitDisplayingFullscreen?: boolean;
+};
 
 export function VideoPlayer({ videoId, revisionId, frameRate, playback }: {
   videoId: string; revisionId: string; frameRate: number | null; playback: Playback;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const shuttleRef = useRef<ReturnType<typeof createShuttleController> | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [initialPlayback] = useState(playback);
   const [failure, setFailure] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [poster, setPoster] = useState(playback.posterUrl);
+  const [storyboardUrl, setStoryboardUrl] = useState(playback.storyboardUrl);
 
   useEffect(() => {
     const video = videoRef.current!;
@@ -28,6 +38,7 @@ export function VideoPlayer({ videoId, revisionId, frameRate, playback }: {
     let resume: { time: number; playing: boolean } | undefined;
     let health = createVideoPlaybackHealthState();
     const shuttle = createShuttleController(video, () => {});
+    shuttleRef.current = shuttle;
 
     function failed() { if (!disposed) setFailure("Playback could not continue. Try again."); }
     function load() {
@@ -48,6 +59,7 @@ export function VideoPlayer({ videoId, revisionId, frameRate, playback }: {
         if (!result.playback) return failed();
         current = result.playback;
         setPoster(current.posterUrl);
+        setStoryboardUrl(current.storyboardUrl);
         load();
       } catch { failed(); }
       finally { refreshing = false; }
@@ -94,7 +106,7 @@ export function VideoPlayer({ videoId, revisionId, frameRate, playback }: {
         case "stepBackTen": shuttle.step(-10, frameRate ?? 30); break;
         case "stepForwardTen": shuttle.step(10, frameRate ?? 30); break;
         case "mute": video.muted = !video.muted; break;
-        case "fullscreen": void video.requestFullscreen?.().catch(failed); break;
+        case "fullscreen": fullscreen(); break;
       }
     });
     const timer = window.setInterval(() => {
@@ -112,6 +124,7 @@ export function VideoPlayer({ videoId, revisionId, frameRate, playback }: {
       disposed = true;
       window.clearInterval(timer);
       unbind(); shuttle.dispose(); hls?.destroy();
+      shuttleRef.current = null;
       video.removeEventListener("loadedmetadata", loaded);
       video.removeEventListener("error", nativeError);
       video.removeEventListener("playing", progressed);
@@ -119,20 +132,61 @@ export function VideoPlayer({ videoId, revisionId, frameRate, playback }: {
     };
   }, [videoId, revisionId, initialPlayback, frameRate, attempt]);
 
+  function fullscreen() {
+    const root = rootRef.current!;
+    const video = videoRef.current as SafariVideo;
+    const native = () => {
+      // iPhone's native player may require a fresh tap instead of an orientation event.
+      try {
+        if (video.webkitDisplayingFullscreen) video.webkitExitFullscreen?.();
+        else video.webkitEnterFullscreen?.();
+      } catch { /* The explicit Full screen button remains available. */ }
+    };
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    else if (root.requestFullscreen) void root.requestFullscreen().catch(native);
+    else native();
+  }
+
+  useEffect(() => {
+    const landscape = matchMedia("(orientation: landscape) and (pointer: coarse)");
+    const video = videoRef.current as SafariVideo;
+    const rotate = () => {
+      if (landscape.matches) {
+        if (!document.fullscreenElement && !video.webkitDisplayingFullscreen) fullscreen();
+      }
+      else if (document.fullscreenElement === rootRef.current) void document.exitFullscreen().catch(() => {});
+      else if (!landscape.matches && video.webkitDisplayingFullscreen) video.webkitExitFullscreen?.();
+    };
+    const changed = () => setIsFullscreen(document.fullscreenElement === rootRef.current);
+    const nativeEntered = () => setIsFullscreen(true);
+    const nativeExited = () => setIsFullscreen(false);
+    landscape.addEventListener("change", rotate);
+    document.addEventListener("fullscreenchange", changed);
+    video.addEventListener("webkitbeginfullscreen", nativeEntered);
+    video.addEventListener("webkitendfullscreen", nativeExited);
+    rotate();
+    return () => {
+      landscape.removeEventListener("change", rotate);
+      document.removeEventListener("fullscreenchange", changed);
+      video.removeEventListener("webkitbeginfullscreen", nativeEntered);
+      video.removeEventListener("webkitendfullscreen", nativeExited);
+    };
+  }, []);
+
   function step(frames: number) {
-    const video = videoRef.current!;
-    video.pause();
-    video.currentTime = Math.max(0, Math.min(Number.isFinite(video.duration) ? video.duration : Infinity,
-      video.currentTime + frames / (frameRate ?? 30)));
+    shuttleRef.current?.step(frames, frameRate || 30);
   }
 
   return (
     <div ref={rootRef} role="region" aria-label="Video player" className="rounded-lg bg-black p-2 text-white" style={{ colorScheme: "dark" }}>
       <video ref={videoRef} controls controlsList="nodownload" crossOrigin="anonymous" playsInline
-        aria-label="Revision playback" poster={poster} className="max-h-[50dvh] w-full bg-black" />
+        aria-label="Revision playback" poster={poster} className="max-h-[50dvh] w-full bg-black"
+        style={{ maxHeight: isFullscreen ? "calc(100dvh - 8rem)" : undefined }} />
+      <Timeline videoRef={videoRef} storyboardUrl={storyboardUrl} frameRate={frameRate} onSeek={() => shuttleRef.current?.pause()} />
       <div className="flex flex-wrap gap-2 pt-2">
         <button className="min-h-11 rounded border border-white px-3 focus-visible:outline-2" onClick={() => step(-1)}>Previous frame</button>
         <button className="min-h-11 rounded border border-white px-3 focus-visible:outline-2" onClick={() => step(1)}>Next frame</button>
+        <button className="min-h-11 rounded border border-white px-3 focus-visible:outline-2" aria-pressed={isFullscreen} onClick={fullscreen}>Full screen</button>
       </div>
       {failure && <div role="alert" className="p-2">
         <p>{failure}</p>

@@ -1,11 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
 import { readAsMember, requireMember, type ScreenDb } from "@/server/access";
 import { getDb } from "@/server/db";
 import { projects, videos, type RevisionState } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
 
 const MAX_NAME_LENGTH = 120;
+const COUNTDOWN_MS = 14 * 24 * 60 * 60 * 1000;
 
 function reject(status: 400 | 404, code: "invalid-name" | "not-found"): never {
   throw Response.json({ code }, { status });
@@ -29,6 +30,7 @@ const projectSummary = {
   name: projects.name,
   createdAt: projects.createdAt,
   completedAt: projects.completedAt,
+  deleteAfter: projects.deleteAfter,
 };
 
 const selectVideos = (db: ScreenDb, clerkUserId: string) =>
@@ -176,6 +178,37 @@ export const deleteProject = createServerFn({ method: "POST" })
       .where(and(eq(projects.id, parseProjectId(data)), isNull(projects.deletedAt),
         sql`EXISTS (SELECT 1 FROM members WHERE id = ${member.id} AND role = 'owner' AND removed_at IS NULL)`))
       .returning({ id: projects.id });
+    if (!project) reject(404, "not-found");
+    return project;
+  });
+
+const stillOwner = (memberId: string) =>
+  sql`EXISTS (SELECT 1 FROM members WHERE id = ${memberId} AND role = 'owner' AND removed_at IS NULL)`;
+
+export const completeProject = createServerFn({ method: "POST" })
+  .validator((data: { projectId: string }) => data)
+  .handler(async ({ data }) => {
+    const member = await requireMember("owner");
+    const now = Date.now();
+    const [project] = await getDb().update(projects)
+      .set({ completedAt: now, deleteAfter: now + COUNTDOWN_MS, updatedAt: now })
+      // Only an open Project: a repeat must not move the deadline.
+      .where(and(eq(projects.id, parseProjectId(data)), isNull(projects.deletedAt), isNull(projects.completedAt), stillOwner(member.id)))
+      .returning(projectSummary);
+    if (!project) reject(404, "not-found");
+    return project;
+  });
+
+export const reopenProject = createServerFn({ method: "POST" })
+  .validator((data: { projectId: string }) => data)
+  .handler(async ({ data }) => {
+    const member = await requireMember("owner");
+    const now = Date.now();
+    const [project] = await getDb().update(projects)
+      .set({ completedAt: null, deleteAfter: null, updatedAt: now })
+      // Past the deadline the Project belongs to the purge, even before the hourly run reaches it.
+      .where(and(eq(projects.id, parseProjectId(data)), isNull(projects.deletedAt), isNotNull(projects.completedAt), gt(projects.deleteAfter, now), stillOwner(member.id)))
+      .returning(projectSummary);
     if (!project) reject(404, "not-found");
     return project;
   });

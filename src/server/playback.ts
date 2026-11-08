@@ -12,7 +12,7 @@ export const getReview = createServerFn({ method: "POST" })
     const readAt = Date.now();
     const videoId = typeof data?.videoId === "string" ? data.videoId : "";
     const { member, results: [rows, ready, feedback] } = await readAsMember("viewer", (db) => [
-      db.select({ id: videos.id, title: videos.title, projectId: videos.projectId, projectName: projects.name, completedAt: projects.completedAt })
+      db.select({ id: videos.id, title: videos.title, projectId: videos.projectId, projectName: projects.name, completedAt: projects.completedAt, deleteAfter: projects.deleteAfter })
         .from(videos).innerJoin(projects, eq(videos.projectId, projects.id))
         .where(and(eq(videos.id, videoId), isNull(videos.deletedAt), isNull(projects.deletedAt))),
       db.select().from(revisions).where(and(eq(revisions.videoId, videoId), eq(revisions.state, "ready")))

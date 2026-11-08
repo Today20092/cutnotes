@@ -332,6 +332,41 @@ test("deleting a Project: confirmation, cancellation, failure and disappearance"
   await expectAccessible(page, "Project deleted");
 });
 
+test("completing and reopening a Project", async ({ page }, testInfo) => {
+  const person = { clerkUserId: `user_complete_${testInfo.project.name}_${Date.now()}`, email: "complete@example.com" };
+  seedMember(person.clerkUserId, "owner");
+  const id = seedReview(person.clerkUserId); // The seeded Project and Video share an ID.
+  await signInAs(page, person);
+  await page.goto(`/projects/${id}`);
+  const heading = page.getByRole("heading", { level: 1, name: "Playback project" });
+  await page.getByRole("button", { name: "Complete Playback project" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expectAccessible(page, "confirm Complete");
+  await page.getByRole("dialog").getByRole("button", { name: "Complete Playback project" }).click();
+  const countdown = page.getByText(/permanently deleted in 14 days/);
+  await expect(countdown).toBeVisible();
+  await expect(heading).toBeFocused();
+  await expectAccessible(page, "Project countdown");
+
+  const reopenCall = callTo("reopenProject");
+  await page.route(reopenCall, (route) => route.abort());
+  await page.getByRole("button", { name: "Reopen Playback project" }).click();
+  await expect(page.getByText(/Could not reopen Playback project/)).toBeVisible();
+  await expectAccessible(page, "Reopen failed");
+  await page.unroute(reopenCall);
+
+  await page.goto(`/videos/${id}`);
+  await expect(countdown).toBeVisible();
+  await expect(page.getByRole("button", { name: "Share", exact: true })).toHaveCount(0);
+  await expectAccessible(page, "Video countdown");
+
+  await page.goto(`/projects/${id}`);
+  await page.getByRole("button", { name: "Reopen Playback project" }).click();
+  await expect(countdown).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Complete Playback project" })).toBeVisible();
+  await expectAccessible(page, "Project reopened");
+});
+
 test("the Invites and accept-Invite screens", async ({ page, browser }, testInfo) => {
   await signInAs(page, owner);
   const url = await createInviteLink(page);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { CompleteBanner } from "@/components/complete-project";
 import { MemberScreen } from "@/components/member-screen";
 import { PageHeading } from "@/components/project-parts";
 import { VideoPlayer } from "@/components/player/video-player";
@@ -24,6 +25,7 @@ function Review() {
       <ReadMarker videoId={videoId} readAt={page.readAt} />
       <Link to="/projects/$projectId" params={{ projectId: page.video.projectId }} className="min-h-11 underline">Back to {page.video.projectName}</Link>
       <PageHeading title={page.video.title} />
+      {page.video.deleteAfter !== null && <CompleteBanner deleteAfter={page.video.deleteAfter} />}
       {page.member.role !== "viewer" && page.video.completedAt === null && <UploadSheet
         destination={{ kind: "existing", videoId, title: page.video.title }}
         trigger={<Button variant="outline">Upload new Revision</Button>} />}

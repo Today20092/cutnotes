@@ -48,6 +48,8 @@ export const guestServerFunctionIds = {
 /** Only an Owner may call these. */
 export const ownerServerFunctionIds = {
   deleteProject: serverFnId("/src/server/projects.ts", "deleteProject"),
+  completeProject: serverFnId("/src/server/projects.ts", "completeProject"),
+  reopenProject: serverFnId("/src/server/projects.ts", "reopenProject"),
   createInvite: serverFnId(invitesFile, "createInvite"),
   listInvites: serverFnId(invitesFile, "listInvites"),
   revokeInvite: serverFnId(invitesFile, "revokeInvite"),

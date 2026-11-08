@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { CompleteBanner, CompleteProject } from "@/components/complete-project";
 import { DeleteWork } from "@/components/delete-work";
 import { ChevronLeft, Upload } from "lucide-react";
 import { useState } from "react";
@@ -14,7 +15,7 @@ import {
 import { UploadSheet } from "@/components/upload-parts";
 import { VideoTile } from "@/components/video-tile";
 import { Button } from "@/components/ui/button";
-import { projectQuery, useRenameProject, type ProjectPage } from "@/lib/projects";
+import { projectQuery, useRenameProject, useSetProjectComplete, type ProjectPage } from "@/lib/projects";
 
 export const Route = createFileRoute("/projects/$projectId")({
   // Only on intent: a first page load has no session token yet.
@@ -59,6 +60,7 @@ function Project() {
 function ProjectView({ page }: { page: ProjectPage }) {
   const navigate = useNavigate();
   const renameProject = useRenameProject();
+  const setComplete = useSetProjectComplete();
   const [status, setStatus] = useState("");
   const [failure, setFailure] = useState("");
   const { project, videos, member } = page;
@@ -77,10 +79,30 @@ function ProjectView({ page }: { page: ProjectPage }) {
     );
   }
 
+  function changeComplete(complete: boolean) {
+    setFailure("");
+    setStatus("");
+    setComplete.mutate(
+      { projectId: project.id, complete },
+      {
+        onSuccess: () => {
+          setStatus(complete ? `${project.name} is Complete` : `${project.name} is reopened`);
+          // The button that was used has gone, so keep focus on the screen.
+          requestAnimationFrame(() => document.querySelector<HTMLHeadingElement>("h1")?.focus());
+        },
+        onError: () =>
+          setFailure(`Could not ${complete ? "Complete" : "reopen"} ${project.name}. Nothing changed. Try again.`),
+      },
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <BackLink />
       <PageHeading title={project.name}>
+        {member.role === "owner" && project.completedAt === null && (
+          <CompleteProject name={project.name} onComplete={() => changeComplete(true)} />
+        )}
         {member.role === "owner" && <DeleteWork kind="Project" id={project.id} name={project.name} onDeleted={() => { void navigate({ to: "/" }); }} />}
         {writable && project.completedAt === null && (
           <>
@@ -100,6 +122,14 @@ function ProjectView({ page }: { page: ProjectPage }) {
         )}
       </PageHeading>
       <WriteFeedback status={status} failure={failure} />
+      {project.deleteAfter !== null && (
+        <CompleteBanner
+          deleteAfter={project.deleteAfter}
+          action={member.role === "owner" && (
+            <Button variant="outline" aria-label={`Reopen ${project.name}`} onClick={() => changeComplete(false)}>Reopen</Button>
+          )}
+        />
+      )}
       {videos.length === 0 ? (
         <p className="text-muted-foreground">
           No Videos yet.{" "}

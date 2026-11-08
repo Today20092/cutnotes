@@ -5,11 +5,13 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import {
+  completeProject,
   createProject,
   deleteProject,
   getProject,
   listProjects,
   renameProject,
+  reopenProject,
 } from "@/server/projects";
 import { deleteVideo, renameVideo, setVideoStatus } from "@/server/videos";
 import type { VideoStatus } from "@/server/db/schema";
@@ -89,6 +91,7 @@ export function useCreateProject() {
               name,
               createdAt: Date.now(),
               completedAt: null,
+              deleteAfter: null,
             },
             ...list.projects,
           ],
@@ -125,6 +128,36 @@ export function useRenameProject() {
       client.setQueryData(projectQuery(projectId).queryKey, (page) =>
         page && { ...page, project: { ...page.project, name } },
       );
+      return { snapshot };
+    },
+    onError: (_error, _input, context) => restore(client, context?.snapshot),
+    onSettled: () => refreshAfterLastWrite(client),
+  });
+}
+
+const COUNTDOWN_MS = 14 * 24 * 60 * 60 * 1000;
+
+export function useSetProjectComplete() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationKey,
+    mutationFn: ({ projectId, complete }: { projectId: string; complete: boolean }) =>
+      complete ? completeProject({ data: { projectId } }) : reopenProject({ data: { projectId } }),
+    onMutate: async ({ projectId, complete }) => {
+      const snapshot = await snapshotProjects(client);
+      const now = Date.now();
+      const completedAt = complete ? now : null;
+      const deleteAfter = complete ? now + COUNTDOWN_MS : null;
+      const apply = (project: ProjectSummary) =>
+        project.id === projectId ? { ...project, completedAt, deleteAfter } : project;
+      client.setQueriesData<ProjectList | ProjectPage>({ queryKey: projectListQuery.queryKey }, (data) => {
+        if (!data) return data;
+        const videos = data.videos.map((video) =>
+          video.projectId === projectId ? { ...video, projectCompletedAt: completedAt } : video);
+        return "projects" in data
+          ? { ...data, videos, projects: data.projects.map(apply) }
+          : { ...data, videos, project: apply(data.project) };
+      });
       return { snapshot };
     },
     onError: (_error, _input, context) => restore(client, context?.snapshot),

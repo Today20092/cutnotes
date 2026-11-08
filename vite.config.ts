@@ -1,0 +1,41 @@
+import path from "node:path";
+import { cloudflare } from "@cloudflare/vite-plugin";
+import tailwindcss from "@tailwindcss/vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+
+const src = path.resolve(import.meta.dirname, "src");
+
+export default defineConfig(({ mode }) => {
+  const e2e = mode === "e2e";
+  return {
+    server: { port: 5173, strictPort: true },
+    resolve: {
+      alias: [
+        // Seam 2 replaces only Clerk's browser SDK. The server still verifies real tokens.
+        ...(e2e
+          ? [
+              {
+                find: "@/auth/client",
+                replacement: path.resolve(
+                  import.meta.dirname,
+                  "e2e/support/fake-auth-client.tsx",
+                ),
+              },
+            ]
+          : []),
+        { find: "@", replacement: src },
+      ],
+    },
+    plugins: [
+      cloudflare({
+        viteEnvironment: { name: "ssr" },
+        ...(e2e ? { persistState: { path: ".wrangler/e2e" } } : {}),
+      }),
+      tanstackStart(),
+      viteReact(),
+      tailwindcss(),
+    ],
+  };
+});

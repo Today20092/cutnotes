@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cutnotes",
+  "main": "src/server.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cutnotes",
+      // Local development only. The setup script writes the real ID here.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "TEAM_NAME": "Cutnotes",
+    "TEAM_LOGO_URL": "",
+    "APP_ORIGIN": "http://localhost:5173",
+    "FIRST_OWNER_EMAIL": ""
+  }
+}

@@ -84,7 +84,7 @@ function VideoControls({ video }: { video: VideoSummary }) {
           <UploadSheet
             destination={{ kind: "existing", videoId: video.id, title: video.title }}
             trigger={
-              <Button variant="outline" aria-label={`Upload ${video.title} again`}>
+              <Button variant="outline" aria-label={`Retry ${video.title} with a new upload`}>
                 <RotateCcw aria-hidden /> Retry
               </Button>
             }
@@ -113,7 +113,6 @@ export function VideoTile({
         <Link
           to="/projects/$projectId"
           params={{ projectId: video.projectId }}
-          aria-label={`${video.title}, in ${video.projectName}`}
           className="block"
         >
           {card}

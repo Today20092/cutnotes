@@ -170,7 +170,7 @@ function MemberRow({
               ref={confirmButton}
               type="button"
               variant="destructive"
-              aria-label={`Confirm removing ${member.displayName}`}
+              aria-label={`Remove ${member.displayName} now`}
               onClick={onRemove}
             >
               Remove

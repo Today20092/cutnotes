@@ -265,7 +265,7 @@ test("failed processing is explained and can be sent again", async ({
   }));
   await expect(page.getByText(/Processing failed/)).toBeVisible({ timeout: 15_000 });
 
-  await page.getByRole("button", { name: "Upload Broken cut again" }).click();
+  await page.getByRole("button", { name: "Retry Broken cut with a new upload" }).click();
   await page.getByLabel("Video file").setInputFiles(file);
   await page.getByRole("button", { name: "Start upload" }).click();
 

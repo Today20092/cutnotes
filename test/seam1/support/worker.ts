@@ -35,6 +35,7 @@ const membersFile = "/src/server/members.ts";
 
 /** Only an Owner may call these. */
 export const ownerServerFunctionIds = {
+  deleteProject: serverFnId("/src/server/projects.ts", "deleteProject"),
   createInvite: serverFnId(invitesFile, "createInvite"),
   listInvites: serverFnId(invitesFile, "listInvites"),
   revokeInvite: serverFnId(invitesFile, "revokeInvite"),
@@ -46,6 +47,7 @@ export const ownerServerFunctionIds = {
 /** These need an active Member. */
 export const memberServerFunctionIds = {
   getReview: serverFnId("/src/server/playback.ts", "getReview"),
+  deleteVideo: serverFnId(videosFile, "deleteVideo"),
   getAppShell: serverFnId("/src/server/app-shell.ts", "getAppShell"),
   listProjects: serverFnId("/src/server/projects.ts", "listProjects"),
   getProject: serverFnId("/src/server/projects.ts", "getProject"),

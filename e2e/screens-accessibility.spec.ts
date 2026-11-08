@@ -195,6 +195,7 @@ test("the Project screen", async ({ page }, testInfo) => {
 });
 
 test("a Video through upload, processing, and ready", async ({ page }, testInfo) => {
+  test.setTimeout(60_000);
   await signInAs(page, owner);
   let release = () => {};
   const held = new Promise<void>((resolve) => (release = resolve));
@@ -232,12 +233,31 @@ test("a Video through upload, processing, and ready", async ({ page }, testInfo)
   await expect(page.getByRole("region", { name: "Video player" })).toBeVisible();
   await expectAccessible(page, "ready review");
   await page.goBack();
+  await page.getByRole("button", { name: "Delete Main cut", exact: true }).click();
+  await expectAccessible(page, "confirm Video deletion");
+  await page.getByRole("button", { name: "Keep Video" }).click();
+  const failDelete = callTo("deleteVideo");
+  await page.route(failDelete, (route) => route.abort());
+  await page.getByRole("button", { name: "Delete Main cut", exact: true }).click();
+  await page.getByRole("button", { name: "Delete Main cut permanently" }).click();
+  await expect(page.getByRole("alert")).toContainText("Could not delete");
+  await expectAccessible(page, "failed Video deletion");
+  await page.getByRole("button", { name: "Keep Video" }).click();
+  await page.unroute(failDelete);
 
   await signInAs(page, seededViewer("video_viewer", testInfo));
   await page.reload();
   await expect(page.getByText("Main cut")).toBeVisible();
   await expect(page.getByRole("button", { name: "Upload" })).toHaveCount(0);
   await expectAccessible(page, "Project as a Viewer");
+  await expect(page.getByRole("button", { name: "Delete Main cut", exact: true })).toHaveCount(0);
+  await signInAs(page, owner);
+  await page.reload();
+  await page.getByRole("button", { name: "Delete Main cut", exact: true }).click();
+  await page.getByRole("button", { name: "Delete Main cut permanently" }).click();
+  await expect(page.getByText(/No Videos yet/)).toBeVisible();
+  await expectAccessible(page, "Video deleted");
+  await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
 });
 
 test("a Video whose send or processing failed", async ({ page }, testInfo) => {
@@ -282,6 +302,29 @@ test("the Members screen", async ({ page }, testInfo) => {
   await page.goto("/members");
   await expect(page.getByText("Only an Owner can manage Members.")).toBeVisible();
   await expectAccessible(page, "Members as a Viewer");
+});
+
+test("deleting a Project: confirmation, cancellation, failure and disappearance", async ({ page }, testInfo) => {
+  await signInAs(page, owner);
+  const name = await openNewProject(page, testInfo);
+  const trigger = page.getByRole("button", { name: `Delete ${name}`, exact: true });
+  await trigger.click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expectAccessible(page, "confirm Project deletion");
+  await page.getByRole("button", { name: "Keep Project" }).click();
+  await expect(trigger).toBeFocused();
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+
+  await page.route(callTo("deleteProject"), (route) => route.abort());
+  await trigger.click();
+  await page.getByRole("button", { name: `Delete ${name} permanently` }).click();
+  await expect(page.getByRole("alert")).toContainText("Could not delete");
+  await expectAccessible(page, "failed Project deletion");
+  await page.unrouteAll();
+  await page.getByRole("button", { name: `Delete ${name} permanently` }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Projects", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name, exact: true })).toHaveCount(0);
+  await expectAccessible(page, "Project deleted");
 });
 
 test("the Invites and accept-Invite screens", async ({ page, browser }, testInfo) => {

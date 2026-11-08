@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { DeleteWork } from "@/components/delete-work";
 import { Pencil, RotateCcw } from "lucide-react";
 import { useId, useState } from "react";
 import {
@@ -99,9 +100,11 @@ function VideoControls({ video }: { video: VideoSummary }) {
 export function VideoTile({
   video,
   writable,
+  deletable = false,
 }: {
   video: VideoSummary;
   writable: boolean;
+  deletable?: boolean;
 }) {
   const manageable = writable && video.projectCompletedAt === null;
   const card = <VideoCard video={video} showStatus={!manageable} />;
@@ -115,6 +118,7 @@ export function VideoTile({
         {card}
       </Link>
       {manageable && <VideoControls video={video} />}
+      {deletable && <div className="mt-2"><DeleteWork kind="Video" id={video.id} name={video.title} /></div>}
     </>
   );
 }

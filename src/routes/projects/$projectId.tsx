@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { DeleteWork } from "@/components/delete-work";
 import { ChevronLeft, Upload } from "lucide-react";
 import { useState } from "react";
 import { MemberScreen } from "@/components/member-screen";
@@ -56,6 +57,7 @@ function Project() {
 }
 
 function ProjectView({ page }: { page: ProjectPage }) {
+  const navigate = useNavigate();
   const renameProject = useRenameProject();
   const [status, setStatus] = useState("");
   const [failure, setFailure] = useState("");
@@ -79,6 +81,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
     <div className="flex flex-col gap-4">
       <BackLink />
       <PageHeading title={project.name}>
+        {member.role === "owner" && <DeleteWork kind="Project" id={project.id} name={project.name} onDeleted={() => { void navigate({ to: "/" }); }} />}
         {writable && project.completedAt === null && (
           <>
             <RenameProjectButton name={project.name} onRename={rename} />
@@ -108,7 +111,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
         <ul className={videoGridClass}>
           {videos.map((video) => (
             <li key={video.id} className="min-w-0">
-              <VideoTile video={video} writable={writable} />
+              <VideoTile video={video} writable={writable} deletable={member.role === "owner" || (member.role === "editor" && video.createdBy === member.id)} />
             </li>
           ))}
         </ul>

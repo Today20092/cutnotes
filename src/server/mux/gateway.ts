@@ -23,8 +23,21 @@ export async function createPlayback(
   };
 }
 
+export type MuxAsset = {
+  id: string;
+  status: string;
+  duration?: number;
+  aspect_ratio?: string;
+  playback_ids?: { id: string; policy: string }[];
+  tracks?: { type: string; max_frame_rate?: number }[];
+  errors?: { type?: string };
+};
+
 export type MuxGateway = {
   createPlayback(request: { playbackId: string; durationSeconds: number }): Promise<Playback>;
+  deleteAsset(assetId: string): Promise<void>;
+  getAsset(assetId: string): Promise<MuxAsset | null>;
+  getDirectUpload(uploadId: string): Promise<{ status: string; asset_id?: string } | null>;
   signPlaybackToken(request: {
     playbackId: string;
     audience: PlaybackAudience;
@@ -146,6 +159,22 @@ export function createMuxGateway(config: {
 
   return {
     createPlayback(request) { return createPlayback(this, request); },
+    async deleteAsset(assetId) {
+      const response = await callMux(`/assets/${encodeURIComponent(assetId)}`, "DELETE");
+      if (!response.ok && response.status !== 404) throw new Error(`Mux could not delete asset: ${response.status}`);
+    },
+    async getAsset(assetId) {
+      const response = await callMux(`/assets/${encodeURIComponent(assetId)}`, "GET");
+      if (response.status === 404) return null;
+      if (!response.ok) throw new Error(`Mux could not retrieve asset: ${response.status}`);
+      return (await response.json<{ data: MuxAsset }>()).data;
+    },
+    async getDirectUpload(uploadId) {
+      const response = await callMux(`/uploads/${encodeURIComponent(uploadId)}`, "GET");
+      if (response.status === 404) return null;
+      if (!response.ok) throw new Error(`Mux could not retrieve upload: ${response.status}`);
+      return (await response.json<{ data: { status: string; asset_id?: string } }>()).data;
+    },
     async createDirectUpload({ corsOrigin, passthrough }) {
       const response = await callMux("/uploads", "POST", {
         cors_origin: corsOrigin,

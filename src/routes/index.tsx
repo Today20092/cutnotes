@@ -150,7 +150,7 @@ function ProjectListView({ list }: { list: ProjectList }) {
           <ul className={videoGridClass}>
             {list.videos.map((video) => (
               <li key={video.id} className="min-w-0">
-                <VideoTile video={video} writable={writable} />
+                <VideoTile video={video} writable={writable} deletable={list.member.role === "owner" || (list.member.role === "editor" && video.createdBy === list.member.id)} />
               </li>
             ))}
           </ul>

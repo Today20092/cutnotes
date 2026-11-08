@@ -1,6 +1,30 @@
 export type PlaybackAudience = "v" | "t" | "s";
 
+export type Playback = { videoUrl: string; posterUrl: string; storyboardUrl: string };
+
+/** Options belong in claims; the only query parameter on a signed URL is token. */
+export async function createPlayback(
+  mux: Pick<MuxGateway, "signPlaybackToken">,
+  { playbackId, durationSeconds }: { playbackId: string; durationSeconds: number },
+): Promise<Playback> {
+  const expiresAt = Math.floor(Date.now() / 1000) + Math.max(3600, Math.ceil(durationSeconds) + 900);
+  const tokens = await Promise.all(
+    (["v", "t", "s"] as const).map((audience) => mux.signPlaybackToken({
+      playbackId, audience, expiresAt,
+      claims: audience === "v" ? { max_resolution: "1080p" } : audience === "t" ? { time: 0 } : undefined,
+    })),
+  );
+  const [video, poster, storyboard] = tokens as [string, string, string];
+  const id = encodeURIComponent(playbackId);
+  return {
+    videoUrl: `https://stream.mux.com/${id}.m3u8?token=${encodeURIComponent(video)}`,
+    posterUrl: `https://image.mux.com/${id}/thumbnail.webp?token=${encodeURIComponent(poster)}`,
+    storyboardUrl: `https://image.mux.com/${id}/storyboard.json?token=${encodeURIComponent(storyboard)}`,
+  };
+}
+
 export type MuxGateway = {
+  createPlayback(request: { playbackId: string; durationSeconds: number }): Promise<Playback>;
   signPlaybackToken(request: {
     playbackId: string;
     audience: PlaybackAudience;
@@ -121,6 +145,7 @@ export function createMuxGateway(config: {
     });
 
   return {
+    createPlayback(request) { return createPlayback(this, request); },
     async createDirectUpload({ corsOrigin, passthrough }) {
       const response = await callMux("/uploads", "POST", {
         cors_origin: corsOrigin,

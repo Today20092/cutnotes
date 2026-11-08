@@ -15,6 +15,7 @@ import { Route as MembersRouteImport } from './routes/members'
 import { Route as ApiTeamRouteImport } from './routes/api/team'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
+import { Route as VideosVideoIdRouteImport } from './routes/videos/$videoId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,11 @@ const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
   path: '/projects/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VideosVideoIdRoute = VideosVideoIdRouteImport.update({
+  id: '/videos/$videoId',
+  path: '/videos/$videoId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/api/team': typeof ApiTeamRoute
   '/invite/$token': typeof InviteTokenRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/videos/$videoId': typeof VideosVideoIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/api/team': typeof ApiTeamRoute
   '/invite/$token': typeof InviteTokenRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/videos/$videoId': typeof VideosVideoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,6 +79,7 @@ export interface FileRoutesById {
   '/api/team': typeof ApiTeamRoute
   '/invite/$token': typeof InviteTokenRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/videos/$videoId': typeof VideosVideoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,6 +90,7 @@ export interface FileRouteTypes {
     | '/api/team'
     | '/invite/$token'
     | '/projects/$projectId'
+    | '/videos/$videoId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
     | '/api/team'
     | '/invite/$token'
     | '/projects/$projectId'
+    | '/videos/$videoId'
   id:
     | '__root__'
     | '/'
@@ -97,6 +108,7 @@ export interface FileRouteTypes {
     | '/api/team'
     | '/invite/$token'
     | '/projects/$projectId'
+    | '/videos/$videoId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -106,6 +118,7 @@ export interface RootRouteChildren {
   ApiTeamRoute: typeof ApiTeamRoute
   InviteTokenRoute: typeof InviteTokenRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
+  VideosVideoIdRoute: typeof VideosVideoIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -152,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/videos/$videoId': {
+      id: '/videos/$videoId'
+      path: '/videos/$videoId'
+      fullPath: '/videos/$videoId'
+      preLoaderRoute: typeof VideosVideoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -162,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTeamRoute: ApiTeamRoute,
   InviteTokenRoute: InviteTokenRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
+  VideosVideoIdRoute: VideosVideoIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

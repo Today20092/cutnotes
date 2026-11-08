@@ -99,27 +99,21 @@ function VideoControls({ video }: { video: VideoSummary }) {
 export function VideoTile({
   video,
   writable,
-  linkToProject = false,
 }: {
   video: VideoSummary;
   writable: boolean;
-  linkToProject?: boolean;
 }) {
   const manageable = writable && video.projectCompletedAt === null;
   const card = <VideoCard video={video} showStatus={!manageable} />;
   return (
     <>
-      {linkToProject ? (
-        <Link
-          to="/projects/$projectId"
-          params={{ projectId: video.projectId }}
-          className="block"
-        >
-          {card}
-        </Link>
-      ) : (
-        card
-      )}
+      <Link
+        to="/videos/$videoId"
+        params={{ videoId: video.id }}
+        className="block"
+      >
+        {card}
+      </Link>
       {manageable && <VideoControls video={video} />}
     </>
   );

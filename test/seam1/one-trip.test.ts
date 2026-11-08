@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { call, clearDatabase, expectRefused, seedMember, seedProject } from "./support/seed";
+import { call, clearDatabase, expectRefused, seedMember, seedProject, seedVideo } from "./support/seed";
 import { serverFunctionIds } from "./support/worker";
 
 const { getAppShell, getProject, listInvites, listMembers, listProjects } =
@@ -21,6 +21,8 @@ function watchD1Trips() {
 }
 
 const screens = [
+  ["getReview", serverFunctionIds.getReview, { videoId: "video_one" }],
+  ["getReview unavailable", serverFunctionIds.getReview, { videoId: "missing" }],
   ["getAppShell", getAppShell, undefined],
   ["listProjects", listProjects, undefined],
   ["getProject", getProject, { projectId: "project_one" }],
@@ -35,6 +37,7 @@ describe("a screen's reads", () => {
     await clearDatabase();
     owner = await seedMember("owner");
     await seedProject("project_one");
+    await seedVideo("video_one", "project_one");
   });
 
   afterEach(() => {

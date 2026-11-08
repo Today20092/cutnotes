@@ -227,6 +227,12 @@ test("a Video through upload, processing, and ready", async ({ page }, testInfo)
   });
   await expectAccessible(page, "ready Video");
 
+  await page.getByRole("link", { name: /Main cut/ }).click();
+  await expect(page.getByRole("heading", { name: "Main cut", level: 1 })).toBeFocused();
+  await expect(page.getByRole("region", { name: "Video player" })).toBeVisible();
+  await expectAccessible(page, "ready review");
+  await page.goBack();
+
   await signInAs(page, seededViewer("video_viewer", testInfo));
   await page.reload();
   await expect(page.getByText("Main cut")).toBeVisible();

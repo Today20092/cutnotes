@@ -19,7 +19,10 @@ const cors = {
   "access-control-allow-methods": "PUT, OPTIONS",
   "access-control-allow-headers": "*",
 };
-const pixel = Buffer.from("R0lGODlhAQABAAAAACw=", "base64");
+const pixel = Buffer.from(
+  "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+  "base64",
+);
 const file = { name: "main-cut.mp4", mimeType: "video/mp4", buffer: Buffer.alloc(2048) };
 
 /** Mux's upload host and image host, which Seam 2 never reaches for real. */

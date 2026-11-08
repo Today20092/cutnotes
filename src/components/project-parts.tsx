@@ -261,7 +261,7 @@ export function VideoCard({
       : `Revision ${video.latestRevision}`;
   return (
     <>
-      <Poster url={video.posterUrl} />
+      <Poster key={video.posterUrl} url={video.posterUrl} />
       <div className="mt-2 flex items-start justify-between gap-2">
         <div className="min-w-0 wrap-anywhere">
           <div className="font-medium">{video.title}</div>

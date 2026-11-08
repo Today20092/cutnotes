@@ -15,7 +15,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { UploadList } from "@/components/upload-parts";
+import { UploadAnnouncer, UploadList } from "@/components/upload-parts";
 import { TeamLogo, type Team } from "@/lib/team";
 import type { Role } from "@/server/db/schema";
 
@@ -99,6 +99,7 @@ export function AppShell({
         <div className="flex-1 p-4 pb-20 md:pb-4">
           <UploadList />
           {children}
+          <UploadAnnouncer />
         </div>
         <nav
           aria-label="Main"

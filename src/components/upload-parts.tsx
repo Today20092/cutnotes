@@ -274,8 +274,24 @@ function UploadRow({ item }: { item: UploadItem }) {
 /** In the page flow, so it never covers content or focus on a phone. */
 export function UploadList() {
   const uploads = useUploads();
+  if (uploads.length === 0) return null;
+
+  return (
+    <section aria-label="Uploads" className="mb-4">
+      <h2 className="mb-2 font-medium">Uploads</h2>
+      <ul className="flex flex-col gap-2">
+        {uploads.map((item) => (
+          <UploadRow key={item.id} item={item} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Always present: a live region added along with its message may not be read. */
+export function UploadAnnouncer() {
   // Only phase changes are announced: every percent would drown a screen reader.
-  const announcement = uploads
+  const announcement = useUploads()
     .map((item) =>
       item.phase === "sending" ? "" : `${item.label}: ${phaseText[item.phase](item)}`,
     )
@@ -283,21 +299,8 @@ export function UploadList() {
     .join(" ");
 
   return (
-    <>
-      {/* Always present: a live region added with its message may not be read. */}
-      <p role="status" className="sr-only">
-        {announcement}
-      </p>
-      {uploads.length > 0 && (
-        <section aria-label="Uploads" className="mb-4">
-          <h2 className="mb-2 font-medium">Uploads</h2>
-          <ul className="flex flex-col gap-2">
-            {uploads.map((item) => (
-              <UploadRow key={item.id} item={item} />
-            ))}
-          </ul>
-        </section>
-      )}
-    </>
+    <p role="status" className="sr-only">
+      {announcement}
+    </p>
   );
 }

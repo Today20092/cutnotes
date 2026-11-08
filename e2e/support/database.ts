@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 /** Adds a Member to the Seam 2 database, for Roles no screen can create yet. */
 export function seedMember(
   clerkUserId: string,
-  role: "editor" | "viewer",
+  role: "owner" | "editor" | "viewer",
   displayName = "Seeded",
 ) {
   executeSql(`INSERT OR IGNORE INTO members (id, clerk_user_id, display_name, role, created_at) VALUES ('${clerkUserId}', '${clerkUserId}', '${displayName}', '${role}', 1)`);

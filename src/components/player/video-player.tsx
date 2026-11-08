@@ -7,6 +7,7 @@ import type { Playback } from "@/server/mux/gateway";
 import { bindPlaybackShortcuts, createShuttleController } from "./shuttle";
 import { createVideoPlaybackHealthState, observeVideoPlayback } from "./videoPlaybackHealth";
 import { Timeline } from "./timeline";
+import { DrawingOverlay } from "./drawing-overlay";
 
 type SafariVideo = HTMLVideoElement & {
   webkitEnterFullscreen?: () => void;
@@ -14,9 +15,10 @@ type SafariVideo = HTMLVideoElement & {
   webkitDisplayingFullscreen?: boolean;
 };
 
-export function VideoPlayer({ videoId, revisionId, frameRate, playback, seek, timelineMarkers }: {
+export function VideoPlayer({ videoId, revisionId, frameRate, playback, seek, timelineMarkers, drawing }: {
   videoId: string; revisionId: string; frameRate: number | null; playback: Playback;
   seek?: { timeMs: number }; timelineMarkers?: ReactNode;
+  drawing?: Omit<Parameters<typeof DrawingOverlay>[0], "videoRef">;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -186,9 +188,12 @@ export function VideoPlayer({ videoId, revisionId, frameRate, playback, seek, ti
 
   return (
     <div ref={rootRef} role="region" aria-label="Video player" className="rounded-lg bg-black p-2 text-white" style={{ colorScheme: "dark" }}>
-      <video ref={videoRef} controls controlsList="nodownload" crossOrigin="anonymous" playsInline
+      <div className="relative">
+      <video ref={videoRef} controls={!drawing?.active} controlsList="nodownload" crossOrigin="anonymous" playsInline
         aria-label="Revision playback" poster={poster} className="max-h-[50dvh] w-full bg-black"
         style={{ maxHeight: isFullscreen ? `calc(100dvh - ${timelineMarkers ? 11 : 8}rem)` : undefined }} />
+      {drawing && <DrawingOverlay key={String(drawing.active)} {...drawing} videoRef={videoRef} />}
+      </div>
       <Timeline videoRef={videoRef} storyboardUrl={storyboardUrl} frameRate={frameRate} onSeek={() => shuttleRef.current?.pause()} />
       {timelineMarkers}
       <div className="flex flex-wrap gap-2 pt-2">

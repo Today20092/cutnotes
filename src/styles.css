@@ -134,9 +134,18 @@ html, body, #root { height: 100%; }
 /* Keep the document scrollable; a pinned player must never consume the Comments. */
 .review-layout { display: grid; gap: 1rem; }
 .review-player { position: sticky; top: 0; z-index: 10; align-self: start; }
+@media (max-width: 63.999rem) {
+  .review-layout > section :is(button, input, textarea) {
+    scroll-margin-top: calc(50dvh + 12rem);
+    scroll-margin-bottom: 5rem;
+  }
+}
 @media (min-width: 64rem) {
   .review-layout { grid-template-columns: minmax(16rem, 1fr) minmax(0, 3fr); }
   .review-player { grid-column: 2; grid-row: 1; }
   .review-layout > section { grid-column: 1; grid-row: 1; }
 }
-@media (max-height: 32rem) { .review-player { position: static; } }
+@media (max-height: 32rem) {
+  .review-player { position: static; }
+  .review-layout > section :is(button, input, textarea) { scroll-margin-top: 1rem; }
+}

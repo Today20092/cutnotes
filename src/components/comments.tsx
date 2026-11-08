@@ -1,13 +1,16 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { canWrite } from "@/components/project-parts";
 import { useCommentWrite, type Comment, type ReviewPage } from "@/lib/review";
 import type { NewComment } from "@/server/comments";
+import type { Shape } from "@/lib/drawing";
 
 export const timeLabel = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
 
-export function Comments({ page, videoId, timeMs, select, selectedId }: {
+export function Comments({ page, videoId, timeMs, select, selectedId, drawing = [], sent, drawingControls }: {
   page: ReviewPage; videoId: string; timeMs: number; select: (comment: Comment) => void; selectedId: string | null;
+  drawing?: Shape[]; sent?: () => void;
+  drawingControls?: ReactNode;
 }) {
   const write = useCommentWrite(videoId);
   const [resolved, setResolved] = useState(false);
@@ -25,9 +28,9 @@ export function Comments({ page, videoId, timeMs, select, selectedId }: {
   function focusAfterRemoval() { requestAnimationFrame(() => tab.current?.focus()); }
 
   async function send() {
-    if (!body.trim()) { setFailure("Enter a Comment."); composer.current?.focus(); return; }
-    if (!draft.current || draft.current.body !== body || draft.current.revisionId !== revision.id) {
-      draft.current = { ...target(crypto.randomUUID()), body, timecodeMs: timeMs };
+    if (!body.trim() && !drawing.length) { setFailure("Enter a Comment."); composer.current?.focus(); return; }
+    if (!draft.current || draft.current.body !== body || draft.current.revisionId !== revision.id || JSON.stringify(draft.current.drawing) !== JSON.stringify(drawing.length ? drawing : null)) {
+      draft.current = { ...target(crypto.randomUUID()), body, timecodeMs: timeMs, drawing: drawing.length ? drawing : null };
     }
     const data = draft.current;
     setFailure("");
@@ -35,9 +38,9 @@ export function Comments({ page, videoId, timeMs, select, selectedId }: {
     try {
       await write.mutateAsync({ action: "create", data, comment: {
         ...data, memberId: page.member.id, shareLinkId: null, authorName: page.member.displayName,
-        drawing: null, resolvedAt: null, resolvedBy: null, createdAt: Date.now(), editedAt: null,
+        drawing: data.drawing ? JSON.stringify(data.drawing) : null, resolvedAt: null, resolvedBy: null, createdAt: Date.now(), editedAt: null,
       } });
-      setBody(""); draft.current = null;
+      setBody(""); draft.current = null; sent?.();
     } catch { setFailure("Could not send Comment. Your text is kept; try again."); }
   }
 
@@ -56,6 +59,7 @@ export function Comments({ page, videoId, timeMs, select, selectedId }: {
 
   return <section aria-labelledby="comments-heading" className="min-w-0 rounded-lg border p-4">
     <h2 id="comments-heading" className="font-semibold">Comments</h2>
+    {drawingControls}
     <div role="group" aria-label="Comment filters" className="my-3 flex gap-2">
       <Button ref={!resolved ? tab : undefined} aria-pressed={!resolved} onClick={() => setResolved(false)}>To do</Button>
       <Button ref={resolved ? tab : undefined} aria-pressed={resolved} onClick={() => setResolved(true)}>Resolved</Button>
@@ -64,9 +68,9 @@ export function Comments({ page, videoId, timeMs, select, selectedId }: {
       {rows.map((comment) => <li key={comment.id} className="rounded border p-3 wrap-anywhere">
         <p className="text-sm">{comment.authorName}{comment.shareLinkId && " · Guest"}</p>
         <button className="min-h-11 w-full text-left underline" aria-current={selectedId === comment.id ? "true" : undefined}
-          onClick={() => select(comment)}>{timeLabel(comment.timecodeMs)} · {comment.body}</button>
+          onClick={() => select(comment)}>{timeLabel(comment.timecodeMs)} · {comment.body}{comment.drawing && " · Drawing"}</button>
         {editing === comment.id ? <form onSubmit={(event) => { event.preventDefault(); void change("edit", comment); }}>
-          <label className="block">Edit Comment text<textarea className="min-h-24 w-full rounded border p-2" maxLength={5000} required value={editedBody} onChange={(event) => setEditedBody(event.target.value)} readOnly={write.isPending} /></label>
+          <label className="block">Edit Comment text<textarea className="min-h-24 w-full rounded border p-2" maxLength={5000} required={!comment.drawing} value={editedBody} onChange={(event) => setEditedBody(event.target.value)} readOnly={write.isPending} /></label>
           <Button disabled={write.isPending} type="submit">Save Comment</Button>
           <Button type="button" onClick={() => { setEditing(null); focusAfterRemoval(); }}>Cancel edit</Button>
         </form> : <div className="flex flex-wrap items-center gap-2">

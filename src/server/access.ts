@@ -4,9 +4,13 @@ import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import { members, roles, type Member, type Role } from "@/server/db/schema";
 
-export type RefusalCode = "signed-out" | "not-a-member" | "insufficient-role";
+export type RefusalCode =
+  | "signed-out"
+  | "not-a-member"
+  | "insufficient-role"
+  | "invalid-request";
 
-function refuse(status: 401 | 403, code: RefusalCode): never {
+export function refuse(status: 400 | 401 | 403, code: RefusalCode): never {
   throw Response.json({ code }, { status });
 }
 
@@ -21,6 +25,19 @@ export async function requireMember(minimumRole: Role): Promise<Member> {
     refuse(403, "insufficient-role");
   }
   return member;
+}
+
+export type SignedInPerson = { clerkUserId: string; displayName: string };
+
+/** Who is calling, for the one action that makes a signed-in person a Member. */
+export async function requireSignedIn(): Promise<SignedInPerson> {
+  const { userId, sessionClaims } = await auth();
+  if (!userId) refuse(401, "signed-out");
+  const email = sessionClaims?.email;
+  return {
+    clerkUserId: userId,
+    displayName: typeof email === "string" && email ? email : "Member",
+  };
 }
 
 async function findMember(clerkUserId: string) {

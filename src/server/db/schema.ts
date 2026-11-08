@@ -13,3 +13,17 @@ export const members = sqliteTable("members", {
 });
 
 export type Member = typeof members.$inferSelect;
+
+export const invites = sqliteTable("invites", {
+  id: text("id").primaryKey(),
+  tokenHash: text("token_hash").notNull().unique(),
+  role: text("role", { enum: roles }).notNull(),
+  createdBy: text("created_by")
+    .notNull()
+    .references(() => members.id, { onDelete: "cascade" }),
+  createdAt: integer("created_at").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+  usedAt: integer("used_at"),
+  usedBy: text("used_by").references(() => members.id, { onDelete: "cascade" }),
+  revokedAt: integer("revoked_at"),
+});

@@ -10,11 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as InvitesRouteImport } from './routes/invites'
 import { Route as ApiTeamRouteImport } from './routes/api/team'
+import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvitesRoute = InvitesRouteImport.update({
+  id: '/invites',
+  path: '/invites',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTeamRoute = ApiTeamRouteImport.update({
@@ -22,31 +29,44 @@ const ApiTeamRoute = ApiTeamRouteImport.update({
   path: '/api/team',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/invites': typeof InvitesRoute
   '/api/team': typeof ApiTeamRoute
+  '/invite/$token': typeof InviteTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/invites': typeof InvitesRoute
   '/api/team': typeof ApiTeamRoute
+  '/invite/$token': typeof InviteTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/invites': typeof InvitesRoute
   '/api/team': typeof ApiTeamRoute
+  '/invite/$token': typeof InviteTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/team'
+  fullPaths: '/' | '/invites' | '/api/team' | '/invite/$token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/team'
-  id: '__root__' | '/' | '/api/team'
+  to: '/' | '/invites' | '/api/team' | '/invite/$token'
+  id: '__root__' | '/' | '/invites' | '/api/team' | '/invite/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  InvitesRoute: typeof InvitesRoute
   ApiTeamRoute: typeof ApiTeamRoute
+  InviteTokenRoute: typeof InviteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -58,6 +78,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invites': {
+      id: '/invites'
+      path: '/invites'
+      fullPath: '/invites'
+      preLoaderRoute: typeof InvitesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/team': {
       id: '/api/team'
       path: '/api/team'
@@ -65,12 +92,21 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTeamRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  InvitesRoute: InvitesRoute,
   ApiTeamRoute: ApiTeamRoute,
+  InviteTokenRoute: InviteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,4 +1,6 @@
-import { FolderOpen, LogOut } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { FolderOpen, LogOut, UserPlus } from "lucide-react";
+import type { ReactNode } from "react";
 import { useSignOut } from "@/auth/client";
 import {
   Sidebar,
@@ -14,15 +16,30 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { TeamLogo, type Team } from "@/lib/team";
+import type { Role } from "@/server/db/schema";
+
+export type ShellMember = { displayName: string; role: Role };
+
+const destinations = [
+  { to: "/", label: "Projects", icon: FolderOpen, ownerOnly: false },
+  { to: "/invites", label: "Invites", icon: UserPlus, ownerOnly: true },
+] as const;
 
 export function AppShell({
   team,
   member,
+  title,
+  children,
 }: {
   team: Team;
-  member: { displayName: string };
+  member: ShellMember;
+  title: (typeof destinations)[number]["label"];
+  children: ReactNode;
 }) {
   const signOut = useSignOut();
+  const visible = destinations.filter(
+    (destination) => !destination.ownerOnly || member.role === "owner",
+  );
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
@@ -37,12 +54,17 @@ export function AppShell({
         <SidebarContent>
           <SidebarGroup>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton isActive>
-                  <FolderOpen />
-                  <span>Projects</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {visible.map(({ to, label, icon: Icon }) => (
+                <SidebarMenuItem key={to}>
+                  <SidebarMenuButton
+                    isActive={label === title}
+                    render={<Link to={to} />}
+                  >
+                    <Icon />
+                    <span>{label}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroup>
         </SidebarContent>
@@ -64,29 +86,29 @@ export function AppShell({
             <TeamLogo team={team} />
             <span>{team.name}</span>
           </div>
-          <h1 className="hidden font-semibold md:block">Projects</h1>
+          <h1 className="sr-only font-semibold md:not-sr-only">{title}</h1>
         </header>
         <main className="flex-1 p-4 pb-20 md:pb-4">
-          <p className="text-muted-foreground">
-            Welcome, {member.displayName}. No Projects yet.
-          </p>
+          {children}
         </main>
         <nav
           aria-label="Main"
-          className="fixed inset-x-0 bottom-0 grid grid-cols-2 border-t bg-background md:hidden"
+          className="fixed inset-x-0 bottom-0 flex border-t bg-background md:hidden"
         >
-          <button
-            type="button"
-            aria-current="page"
-            className="flex h-14 flex-col items-center justify-center gap-0.5 text-xs text-foreground"
-          >
-            <FolderOpen className="size-5" aria-hidden />
-            Projects
-          </button>
+          {visible.map(({ to, label, icon: Icon }) => (
+            <Link
+              key={to}
+              to={to}
+              className="flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs text-muted-foreground aria-[current=page]:font-semibold aria-[current=page]:text-foreground aria-[current=page]:underline"
+            >
+              <Icon className="size-5" aria-hidden />
+              {label}
+            </Link>
+          ))}
           <button
             type="button"
             onClick={signOut}
-            className="flex h-14 flex-col items-center justify-center gap-0.5 text-xs text-muted-foreground"
+            className="flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs text-muted-foreground"
           >
             <LogOut className="size-5" aria-hidden />
             Sign out

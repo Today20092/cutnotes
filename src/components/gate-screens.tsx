@@ -24,6 +24,55 @@ export function SignInScreen({ team }: { team: Team }) {
   );
 }
 
+export function InviteSignInScreen({
+  team,
+  returnTo,
+}: {
+  team: Team;
+  returnTo: string;
+}) {
+  return (
+    <GateLayout team={team}>
+      <div className="max-w-sm space-y-2">
+        <h1 className="text-xl font-semibold">You have been invited</h1>
+        <p className="text-muted-foreground">
+          Sign in to join {team.name}. No password is needed.
+        </p>
+      </div>
+      <SignInForm returnTo={returnTo} />
+    </GateLayout>
+  );
+}
+
+/** A result screen for an Invite. Focus moves to its heading so the outcome is announced. */
+export function InviteOutcomeScreen({
+  team,
+  title,
+  children,
+  action,
+}: {
+  team: Team;
+  title: string;
+  children: ReactNode;
+  action: ReactNode;
+}) {
+  return (
+    <GateLayout team={team}>
+      <div className="max-w-sm space-y-2">
+        <h1
+          tabIndex={-1}
+          ref={(heading) => heading?.focus()}
+          className="text-xl font-semibold outline-none"
+        >
+          {title}
+        </h1>
+        <p className="text-muted-foreground">{children}</p>
+      </div>
+      {action}
+    </GateLayout>
+  );
+}
+
 export function NotAMemberScreen({ team }: { team: Team }) {
   const signOut = useSignOut();
   return (

@@ -1,10 +1,18 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { sessionToken, type Person } from "./support/clerk";
-import { callServerFn, resultOf, serverFunctionIds } from "./support/worker";
+import {
+  callServerFn,
+  memberServerFunctionIds,
+  ownerServerFunctionIds,
+  resultOf,
+  serverFunctionIds,
+} from "./support/worker";
 
 const { getAppShell } = serverFunctionIds;
 const everyServerFunction = Object.entries(serverFunctionIds);
+const memberServerFunctions = Object.entries(memberServerFunctionIds);
+const ownerServerFunctions = Object.entries(ownerServerFunctionIds);
 
 const firstOwner: Person = {
   clerkUserId: "user_first_owner",
@@ -108,7 +116,7 @@ describe("first Owner", () => {
 
 describe("refusals", () => {
   // Every server function must appear in serverFunctionIds, so each one is refused here.
-  it.each(everyServerFunction)(
+  it.each(memberServerFunctions)(
     "%s refuses a signed-in non-Member",
     async (_name, id) => {
       await expectRefused(
@@ -126,7 +134,7 @@ describe("refusals", () => {
     },
   );
 
-  it.each(everyServerFunction)(
+  it.each(memberServerFunctions)(
     "%s refuses a removed Member",
     async (_name, id) => {
       await seedMember(stranger.clerkUserId, 1000);
@@ -138,6 +146,18 @@ describe("refusals", () => {
       );
     },
   );
+
+  describe.each(["editor", "viewer"])("a %s", (role) => {
+    it.each(ownerServerFunctions)("is refused by %s", async (_name, id) => {
+      await seedMember(stranger.clerkUserId, null, role);
+
+      await expectRefused(
+        await callServerFn(id, { bearer: await sessionToken(stranger) }),
+        403,
+        "insufficient-role",
+      );
+    });
+  });
 
   it("does not let a removed first Owner claim the Team again", async () => {
     await seedMember(firstOwner.clerkUserId, 1000, "owner");

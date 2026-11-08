@@ -15,6 +15,14 @@ export function useSignOut() {
   return () => clerk.signOut();
 }
 
-export function SignInForm() {
-  return <SignIn routing="hash" />;
+/** With `returnTo`, a brand-new person can sign up here and lands back on that URL either way. */
+export function SignInForm({ returnTo }: { returnTo?: string }) {
+  return (
+    <SignIn
+      routing="hash"
+      withSignUp={returnTo !== undefined}
+      forceRedirectUrl={returnTo}
+      signUpForceRedirectUrl={returnTo}
+    />
+  );
 }

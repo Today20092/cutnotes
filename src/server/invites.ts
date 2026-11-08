@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import {
+  readAsMember,
   refuse,
   requireMember,
   requireSignedIn,
@@ -81,13 +82,14 @@ export const createInvite = createServerFn({ method: "POST" })
 
 export const listInvites = createServerFn({ method: "POST" }).handler(
   async (): Promise<{ invites: PendingInvite[] }> => {
-    await requireMember("owner");
-    const pending = await getDb()
-      .select(pendingFields)
-      .from(invites)
-      .where(isPending(Date.now()))
-      .orderBy(desc(invites.createdAt));
-    return { invites: pending };
+    const { results } = await readAsMember("owner", (db) => [
+      db
+        .select(pendingFields)
+        .from(invites)
+        .where(isPending(Date.now()))
+        .orderBy(desc(invites.createdAt)),
+    ]);
+    return { invites: results[0] };
   },
 );
 

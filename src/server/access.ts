@@ -24,19 +24,23 @@ export function refuse(
   throw Response.json({ code }, { status });
 }
 
-/** Who is calling, and whether they hold at least `minimumRole`. Refuses by throwing a Response. */
+/** The Role check for a write. A screen's reads use `readAsMember`. Refuses by throwing a Response. */
 export async function requireMember(minimumRole: Role): Promise<Member> {
   const { member } = await readAsMember(minimumRole, () => []);
   return member;
 }
 
+/** Selects only: a screen's reads run before the Role is checked, so they must change nothing. */
+export type ScreenDb = Pick<Db, "select">;
+
 /**
- * `requireMember` for a screen: the caller's Member row and the screen's reads
- * travel in one D1 batch. The reads are discarded if the caller is refused.
+ * Every screen loads through this: the caller's Member row and the screen's
+ * reads travel in one D1 batch, giving one database trip. Build each read from
+ * the `db` given to `reads`. The results are discarded if the caller is refused.
  */
 export async function readAsMember<const Reads extends readonly BatchItem<"sqlite">[]>(
   minimumRole: Role,
-  reads: (db: Db) => Reads,
+  reads: (db: ScreenDb) => Reads,
 ): Promise<{ member: Member; results: BatchResults<Reads> }> {
   const { userId, sessionClaims } = await auth();
   if (!userId) refuse(401, "signed-out");
@@ -124,7 +128,7 @@ async function writeActiveMember(
 
 async function readBatch<const Reads extends readonly BatchItem<"sqlite">[]>(
   clerkUserId: string,
-  reads: (db: Db) => Reads,
+  reads: (db: ScreenDb) => Reads,
 ): Promise<[Member | undefined, BatchResults<Reads>]> {
   const db = getDb();
   const [memberRows, ...results] = (await db.batch([

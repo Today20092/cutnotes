@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { readAsMember, requireMember } from "@/server/access";
-import { getDb, type Db } from "@/server/db";
+import { readAsMember, requireMember, type ScreenDb } from "@/server/access";
+import { getDb } from "@/server/db";
 import { projects, videos, type RevisionState } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
 
@@ -31,7 +31,7 @@ const projectSummary = {
   completedAt: projects.completedAt,
 };
 
-const selectVideos = (db: Db) =>
+const selectVideos = (db: ScreenDb) =>
   db
     .select({
       id: videos.id,

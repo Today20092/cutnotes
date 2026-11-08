@@ -42,7 +42,7 @@ test("an Owner removes a Member, who loses access on their next request", async 
   await page.goto("/members");
 
   await page.getByRole("button", { name: `Remove ${name}` }).click();
-  const confirm = page.getByRole("button", { name: `Confirm removing ${name}` });
+  const confirm = page.getByRole("button", { name: `Remove ${name} now` });
   await expect(confirm).toBeFocused();
   await confirm.click();
 

@@ -32,13 +32,13 @@ Lawn was read at commit `dfd49b4` of the local fork at `lawn-team-review`. Files
 
 ### Signed playback
 
-Lawn does not use signed playback. Assets are created with `playback_policies: ["public"]` (`convex/mux.ts:61`), and `ensurePublicPlaybackId` (`convex/videoActions.ts`) creates a public ID when one is missing. `signPlaybackToken` and `signThumbnailToken` exist in `convex/mux.ts:116-137` but nothing calls them. Treat that code as untested.
+Lawn does not use signed playback. Assets are created with `playback_policies: ["public"]` (`convex/mux.ts:62`), and `ensurePublicPlaybackId` (`convex/videoActions.ts`) creates a public ID when one is missing. `signPlaybackToken` and `signThumbnailToken` exist in `convex/mux.ts:116-137` but nothing calls them. Treat that code as untested.
 
 Three things in Lawn would break or leak if carried over:
 
 - **Query parameters.** `buildMuxPlaybackUrl` adds `max_resolution` next to `token`, and `buildMuxThumbnailUrl` keeps `?time=0` next to `token` (`convex/mux.ts:100-114`). Mux says a signed URL should carry only `token`, with options inside the JWT claims ([secure playback](https://www.mux.com/docs/guides/secure-video-playback), [resolution](https://www.mux.com/docs/guides/control-playback-resolution)). In `@mux/mux-node` these go in the `params` option (`util/jwt-types.d.ts:57`).
 - **The 720p cap.** Lawn caps at 720p; Cutnotes streams to 1080p. Set `max_resolution` to 1080p in the claims or leave it out.
-- **Playback ID choice.** `getPreferredPlaybackId` prefers public IDs (`convex/muxActions.ts:52`). Cutnotes should accept only `signed`, and create assets with no public ID.
+- **Playback ID choice.** `getPreferredPlaybackId` prefers public IDs (`convex/muxActions.ts:50`). Cutnotes should accept only `signed`, and create assets with no public ID.
 
 Other consequences:
 
@@ -76,10 +76,10 @@ Lawn uploads to R2 and then has Mux pull from a URL (`createMuxAssetFromInputUrl
 
 **Keep:**
 
-- Tokens are 32 characters of base62 from `crypto.getRandomValues`, with rejection sampling to avoid bias (`convex/security.ts:9-36`). Roughly 190 bits. Use `generateOpaqueToken` for Share Links and Invites.
+- Tokens are 32 characters of base62 from `crypto.getRandomValues`, with rejection sampling to avoid bias (`convex/security.ts:8-34`). Roughly 190 bits. Use `generateOpaqueToken` for Share Links and Invites.
 - Every access re-checks the link and its video, and the grant call answers identically for a missing, expired or not-ready link (`shareLinks.issueAccessGrant`, `shareAccess.resolveActiveShareGrant`).
 - Guests get a reduced comment payload with no user IDs (`toPublicCommentPayload`, `convex/comments.ts:39`). Cutnotes should do the same and never send Clerk IDs to a Guest.
-- A reply's parent must belong to the same video (`comments.ts:92`). Extend this to the same Revision.
+- A reply's parent must belong to the same video (`comments.ts:94`). Extend this to the same Revision.
 - Grant tokens are held in React state only, not `localStorage` (`app/routes/-share.tsx:50`).
 - Rate limits on public share endpoints, per token and globally (`convex/shareLinks.ts:22`). That Convex component must be replaced, for example with Workers rate limiting.
 

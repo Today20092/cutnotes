@@ -78,6 +78,7 @@ export const revisionStates = [
   "ready",
   "errored",
 ] as const;
+export type RevisionState = (typeof revisionStates)[number];
 
 export const revisions = sqliteTable(
   "revisions",

@@ -1,7 +1,17 @@
 import type { MuxGateway } from "@/server/mux/gateway";
 
-/** Stands in for Mux at the gateway boundary. Later tickets add a method per gateway method. */
+/** What the fake accepts as a valid `Mux-Signature` for a body. */
+export const fakeSignature = (rawBody: string) => `fake-${btoa(rawBody)}`;
+
+/** Stands in for Mux at the gateway boundary, under both seams. */
 export const fakeMux: MuxGateway = {
   signPlaybackToken: async ({ playbackId, audience }) =>
     `fake.${audience}.${playbackId}`,
+  createDirectUpload: async ({ passthrough }) => ({
+    uploadId: `upload_${passthrough}`,
+    url: `https://uploads.mux.test/${passthrough}`,
+  }),
+  cancelDirectUpload: async () => true,
+  verifyWebhookSignature: async ({ rawBody, signature }) =>
+    signature === fakeSignature(rawBody),
 };

@@ -15,6 +15,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { UploadList } from "@/components/upload-parts";
 import { TeamLogo, type Team } from "@/lib/team";
 import type { Role } from "@/server/db/schema";
 
@@ -94,7 +95,10 @@ export function AppShell({
             <h1 className="sr-only font-semibold md:not-sr-only">{title}</h1>
           )}
         </header>
-        <div className="flex-1 p-4 pb-20 md:pb-4">{children}</div>
+        <div className="flex-1 p-4 pb-20 md:pb-4">
+          <UploadList />
+          {children}
+        </div>
         <nav
           aria-label="Main"
           className="fixed inset-x-0 bottom-0 flex border-t bg-background md:hidden"

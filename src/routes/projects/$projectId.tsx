@@ -1,16 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Upload } from "lucide-react";
 import { useState } from "react";
 import { MemberScreen } from "@/components/member-screen";
 import {
   canWrite,
   PageHeading,
   RenameProjectButton,
-  VideoCard,
   videoGridClass,
   VideoGridSkeleton,
   WriteFeedback,
 } from "@/components/project-parts";
+import { UploadSheet } from "@/components/upload-parts";
+import { VideoTile } from "@/components/video-tile";
+import { Button } from "@/components/ui/button";
 import { projectQuery, useRenameProject, type ProjectPage } from "@/lib/projects";
 
 export const Route = createFileRoute("/projects/$projectId")({
@@ -78,7 +80,20 @@ function ProjectView({ page }: { page: ProjectPage }) {
       <BackLink />
       <PageHeading title={project.name}>
         {writable && project.completedAt === null && (
-          <RenameProjectButton name={project.name} onRename={rename} />
+          <>
+            <RenameProjectButton name={project.name} onRename={rename} />
+            <UploadSheet
+              destination={{
+                kind: "new",
+                projects: [{ id: project.id, name: project.name }],
+              }}
+              trigger={
+                <Button>
+                  <Upload aria-hidden /> Upload
+                </Button>
+              }
+            />
+          </>
         )}
       </PageHeading>
       <WriteFeedback status={status} failure={failure} />
@@ -93,7 +108,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
         <ul className={videoGridClass}>
           {videos.map((video) => (
             <li key={video.id} className="min-w-0">
-              <VideoCard video={video} />
+              <VideoTile video={video} writable={writable} />
             </li>
           ))}
         </ul>

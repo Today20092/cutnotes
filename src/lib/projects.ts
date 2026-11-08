@@ -10,11 +10,27 @@ import {
   listProjects,
   renameProject,
 } from "@/server/projects";
+import { renameVideo, setVideoStatus } from "@/server/videos";
+import type { VideoStatus } from "@/server/db/schema";
+
+const FOLLOW_PROCESSING_MS = 5000;
+
+/** Keeps a screen current while one of its Revisions is on its way to ready. */
+const followProcessing = (query: {
+  state: { data?: { videos: { latestRevisionState: string | null }[] } };
+}) =>
+  query.state.data?.videos.some(
+    ({ latestRevisionState: state }) =>
+      state === "uploading" || state === "processing",
+  )
+    ? FOLLOW_PROCESSING_MS
+    : false;
 
 export const projectListQuery = queryOptions({
   queryKey: ["projects"],
   queryFn: () => listProjects(),
   retry: false,
+  refetchInterval: followProcessing,
 });
 
 export const projectQuery = (projectId: string) =>
@@ -22,6 +38,7 @@ export const projectQuery = (projectId: string) =>
     queryKey: ["projects", projectId],
     queryFn: () => getProject({ data: { projectId } }),
     retry: false,
+    refetchInterval: followProcessing,
   });
 
 export type ProjectList = Awaited<ReturnType<typeof listProjects>>;
@@ -113,3 +130,45 @@ export function useRenameProject() {
     onSettled: () => refreshAfterLastWrite(client),
   });
 }
+
+/** A write shown at once on every screen holding this Video, undone if it fails. */
+function useVideoWrite<Input extends { videoId: string }>(
+  write: (input: Input) => Promise<unknown>,
+  apply: (video: VideoSummary, input: Input) => VideoSummary,
+) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationKey,
+    mutationFn: write,
+    onMutate: async (input: Input) => {
+      const snapshot = await snapshotProjects(client);
+      client.setQueriesData<ProjectList | ProjectPage>(
+        { queryKey: projectListQuery.queryKey },
+        (data) =>
+          data && {
+            ...data,
+            videos: data.videos.map((video) =>
+              video.id === input.videoId ? apply(video, input) : video,
+            ),
+          },
+      );
+      return { snapshot };
+    },
+    onError: (_error, _input, context) => restore(client, context?.snapshot),
+    onSettled: () => refreshAfterLastWrite(client),
+  });
+}
+
+export const useRenameVideo = () =>
+  useVideoWrite(
+    (input: { videoId: string; title: string }) =>
+      renameVideo({ data: input }),
+    (video, { title }) => ({ ...video, title }),
+  );
+
+export const useSetVideoStatus = () =>
+  useVideoWrite(
+    (input: { videoId: string; status: VideoStatus }) =>
+      setVideoStatus({ data: input }),
+    (video, { status }) => ({ ...video, status }),
+  );

@@ -13,9 +13,16 @@ export default defineConfig(({ mode }) => {
     server: { port: 5173, strictPort: true },
     resolve: {
       alias: [
-        // Seam 2 replaces only Clerk's browser SDK. The server still verifies real tokens.
+        // Seam 2 replaces Clerk's browser SDK and the Mux gateway. The server still verifies real tokens.
         ...(e2e
           ? [
+              {
+                find: /^@\/server\/mux$/,
+                replacement: path.resolve(
+                  import.meta.dirname,
+                  "e2e/support/fake-mux-module.ts",
+                ),
+              },
               {
                 find: "@/auth/client",
                 replacement: path.resolve(

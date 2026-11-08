@@ -26,6 +26,9 @@ const MAX_NAME_LENGTH = 120;
 
 export const canWrite = (role: Role) => role !== "viewer";
 
+export const selectClass =
+  "h-10 rounded-lg border border-input bg-background px-2.5 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring md:text-sm";
+
 // The first view keeps focus where the browser put it.
 let hasShownAView = false;
 
@@ -66,12 +69,16 @@ export function ProjectNameSheet({
   title,
   submitLabel,
   initialName = "",
+  fieldLabel = "Project name",
+  emptyMessage = "Enter a name for the Project.",
   onSubmit,
 }: {
   trigger: ReactElement;
   title: string;
   submitLabel: string;
   initialName?: string;
+  fieldLabel?: string;
+  emptyMessage?: string;
   onSubmit: (name: string) => void;
 }) {
   const isMobile = useIsMobile();
@@ -97,7 +104,7 @@ export function ProjectNameSheet({
       setError(
         trimmed
           ? `Keep the name to ${MAX_NAME_LENGTH} characters.`
-          : "Enter a name for the Project.",
+          : emptyMessage,
       );
       input.current?.focus();
       return;
@@ -116,7 +123,7 @@ export function ProjectNameSheet({
         <form onSubmit={submit} noValidate className="flex flex-col gap-3 p-4 pt-0">
           <div className="flex flex-col gap-1">
             <label htmlFor={inputId} className="text-sm font-medium">
-              Project name
+              {fieldLabel}
             </label>
             <Input
               ref={input}
@@ -186,7 +193,7 @@ export function WriteFeedback({
   );
 }
 
-const statusLabels = { review: "Review", rework: "Rework", done: "Done" };
+export const statusLabels = { review: "Review", rework: "Rework", done: "Done" };
 
 function formatUpdated(timestamp: number) {
   const minutes = Math.floor((Date.now() - timestamp) / 60_000);
@@ -199,26 +206,83 @@ function formatUpdated(timestamp: number) {
   return new Date(timestamp).toLocaleDateString();
 }
 
-export function VideoCard({ video }: { video: VideoSummary }) {
+function revisionProgress(video: VideoSummary) {
+  switch (video.latestRevisionState) {
+    case "uploading":
+      return { text: "Uploading…", failed: false };
+    case "processing":
+      return { text: "Processing. It can be played once this finishes.", failed: false };
+    case "errored":
+      if (video.latestRevisionError === "too-long") {
+        return { text: "Over the 12-hour limit. Upload a shorter cut.", failed: true };
+      }
+      return {
+        text: video.latestRevisionError?.startsWith("upload-")
+          ? "The upload failed. Upload it again."
+          : "Processing failed. Upload it again.",
+        failed: true,
+      };
+    default:
+      return undefined;
+  }
+}
+
+function Poster({ url }: { url: string | null }) {
+  const [broken, setBroken] = useState(false);
+  if (url && !broken) {
+    return (
+      <img
+        src={url}
+        alt=""
+        loading="lazy"
+        onError={() => setBroken(true)}
+        className="aspect-video w-full rounded-md border bg-muted object-cover"
+      />
+    );
+  }
+  return (
+    <div className="flex aspect-video w-full items-center justify-center rounded-md border bg-muted">
+      <Clapperboard className="size-8 text-muted-foreground" aria-hidden />
+    </div>
+  );
+}
+
+export function VideoCard({
+  video,
+  showStatus = true,
+}: {
+  video: VideoSummary;
+  showStatus?: boolean;
+}) {
+  const progress = revisionProgress(video);
   const revision =
     video.latestRevision === null
       ? "No Revision yet"
       : `Revision ${video.latestRevision}`;
   return (
     <>
-      <div className="flex aspect-video w-full items-center justify-center rounded-md border bg-muted">
-        <Clapperboard className="size-8 text-muted-foreground" aria-hidden />
-      </div>
+      <Poster url={video.posterUrl} />
       <div className="mt-2 flex items-start justify-between gap-2">
         <div className="min-w-0 wrap-anywhere">
           <div className="font-medium">{video.title}</div>
           <div className="text-sm text-muted-foreground">
             {video.projectName} · {revision} · {formatUpdated(video.updatedAt)}
           </div>
+          {progress && (
+            <div
+              className={
+                progress.failed ? "text-sm text-destructive" : "text-sm"
+              }
+            >
+              {progress.text}
+            </div>
+          )}
         </div>
-        <span className="shrink-0 rounded-md border border-foreground px-2 py-0.5 text-xs font-medium">
-          {statusLabels[video.status]}
-        </span>
+        {showStatus && (
+          <span className="shrink-0 rounded-md border border-foreground px-2 py-0.5 text-xs font-medium">
+            {statusLabels[video.status]}
+          </span>
+        )}
       </div>
     </>
   );

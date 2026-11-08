@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { readAsMember, requireMember } from "@/server/access";
 import { getDb, type Db } from "@/server/db";
-import { projects, videos } from "@/server/db/schema";
+import { projects, videos, type RevisionState } from "@/server/db/schema";
+import { getMuxGateway } from "@/server/mux";
 
 const MAX_NAME_LENGTH = 120;
 
@@ -39,12 +40,42 @@ const selectVideos = (db: Db) =>
       updatedAt: videos.updatedAt,
       projectId: videos.projectId,
       projectName: projects.name,
+      projectCompletedAt: projects.completedAt,
       latestRevision: sql<number | null>`(SELECT max(number) FROM revisions WHERE revisions.video_id = ${videos.id})`,
+      latestRevisionState: sql<RevisionState | null>`(SELECT state FROM revisions WHERE revisions.video_id = ${videos.id} ORDER BY number DESC LIMIT 1)`,
+      latestRevisionError: sql<string | null>`(SELECT error_code FROM revisions WHERE revisions.video_id = ${videos.id} ORDER BY number DESC LIMIT 1)`,
+      posterPlaybackId: sql<string | null>`(SELECT mux_playback_id FROM revisions WHERE revisions.video_id = ${videos.id} AND revisions.state = 'ready' ORDER BY number DESC LIMIT 1)`,
     })
     .from(videos)
     .innerJoin(projects, eq(videos.projectId, projects.id));
 
 const liveVideo = and(isNull(videos.deletedAt), isNull(projects.deletedAt));
+
+const SECONDS_PER_HOUR = 3600;
+
+/**
+ * Signed only after Access has passed, and never stored. The expiry snaps to
+ * the hour, at least an hour away, so a refetch yields the identical token and
+ * the image does not reload.
+ */
+async function withPosters<Video extends { posterPlaybackId: string | null }>(
+  rows: Video[],
+) {
+  const hour = Math.ceil(Date.now() / 1000 / SECONDS_PER_HOUR);
+  const expiresAt = (hour + 1) * SECONDS_PER_HOUR;
+  const mux = getMuxGateway();
+  return Promise.all(
+    rows.map(async ({ posterPlaybackId, ...video }) => ({
+      ...video,
+      posterUrl:
+        posterPlaybackId === null
+          ? null
+          : `https://image.mux.com/${posterPlaybackId}/thumbnail.webp?token=${await mux.signPlaybackToken(
+              { playbackId: posterPlaybackId, audience: "t", expiresAt },
+            )}`,
+    })),
+  );
+}
 
 export const listProjects = createServerFn({ method: "POST" }).handler(
   async () => {
@@ -59,7 +90,7 @@ export const listProjects = createServerFn({ method: "POST" }).handler(
     return {
       member: { displayName: member.displayName, role: member.role },
       projects: results[0],
-      videos: results[1],
+      videos: await withPosters(results[1]),
     };
   },
 );
@@ -82,7 +113,7 @@ export const getProject = createServerFn({ method: "POST" })
     return {
       member: { displayName: member.displayName, role: member.role },
       project,
-      videos: results[1],
+      videos: await withPosters(results[1]),
     };
   });
 

@@ -10,6 +10,9 @@ declare namespace Cloudflare {
     FIRST_OWNER_EMAIL: string;
     MUX_SIGNING_KEY_ID: string;
     MUX_SIGNING_PRIVATE_KEY: string;
+    MUX_TOKEN_ID: string;
+    MUX_TOKEN_SECRET: string;
+    MUX_WEBHOOK_SECRET: string;
     // Seam 1 only.
     TEST_MIGRATIONS: D1Migration[];
     TEST_CLERK_PRIVATE_JWK: string;

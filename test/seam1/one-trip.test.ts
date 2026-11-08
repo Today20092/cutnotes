@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { call, clearDatabase, expectRefused, seedMember, seedProject, seedVideo } from "./support/seed";
+import { call, clearDatabase, expectRefused, seedMember, seedProject, seedRevision, seedVideo } from "./support/seed";
 import { serverFunctionIds } from "./support/worker";
 
 const { getAppShell, getProject, listInvites, listMembers, listProjects } =
@@ -38,6 +38,9 @@ describe("a screen's reads", () => {
     owner = await seedMember("owner");
     await seedProject("project_one");
     await seedVideo("video_one", "project_one");
+    await seedRevision({ id: "revision_one", videoId: "video_one", state: "ready", playbackId: "sample" });
+    await env.DB.exec("UPDATE revisions SET duration_ms = 8000");
+    await call(serverFunctionIds.createComment, owner, { id: "comment", videoId: "video_one", revisionId: "revision_one", body: "Feedback", timecodeMs: 0 });
   });
 
   afterEach(() => {

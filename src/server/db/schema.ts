@@ -1,4 +1,6 @@
+import { sql } from "drizzle-orm";
 import {
+  check,
   index,
   integer,
   real,
@@ -105,3 +107,21 @@ export const revisions = sqliteTable(
     index("revisions_state_idx").on(table.state),
   ],
 );
+
+export const comments = sqliteTable("comments", {
+  id: text("id").primaryKey(),
+  revisionId: text("revision_id").notNull().references(() => revisions.id, { onDelete: "cascade" }),
+  memberId: text("member_id").references(() => members.id),
+  shareLinkId: text("share_link_id"),
+  authorName: text("author_name").notNull(),
+  timecodeMs: integer("timecode_ms").notNull(),
+  body: text("body").notNull(),
+  drawing: text("drawing"),
+  resolvedAt: integer("resolved_at"),
+  resolvedBy: text("resolved_by").references(() => members.id),
+  createdAt: integer("created_at").notNull(),
+  editedAt: integer("edited_at"),
+}, (table) => [
+  index("comments_revision_id_timecode_idx").on(table.revisionId, table.timecodeMs),
+  check("comments_one_author", sql`(${table.memberId} IS NOT NULL) <> (${table.shareLinkId} IS NOT NULL)`),
+]);

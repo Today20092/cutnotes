@@ -19,6 +19,16 @@ export function seedReview(clerkUserId: string, ready = true) {
   return id;
 }
 
+export function seedComment(revisionId: string, memberId: string, body: string) {
+  const id = crypto.randomUUID();
+  executeSql(`INSERT INTO comments (id, revision_id, member_id, author_name, timecode_ms, body, created_at) VALUES ('${id}', '${revisionId}', '${memberId}', 'Other reviewer', 1000, '${body}', 1)`);
+  return id;
+}
+
+export function removeSeededComment(id: string) {
+  executeSql(`DELETE FROM comments WHERE id = '${id}'`);
+}
+
 function executeSql(command: string) {
   const result = spawnSync(
     "bun",

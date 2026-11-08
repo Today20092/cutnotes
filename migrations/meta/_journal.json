@@ -22,6 +22,13 @@
       "when": 1794146833649,
       "tag": "0002_projects",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1794155571980,
+      "tag": "0003_comments",
+      "breakpoints": true
     }
   ]
 }

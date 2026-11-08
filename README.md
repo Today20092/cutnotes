@@ -2,7 +2,11 @@
 
 Self-hosted video review for small production teams: upload a cut, watch it on any phone or desktop, and leave timestamped comments and drawings.
 
-Early planning. Progress is tracked in this repository's issues.
+Progress is tracked in this repository's issues.
+
+The Member review screen supports timestamped Comments, editing and deleting your own feedback, and To do / Resolved filters. Owners and Editors can Resolve Comments; Owners can delete any Comment. Complete Projects keep feedback readable and refuse changes.
+
+Comments appear immediately, refresh every 30 seconds and on return to the screen, and stay with their Revision. Selecting a Comment or its timeline marker seeks to that moment. Failed sends keep the draft and reuse its browser-generated ID when retried.
 
 Parts of this project will be adapted from [Lawn](https://github.com/pingdotgg/lawn), used under the MIT licence. See `LICENSE.lawn`.
 

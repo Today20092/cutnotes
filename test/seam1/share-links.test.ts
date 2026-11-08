@@ -155,6 +155,7 @@ it("one client address over its limit is refused", async () => {
     last = await callServerFn(fn.getGuestReview, { address: "203.0.113.9", data: { token: "x" } });
   }
   await expectRefused(last, 429, "rate-limited");
+  await expectRefused(await comment(token, {}, "203.0.113.9"), 429, "rate-limited");
   expect((await guest(token)).status).toBe(200);
 });
 
@@ -189,4 +190,32 @@ it("a Guest Comment carries a Drawing and is refused over the Drawing caps", asy
   expect((await page(token)).comments).toMatchObject([{ id: "drawn" }]);
   const tooMany = Array.from({ length: 51 }, () => ({ tool: "arrow", color: "#ffffff", pts }));
   await expectRefused(await comment(token, { drawing: tooMany }), 400, "invalid-request");
+});
+it("a Guest name is trimmed, may be 60 characters, and is never an identity", async () => {
+  const { token } = await createLink();
+  const longest = "n".repeat(60);
+  expect((await comment(token, { id: "longest", name: `  ${longest}  ` })).status).toBe(200);
+  expect((await comment(token, { id: "first", name: "owner", timecodeMs: 2000 })).status).toBe(200);
+  expect((await comment(token, { id: "second", name: "owner", timecodeMs: 3000 })).status).toBe(200);
+  expect((await comment(token, { id: "first", name: "Someone else", body: "Taken over", timecodeMs: 2000 })).status).toBe(200);
+  expect((await page(token)).comments).toMatchObject([
+    { id: "longest", authorName: longest, isGuest: true },
+    { id: "first", authorName: "owner", body: "Too dark", isGuest: true },
+    { id: "second", authorName: "owner", isGuest: true },
+  ]);
+});
+it("a Member who shares a Guest's name cannot edit the Guest's Comment, and an Owner can delete it", async () => {
+  const { token } = await createLink();
+  await comment(token, { id: "guest", name: "owner" });
+  const target = { videoId: "v", revisionId: "r1", id: "guest", timecodeMs: 1000 };
+  await expectRefused(await call(fn.editComment, "user_owner", { ...target, body: "Forged" }), 404, "not-found");
+  expect((await call(fn.deleteComment, "user_owner", target)).status).toBe(200);
+  expect((await page(token)).comments).toEqual([]);
+});
+it("revoking after a token was issued refuses new playback requests", async () => {
+  const link = await createLink();
+  const issued = (await page(link.token)).playback.videoUrl;
+  expect(issued).toContain("token=fake.v.sample");
+  await call(fn.revokeShareLink, "user_owner", { id: link.id });
+  await expectDead(await guest(link.token));
 });

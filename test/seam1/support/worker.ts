@@ -3,6 +3,7 @@ import { fromCrossJSON, toJSON } from "seroval";
 // Start only registers a server function once its module is compiled.
 import "@/server/app-shell";
 import "@/server/invites";
+import "@/server/members";
 import "@/server/projects";
 
 export type CallOptions = {
@@ -27,12 +28,16 @@ const serverFnId = (file: string, exportName: string) =>
     .replace(/=+$/, "");
 
 const invitesFile = "/src/server/invites.ts";
+const membersFile = "/src/server/members.ts";
 
 /** Only an Owner may call these. */
 export const ownerServerFunctionIds = {
   createInvite: serverFnId(invitesFile, "createInvite"),
   listInvites: serverFnId(invitesFile, "listInvites"),
   revokeInvite: serverFnId(invitesFile, "revokeInvite"),
+  listMembers: serverFnId(membersFile, "listMembers"),
+  changeMemberRole: serverFnId(membersFile, "changeMemberRole"),
+  removeMember: serverFnId(membersFile, "removeMember"),
 } as const;
 
 /** These need an active Member. */

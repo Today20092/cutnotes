@@ -1,6 +1,6 @@
 import { auth } from "@clerk/tanstack-react-start/server";
 import { env } from "cloudflare:workers";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { getDb, type Db } from "@/server/db";
 import { members, roles, type Member, type Role } from "@/server/db/schema";
@@ -9,13 +9,18 @@ export type RefusalCode =
   | "signed-out"
   | "not-a-member"
   | "insufficient-role"
-  | "invalid-request";
+  | "invalid-request"
+  | "not-found"
+  | "last-owner";
 
 type BatchResults<Reads extends readonly unknown[]> = {
   -readonly [Index in keyof Reads]: Awaited<Reads[Index]>;
 };
 
-export function refuse(status: 400 | 401 | 403, code: RefusalCode): never {
+export function refuse(
+  status: 400 | 401 | 403 | 404 | 409,
+  code: RefusalCode,
+): never {
   throw Response.json({ code }, { status });
 }
 
@@ -58,6 +63,63 @@ export async function requireSignedIn(): Promise<SignedInPerson> {
     clerkUserId: userId,
     displayName: typeof email === "string" && email ? email : "Member",
   };
+}
+
+/** Changes a Member's Role. The Team always keeps at least one active Owner. */
+export function setMemberRole(caller: Member, targetId: string, role: Role) {
+  return writeActiveMember(caller, targetId, { role }, role === "owner");
+}
+
+/** Ends a Member's access. The row stays, so their name stays on their Comments. */
+export function removeActiveMember(caller: Member, targetId: string) {
+  return writeActiveMember(caller, targetId, { removedAt: Date.now() }, false);
+}
+
+/**
+ * One conditional statement decides each write, so simultaneous requests cannot
+ * leave the Team without an Owner, and an Owner demoted or removed since their
+ * Access check cannot act. Column names are spelled out in the subqueries so
+ * they read the aliased rows and not the row being updated.
+ */
+async function writeActiveMember(
+  caller: Member,
+  targetId: string,
+  change: Partial<Pick<Member, "role" | "removedAt">>,
+  targetStaysOwner: boolean,
+) {
+  const db = getDb();
+  const keepsAnOwner: SQL | undefined = targetStaysOwner
+    ? undefined
+    : or(
+        sql`${members.role} <> 'owner'`,
+        sql`EXISTS (SELECT 1 FROM members AS other
+              WHERE other.role = 'owner' AND other.removed_at IS NULL AND other.id <> ${targetId})`,
+      );
+
+  const [written, rows] = await db.batch([
+    db
+      .update(members)
+      .set(change)
+      .where(
+        and(
+          eq(members.id, targetId),
+          isNull(members.removedAt),
+          sql`EXISTS (SELECT 1 FROM members AS acting
+                WHERE acting.id = ${caller.id} AND acting.role = 'owner' AND acting.removed_at IS NULL)`,
+          keepsAnOwner,
+        ),
+      ),
+    db.select().from(members).where(inArray(members.id, [caller.id, targetId])),
+  ]);
+  if (written.meta.changes === 1) return;
+
+  const acting = rows.find((row) => row.id === caller.id);
+  if (acting?.role !== "owner" || acting.removedAt !== null) {
+    refuse(403, "insufficient-role");
+  }
+  const target = rows.find((row) => row.id === targetId);
+  if (!target || target.removedAt !== null) refuse(404, "not-found");
+  refuse(409, "last-owner");
 }
 
 async function readBatch<const Reads extends readonly BatchItem<"sqlite">[]>(

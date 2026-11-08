@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { FolderOpen, LogOut, UserPlus } from "lucide-react";
+import { FolderOpen, LogOut, UserPlus, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { useSignOut } from "@/auth/client";
 import {
@@ -22,6 +22,7 @@ export type ShellMember = { displayName: string; role: Role };
 
 const destinations = [
   { to: "/", label: "Projects", icon: FolderOpen, ownerOnly: false },
+  { to: "/members", label: "Members", icon: Users, ownerOnly: true },
   { to: "/invites", label: "Invites", icon: UserPlus, ownerOnly: true },
 ] as const;
 

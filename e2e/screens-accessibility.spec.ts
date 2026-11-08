@@ -195,6 +195,7 @@ test("the Project screen", async ({ page }, testInfo) => {
 });
 
 test("a Video through upload, processing, and ready", async ({ page }, testInfo) => {
+  test.setTimeout(60_000);
   await signInAs(page, owner);
   let release = () => {};
   const held = new Promise<void>((resolve) => (release = resolve));
@@ -227,6 +228,11 @@ test("a Video through upload, processing, and ready", async ({ page }, testInfo)
   });
   await expectAccessible(page, "ready Video");
 
+  await page.getByRole("link", { name: /Main cut/ }).click();
+  await expect(page.getByRole("heading", { name: "Main cut", level: 1 })).toBeFocused();
+  await expect(page.getByRole("region", { name: "Video player" })).toBeVisible();
+  await expectAccessible(page, "ready review");
+  await page.goBack();
   await page.getByRole("button", { name: "Delete Main cut", exact: true }).click();
   await expectAccessible(page, "confirm Video deletion");
   await page.getByRole("button", { name: "Keep Video" }).click();

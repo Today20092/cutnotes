@@ -6,6 +6,7 @@ import "@/server/invites";
 import "@/server/members";
 import "@/server/projects";
 import "@/server/videos";
+import "@/server/playback";
 
 export type CallOptions = {
   bearer?: string;
@@ -45,6 +46,7 @@ export const ownerServerFunctionIds = {
 
 /** These need an active Member. */
 export const memberServerFunctionIds = {
+  getReview: serverFnId("/src/server/playback.ts", "getReview"),
   deleteVideo: serverFnId(videosFile, "deleteVideo"),
   getAppShell: serverFnId("/src/server/app-shell.ts", "getAppShell"),
   listProjects: serverFnId("/src/server/projects.ts", "listProjects"),

@@ -7,7 +7,7 @@ export type Comment = ReviewPage["comments"][number];
 const writes = (videoId: string) => ["video-write", videoId];
 
 export const reviewQuery = (videoId: string, client?: QueryClient, revisionId?: string) => queryOptions({
-  queryKey: ["review", videoId, revisionId ?? "latest"], queryFn: () => getReview({ data: { videoId, revisionId } }), retry: false,
+  queryKey: ["review", videoId, revisionId ?? "latest"], queryFn: () => getReview({ data: revisionId ? { videoId, revisionId } : { videoId } }), retry: false,
   refetchInterval: () => client?.isMutating({ mutationKey: writes(videoId) }) ? false : 30_000,
   refetchOnWindowFocus: () => client?.isMutating({ mutationKey: writes(videoId) }) ? false : "always",
 });

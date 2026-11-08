@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { readAsMember, readShareLink, refuse, requireMember } from "@/server/access";
+import { validDrawing, type Shape } from "@/lib/drawing";
 import { bodyOf } from "@/server/comment-rules";
 import { getDb } from "@/server/db";
 import { comments, shareLinks, sharePermissions, type SharePermission } from "@/server/db/schema";
@@ -97,19 +98,21 @@ export const getGuestReview = createServerFn({ method: "POST" })
   });
 
 export const createGuestComment = createServerFn({ method: "POST" })
-  .validator((data: { token: string; id: string; name: string; body: string; timecodeMs: number }) => data)
+  .validator((data: { token: string; id: string; name: string; body: string; timecodeMs: number; drawing?: Shape[] | null }) => data)
   .handler(async ({ data }) => {
     const link = await readShareLink(data?.token);
     if (link.permission !== "comment") refuse(403, "insufficient-role");
     if (!(await env.SHARE_LINK_COMMENT_LIMIT.limit({ key: link.id })).success) refuse(429, "rate-limited");
     const id = idOf(data.id);
     const name = nameOf(data.name);
-    const body = bodyOf(data.body);
+    const drawing = data.drawing ?? null;
+    if (drawing !== null && !validDrawing(drawing)) refuse(400, "invalid-request");
+    const body = bodyOf(data.body, drawing !== null);
     if (!Number.isInteger(data.timecodeMs) || data.timecodeMs < 0 || data.timecodeMs > link.durationMs) refuse(400, "invalid-request");
     const db = getDb();
     // Repeats the link check inside the write, so a revoke landing after the read still wins.
     const [inserted, existing] = await db.batch([
-      db.insert(comments).select(sql`SELECT ${id}, ${link.revisionId}, NULL, s.id, ${name}, ${data.timecodeMs}, ${body}, NULL, NULL, NULL, ${Date.now()}, NULL
+      db.insert(comments).select(sql`SELECT ${id}, ${link.revisionId}, NULL, s.id, ${name}, ${data.timecodeMs}, ${body}, ${drawing && JSON.stringify(drawing)}, NULL, NULL, ${Date.now()}, NULL
         FROM share_links s JOIN videos v ON v.id = s.video_id JOIN projects p ON p.id = v.project_id
         WHERE s.id = ${link.id} AND s.revoked_at IS NULL AND s.permission = 'comment'
           AND v.deleted_at IS NULL AND p.deleted_at IS NULL AND p.completed_at IS NULL`)

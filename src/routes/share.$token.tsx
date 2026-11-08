@@ -1,11 +1,13 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { CommentMarkers, timeLabel } from "@/components/comments";
+import { useDrawingControls } from "@/components/drawing-controls";
 import { VideoPlayer } from "@/components/player/video-player";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { Shape } from "@/lib/drawing";
 import { createGuestComment, getGuestReview } from "@/server/sharing";
 
 export const Route = createFileRoute("/share/$token")({
@@ -74,7 +76,8 @@ function Loaded({ page, token, name }: { page: GuestReview; token: string; name:
   const [seek, setSeek] = useState<{ timeMs: number }>();
   const [timeMs, setTimeMs] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  function select(comment: GuestComment) { setSeek({ timeMs: comment.timecodeMs }); setSelectedId(comment.id); setTimeMs(comment.timecodeMs); }
+  const pen = useDrawingControls({ timeMs, seek: (ms) => setSeek({ timeMs: ms }), deselect: () => setSelectedId(null) });
+  function select(comment: GuestComment) { setSeek({ timeMs: comment.timecodeMs }); setSelectedId(comment.id); setTimeMs(comment.timecodeMs); pen.stop(); }
   return <main className="mx-auto flex max-w-6xl flex-col gap-4 p-4">
     <h1 className="text-xl font-semibold wrap-anywhere">{page.title}</h1>
     <div className="review-layout">
@@ -82,15 +85,17 @@ function Loaded({ page, token, name }: { page: GuestReview; token: string; name:
         if (event.target instanceof HTMLVideoElement) setTimeMs(Math.round(event.target.currentTime * 1000));
       }}>
         <VideoPlayer videoId={page.revision.id} revisionId={page.revision.id} frameRate={page.revision.frameRate} playback={page.playback} seek={seek}
+          drawing={pen.overlay(selectedId === null ? undefined : { drawing: page.comments.find((c) => c.id === selectedId)?.drawing ?? null })}
           renewPlayback={() => getGuestReview({ data: { token } })}
           timelineMarkers={<CommentMarkers comments={page.comments} durationMs={page.revision.durationMs} selectedId={selectedId} select={select} />} />
       </div>
-      <GuestComments page={page} token={token} name={name} timeMs={timeMs} select={select} selectedId={selectedId} />
+      <GuestComments page={page} token={token} name={name} timeMs={pen.time} select={select} selectedId={selectedId} drawing={pen.drawing} sent={pen.reset} drawingControls={page.permission === "comment" && pen.controls} />
     </div>
   </main>;
 }
 
-function GuestComments({ page, token, name, timeMs, select, selectedId }: {
+function GuestComments({ page, token, name, timeMs, select, selectedId, drawing, sent, drawingControls }: {
+  drawing: Shape[]; sent: () => void; drawingControls: ReactNode;
   page: GuestReview; token: string; name: string; timeMs: number; select: (comment: GuestComment) => void; selectedId: string | null;
 }) {
   const client = useQueryClient();
@@ -98,24 +103,25 @@ function GuestComments({ page, token, name, timeMs, select, selectedId }: {
   const [resolved, setResolved] = useState(false);
   const [body, setBody] = useState("");
   const [failure, setFailure] = useState("");
-  const draft = useRef<{ id: string; body: string; timecodeMs: number } | null>(null);
+  const draft = useRef<{ id: string; body: string; timecodeMs: number; drawing: Shape[] | null } | null>(null);
   const write = useMutation({
-    mutationFn: (data: { id: string; body: string; timecodeMs: number }) => createGuestComment({ data: { ...data, token, name } }),
+    mutationFn: (data: { id: string; body: string; timecodeMs: number; drawing: Shape[] | null }) => createGuestComment({ data: { ...data, token, name } }),
     onMutate: async (data) => {
       await client.cancelQueries({ queryKey });
       client.setQueryData(queryKey, (old) => old && { ...old, comments: [...old.comments.filter((row) => row.id !== data.id),
-        { ...data, authorName: name, drawing: null, resolvedAt: null, createdAt: Date.now(), isGuest: true },
+        { ...data, authorName: name, drawing: data.drawing && JSON.stringify(data.drawing), resolvedAt: null, createdAt: Date.now(), isGuest: true },
       ].sort((a, b) => a.timecodeMs - b.timecodeMs || a.createdAt - b.createdAt) });
     },
     onError: (_error, data) => client.setQueryData(queryKey, (old) => old && { ...old, comments: old.comments.filter((row) => row.id !== data.id) }),
     onSettled: () => client.invalidateQueries({ queryKey }),
   });
   async function send() {
-    if (!body.trim()) { setFailure("Enter a Comment."); return; }
-    if (draft.current?.body !== body) draft.current = { id: crypto.randomUUID(), body, timecodeMs: timeMs };
+    if (!body.trim() && !drawing.length) { setFailure("Enter a Comment."); return; }
+    const marks = drawing.length ? drawing : null;
+    if (draft.current?.body !== body || JSON.stringify(draft.current.drawing) !== JSON.stringify(marks)) draft.current = { id: crypto.randomUUID(), body, timecodeMs: timeMs, drawing: marks };
     setFailure("");
     setResolved(false);
-    try { await write.mutateAsync(draft.current); setBody(""); draft.current = null; }
+    try { await write.mutateAsync(draft.current); setBody(""); draft.current = null; sent(); }
     catch (error) { setFailure(isRateLimited(error) ? "Too many Comments right now. Your text is kept; wait a minute and try again." : "Could not send Comment. Your text is kept; try again."); }
   }
   const rows = page.comments.filter((comment) => (comment.resolvedAt !== null) === resolved);
@@ -129,10 +135,11 @@ function GuestComments({ page, token, name, timeMs, select, selectedId }: {
       {rows.map((comment) => <li key={comment.id} className="rounded border p-3 wrap-anywhere">
         <p className="text-sm">{comment.authorName}{comment.isGuest && " · Guest"}</p>
         <button className="min-h-11 w-full text-left underline" aria-current={selectedId === comment.id ? "true" : undefined}
-          onClick={() => select(comment)}>{timeLabel(comment.timecodeMs)} · {comment.body}</button>
+          onClick={() => select(comment)}>{timeLabel(comment.timecodeMs)} · {comment.body}{comment.drawing && " · Drawing"}</button>
       </li>)}
     </ul>}
     {failure && <p role="alert" className="my-3">{failure}</p>}
+    {drawingControls}
     {page.permission === "view" ? <p className="mt-4">This link is view-only.</p> : <form className="sticky bottom-0 mt-4 border-t bg-background py-3" onSubmit={(event) => { event.preventDefault(); void send(); }}>
       <label className="block" htmlFor="comment-body">Comment text</label>
       <textarea id="comment-body" aria-describedby="comment-time" className="min-h-24 w-full rounded border p-2" maxLength={5000} value={body} onChange={(event) => setBody(event.target.value)} readOnly={write.isPending} />

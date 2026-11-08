@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CommentMarkers, Comments } from "@/components/comments";
 import { ShareLinksSheet } from "@/components/share-links";
 import { reviewQuery, type Comment, type ReviewPage } from "@/lib/review";
+import { useDrawingControls } from "@/components/drawing-controls";
 import { Button } from "@/components/ui/button";
 import { UploadSheet } from "@/components/upload-parts";
 import { markVideoRead } from "@/server/playback";
@@ -54,15 +55,18 @@ function ReviewContent({ page, videoId, cacheRevisionId }: { page: ReviewPage; v
   const [seek, setSeek] = useState<{ timeMs: number }>();
   const [timeMs, setTimeMs] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const pen = useDrawingControls({ timeMs, seek: (ms) => setSeek({ timeMs: ms }), deselect: () => setSelectedId(null) });
   const revision = page.revision!;
-  function select(comment: Comment) { setSeek({ timeMs: comment.timecodeMs }); setSelectedId(comment.id); setTimeMs(comment.timecodeMs); }
+  function select(comment: Comment) { setSeek({ timeMs: comment.timecodeMs }); setSelectedId(comment.id); setTimeMs(comment.timecodeMs); pen.stop(); }
   return <div className="review-layout">
     <div className="review-player" onTimeUpdate={(event) => {
       if (event.target instanceof HTMLVideoElement) setTimeMs(Math.round(event.target.currentTime * 1000));
     }}>
       <VideoPlayer videoId={videoId} revisionId={revision.id} frameRate={revision.frameRate} playback={page.playback!} seek={seek}
+        drawing={pen.overlay(selectedId === null ? undefined : { drawing: page.comments.find((c) => c.id === selectedId)?.drawing ?? null })}
         timelineMarkers={<CommentMarkers comments={page.comments} durationMs={revision.durationMs} selectedId={selectedId} select={select} />} />
     </div>
-    <Comments page={page} videoId={videoId} timeMs={timeMs} select={select} selectedId={selectedId} cacheRevisionId={cacheRevisionId} />
+    <Comments page={page} videoId={videoId} timeMs={pen.time} select={select} selectedId={selectedId} cacheRevisionId={cacheRevisionId} drawing={pen.drawing}
+      sent={pen.reset} drawingControls={page.video?.completedAt === null && pen.controls} />
   </div>;
 }

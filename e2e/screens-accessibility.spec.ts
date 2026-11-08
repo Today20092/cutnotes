@@ -16,6 +16,7 @@ const wcag22AA = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 async function expectAccessible(page: Page, state: string) {
   for (const colorScheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme });
+    await page.evaluate(() => new Promise(requestAnimationFrame)); // Lets the colour transition start, so it is awaited below.
     await page.evaluate(() =>
       Promise.all(
         document
@@ -391,6 +392,7 @@ test("Share Links sheet and Guest pages", async ({ page, browser }, testInfo) =>
   await page.getByRole("button", { name: "Create Share Link" }).click();
   await expect(page.getByRole("button", { name: "Revoke link for Client" })).toBeVisible();
   await expect(page.getByText("already issued keeps working until it expires")).toBeVisible();
+  await page.mouse.move(0, 0); // The new row can appear under the pointer on a phone.
   await expectAccessible(page, "Share Links sheet");
 
   const token = shareTokenFor(videoId);

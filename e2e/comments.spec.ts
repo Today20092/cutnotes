@@ -8,7 +8,121 @@ const callTo = (name: string) => (url: URL) => url.pathname.includes("/_serverFn
 const createCall = callTo("createComment");
 const editCall = callTo("editComment");
 
-async function openReview(page: Page, role: "viewer" | "editor" = "editor") {
+test("Drawing tools pause, undo, clear and replay over the picture after resizing", async ({ page }) => {
+  test.setTimeout(60_000);
+  page.setDefaultTimeout(10_000);
+  await openReview(page, "viewer");
+  await expect.poll(() => page.locator("video").evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThanOrEqual(2);
+  await page.getByRole("button", { name: "Draw", exact: true }).click();
+  await expect.poll(() => page.locator("video").evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
+  await page.getByRole("button", { name: "Box", exact: true }).click();
+  await page.getByRole("button", { name: "Yellow", exact: true }).click();
+  const overlay = page.getByLabel("Drawing picture", { exact: true });
+  let rect =(await overlay.boundingBox())!; // clicking controls can scroll the phone layout
+  await page.mouse.move(rect.x + rect.width * 0.25, rect.y + rect.height * 0.25);
+  await page.mouse.down();
+  await page.mouse.move(rect.x + rect.width * 0.75, rect.y + rect.height * 0.75, { steps: 8 });
+  await page.mouse.up();
+  await expect(overlay.locator("rect")).toHaveCount(1);
+  await page.getByRole("button", { name: "Undo Drawing", exact: true }).click();
+  await expect(overlay.locator("rect")).toHaveCount(0);
+  rect = (await overlay.boundingBox())!; // clicking controls can scroll the phone layout
+  await page.mouse.move(rect.x + rect.width * 0.25, rect.y + rect.height * 0.25);
+  await page.mouse.down();
+  await page.mouse.move(rect.x + rect.width * 0.75, rect.y + rect.height * 0.75);
+  await page.mouse.up();
+  await page.getByRole("button", { name: "Clear Drawing", exact: true }).click();
+  await expect(overlay.locator("rect")).toHaveCount(0);
+  rect = (await overlay.boundingBox())!; // clicking controls can scroll the phone layout
+  await page.mouse.move(rect.x + rect.width * 0.25, rect.y + rect.height * 0.25);
+  await page.mouse.down();
+  await page.mouse.move(rect.x + rect.width * 0.75, rect.y + rect.height * 0.75);
+  await page.mouse.up();
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
+  await page.getByRole("button", { name: "Finish Drawing", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Draw", exact: true })).toBeFocused();
+  await page.getByRole("button", { name: "Send Comment", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Edit Comment", exact: true })).toBeEnabled();
+  await page.reload();
+  await page.getByRole("listitem").getByRole("button", { name: /Drawing/ }).click();
+  const before = await page.getByLabel("Drawing picture", { exact: true }).locator("rect").getAttribute("x");
+  await page.setViewportSize({ width: 800, height: 900 });
+  await expect(page.getByLabel("Drawing picture", { exact: true }).locator("rect")).toHaveAttribute("x", before!);
+  const bounds = (await page.getByLabel("Drawing picture", { exact: true }).boundingBox())!;
+  const shape = (await page.getByLabel("Drawing picture", { exact: true }).locator("rect").boundingBox())!;
+  expect((shape.x - bounds.x) / bounds.width).toBeCloseTo(0.25, 1);
+  expect(shape.width / bounds.width).toBeCloseTo(0.5, 1);
+  expect((shape.y - bounds.y) / bounds.height).toBeCloseTo(0.25, 1);
+  expect(shape.height / bounds.height).toBeCloseTo(0.5, 1);
+});
+
+test("touch pen simplifies, cancelled gestures do not save, and failed sends keep the Drawing", async ({ page }) => {
+  test.setTimeout(60_000);
+  await openReview(page);
+  await expect.poll(() => page.locator("video").evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThanOrEqual(2);
+  const draw = page.getByRole("button", { name: "Draw", exact: true });
+  await draw.focus(); await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: "Pen", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.emulateMedia({ forcedColors: "active" });
+  await expect(page.getByRole("button", { name: "Pen", exact: true })).toContainText("✓");
+  await expect(page.getByRole("button", { name: "Red", exact: true })).toContainText("✓");
+  const overlay = page.getByLabel("Drawing picture", { exact: true });
+  const rect = (await overlay.boundingBox())!;
+  const cdp = await page.context().newCDPSession(page);
+  const touch = (type: "touchStart" | "touchMove" | "touchEnd" | "touchCancel", fraction = 0) => cdp.send("Input.dispatchTouchEvent", {
+    type, touchPoints: type === "touchEnd" || type === "touchCancel" ? [] : [{ x: rect.x + rect.width * fraction, y: rect.y + rect.height * fraction, id: 1 }],
+  });
+  await touch("touchStart", 0.1);
+  await touch("touchMove", 0.2);
+  await touch("touchCancel");
+  await expect(overlay.locator("polyline")).toHaveCount(0);
+  await touch("touchStart", 0.1);
+  for (let i = 11; i <= 80; i++) await touch("touchMove", i / 100);
+  await touch("touchEnd");
+  await cdp.detach();
+  const points = (await overlay.locator("polyline").getAttribute("points"))!.split(/[ ,]/).map(Number);
+  expect(points).toHaveLength(4);
+  for (const [i, expected] of [100, 100, 800, 800].entries()) expect(points[i]).toBeCloseTo(expected, 2);
+  await page.getByRole("button", { name: "Finish Drawing", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(draw).toBeFocused();
+  await page.route(createCall, (route) => route.abort());
+  await page.getByRole("button", { name: "Send Comment", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Could not send");
+  await expect(overlay.locator("polyline")).toHaveCount(1);
+  await page.unroute(createCall);
+  await page.getByRole("button", { name: "Send Comment", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Edit Comment", exact: true })).toBeEnabled();
+  await page.reload();
+  await page.getByRole("listitem").getByRole("button", { name: /Drawing/ }).click();
+  await expect(overlay.locator("polyline")).toHaveAttribute("points", points.join(",").replace(/,([^,]+),([^,]+)$/, " $1,$2"));
+});
+
+test("a Drawing over the shape cap is refused with a message and replay passes axe", async ({ page }) => {
+  test.setTimeout(60_000);
+  await openReview(page);
+  await expect.poll(() => page.locator("video").evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThanOrEqual(2);
+  await page.getByRole("button", { name: "Draw", exact: true }).click();
+  const overlay = page.getByLabel("Drawing picture", { exact: true });
+  const rect = (await overlay.boundingBox())!;
+  for (let i = 0; i < 51; i++) {
+    await page.mouse.move(rect.x + rect.width * 0.5, rect.y + rect.height * 0.5);
+    await page.mouse.down();
+    await page.mouse.up();
+  }
+  await expect(page.getByRole("alert")).toContainText("Drawing is too large");
+  await expect(overlay.locator("polyline")).toHaveCount(50);
+  const axe = () => new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
+  expect((await axe()).violations).toEqual([]);
+  await page.getByRole("button", { name: "Send Comment", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Edit Comment", exact: true })).toBeEnabled();
+  await page.reload();
+  await page.getByRole("listitem").getByRole("button", { name: /Drawing/ }).click();
+  await expect(overlay.locator("polyline")).toHaveCount(50);
+  expect((await axe()).violations).toEqual([]);
+});
+
+async function openReview(page: Page, role:"viewer" | "editor" = "editor") {
   const clerkUserId = `user_comments_${crypto.randomUUID()}`;
   seedMember(clerkUserId, role, "Reviewer");
   const id = seedReview(clerkUserId);

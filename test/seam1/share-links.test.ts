@@ -181,3 +181,12 @@ it("a link cannot be created with a bad name or permission, or for a Complete Pr
   await env.DB.prepare("UPDATE projects SET completed_at = 1").run();
   await expectRefused(await send({}), 404, "not-found");
 });
+
+it("a Guest Comment carries a Drawing and is refused over the Drawing caps", async () => {
+  const { token } = await createLink();
+  const pts = [[0.1, 0.1], [0.5, 0.5]];
+  expect((await comment(token, { id: "drawn", body: "", drawing: [{ tool: "arrow", color: "#ffffff", pts }] })).status).toBe(200);
+  expect((await page(token)).comments).toMatchObject([{ id: "drawn" }]);
+  const tooMany = Array.from({ length: 51 }, () => ({ tool: "arrow", color: "#ffffff", pts }));
+  await expectRefused(await comment(token, { drawing: tooMany }), 400, "invalid-request");
+});

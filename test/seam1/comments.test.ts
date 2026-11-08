@@ -33,6 +33,48 @@ const input = { videoId: "v", revisionId: "r", id: "browser-id", body: "Fix the 
 type Review = { comments: { id: string; body: string; authorName: string; resolvedAt: number | null }[] };
 const review = async (revisionId = "r") => resultOf<Review>(await call(fn.getReview, "user_owner", { videoId: "v", revisionId }));
 
+it("persists a drawing-only Comment and keeps its Drawing when editing text", async () => {
+  const drawing = [{ tool: "arrow", color: "#f87171", pts: [[0.25, 0.5], [0.75, 1]] }];
+  expect((await call(fn.createComment, "user_owner", { ...input, body: "", drawing })).status).toBe(200);
+  expect((await review()).comments).toMatchObject([{ body: "", drawing: JSON.stringify(drawing) }]);
+  expect((await call(fn.editComment, "user_owner", { ...input, body: "Text added" })).status).toBe(200);
+  expect((await review()).comments).toMatchObject([{ body: "Text added", drawing: JSON.stringify(drawing) }]);
+  expect((await call(fn.editComment, "user_owner", { ...input, body: "" })).status).toBe(200);
+});
+
+const pen = { tool: "pen", color: "#f87171", pts: [[0, 0], [1, 1]] };
+it.each([
+  [], "not shapes", [{ ...pen, tool: "script" }], [{ ...pen, color: "url(https://evil.test)" }],
+  [{ ...pen, pts: [[-0.1, 0]] }], [{ ...pen, pts: [[0, 1.1]] }], [{ ...pen, pts: [["0", 1]] }],
+  [{ ...pen, pts: [[0]] }], [{ ...pen, pts: [] }], [{ ...pen, tool: "box", pts: [[0, 0]] }],
+  Array.from({ length: 51 }, () => pen), [{ ...pen, pts: Array.from({ length: 2001 }, () => [0, 0]) }],
+  [{ ...pen, extra: "💥".repeat(17000) }],
+])("refuses forged Drawing payload %j", async (drawing) => {
+  await expectRefused(await call(fn.createComment, "user_owner", { ...input, drawing }), 400, "invalid-request");
+  expect((await review()).comments).toEqual([]);
+});
+
+it("accepts exact shape and point caps and retries without replacing the Drawing", async () => {
+  const drawing = Array.from({ length: 50 }, () => ({ ...pen, pts: Array.from({ length: 40 }, () => [0.5, 0.5]) }));
+  expect((await call(fn.createComment, "user_owner", { ...input, drawing })).status).toBe(200);
+  expect((await call(fn.createComment, "user_owner", { ...input, drawing: [pen] })).status).toBe(200);
+  expect((await review()).comments).toMatchObject([{ drawing: JSON.stringify(drawing) }]);
+});
+
+it("measures the serialized Drawing in UTF-8 bytes at the exact 64 KB boundary", async () => {
+  const shape = { ...pen, padding: "" };
+  shape.padding = "x".repeat(65536 - new TextEncoder().encode(JSON.stringify([shape])).byteLength);
+  expect((await call(fn.createComment, "user_owner", { ...input, drawing: [shape] })).status).toBe(200);
+  await expectRefused(await call(fn.createComment, "user_owner", { ...input, id: "too-large", drawing: [{ ...shape, padding: shape.padding + "x" }] }), 400, "invalid-request");
+});
+
+it.each(["owner", "editor", "viewer"])("a %s can persist a Drawing but cannot draw on a Complete Project", async (role) => {
+  const caller = role === "owner" ? "user_owner" : await seedMember(role);
+  expect((await call(fn.createComment, caller, { ...input, drawing: [pen] })).status).toBe(200);
+  await env.DB.exec("UPDATE projects SET completed_at = 1");
+  await expectRefused(await call(fn.createComment, caller, { ...input, id: "complete", drawing: [pen] }), 400, "invalid-request");
+});
+
 it("a Member writes a timestamped Comment and retries the browser ID without duplicating or overwriting it", async () => {
   const viewer = await seedMember("viewer");
   expect((await call(fn.createComment, viewer, input)).status).toBe(200);

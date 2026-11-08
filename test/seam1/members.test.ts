@@ -15,7 +15,7 @@ const editor: Person = { clerkUserId: "user_editor", email: "editor@example.com"
 const viewer: Person = { clerkUserId: "user_viewer", email: "viewer@example.com" };
 const departed: Person = { clerkUserId: "user_departed", email: "gone@example.com" };
 
-const idOf = (person: Person) => `member_${person.email.split("@")[0]}`;
+const idOf = (person: Person) => person.clerkUserId.replace("user_", "member_");
 
 const call = async (id: string, person: Person, data?: unknown) =>
   callServerFn(id, { bearer: await sessionToken(person), data });

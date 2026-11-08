@@ -47,6 +47,7 @@ export const ownerServerFunctionIds = {
 
 /** These need an active Member. */
 export const memberServerFunctionIds = {
+  markVideoRead: serverFnId("/src/server/playback.ts", "markVideoRead"),
   createComment: serverFnId("/src/server/comments.ts", "createComment"),
   editComment: serverFnId("/src/server/comments.ts", "editComment"),
   deleteComment: serverFnId("/src/server/comments.ts", "deleteComment"),

@@ -6,10 +6,10 @@ import type { NewComment } from "@/server/comments";
 
 export const timeLabel = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
 
-export function Comments({ page, videoId, timeMs, select, selectedId }: {
-  page: ReviewPage; videoId: string; timeMs: number; select: (comment: Comment) => void; selectedId: string | null;
+export function Comments({ page, videoId, timeMs, select, selectedId, cacheRevisionId }: {
+  page: ReviewPage; videoId: string; timeMs: number; select: (comment: Comment) => void; selectedId: string | null; cacheRevisionId?: string;
 }) {
-  const write = useCommentWrite(videoId);
+  const write = useCommentWrite(videoId, cacheRevisionId);
   const [resolved, setResolved] = useState(false);
   const [body, setBody] = useState("");
   const [editing, setEditing] = useState<string | null>(null);

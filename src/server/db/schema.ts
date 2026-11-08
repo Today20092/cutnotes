@@ -3,6 +3,7 @@ import {
   check,
   index,
   integer,
+  primaryKey,
   real,
   sqliteTable,
   text,
@@ -125,3 +126,9 @@ export const comments = sqliteTable("comments", {
   index("comments_revision_id_timecode_idx").on(table.revisionId, table.timecodeMs),
   check("comments_one_author", sql`(${table.memberId} IS NOT NULL) <> (${table.shareLinkId} IS NOT NULL)`),
 ]);
+
+export const videoReads = sqliteTable("video_reads", {
+  memberId: text("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+  videoId: text("video_id").notNull().references(() => videos.id, { onDelete: "cascade" }),
+  lastReadAt: integer("last_read_at").notNull(),
+}, (table) => [primaryKey({ columns: [table.memberId, table.videoId] })]);

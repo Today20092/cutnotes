@@ -18,7 +18,7 @@ test("Drawing tools pause, undo, clear and replay over the picture after resizin
   await page.getByRole("button", { name: "Box", exact: true }).click();
   await page.getByRole("button", { name: "Yellow", exact: true }).click();
   const overlay = page.getByLabel("Drawing picture", { exact: true });
-  const rect = (await overlay.boundingBox())!;
+  let rect =(await overlay.boundingBox())!; // clicking controls can scroll the phone layout
   await page.mouse.move(rect.x + rect.width * 0.25, rect.y + rect.height * 0.25);
   await page.mouse.down();
   await page.mouse.move(rect.x + rect.width * 0.75, rect.y + rect.height * 0.75, { steps: 8 });
@@ -26,12 +26,14 @@ test("Drawing tools pause, undo, clear and replay over the picture after resizin
   await expect(overlay.locator("rect")).toHaveCount(1);
   await page.getByRole("button", { name: "Undo Drawing", exact: true }).click();
   await expect(overlay.locator("rect")).toHaveCount(0);
+  rect = (await overlay.boundingBox())!; // clicking controls can scroll the phone layout
   await page.mouse.move(rect.x + rect.width * 0.25, rect.y + rect.height * 0.25);
   await page.mouse.down();
   await page.mouse.move(rect.x + rect.width * 0.75, rect.y + rect.height * 0.75);
   await page.mouse.up();
   await page.getByRole("button", { name: "Clear Drawing", exact: true }).click();
   await expect(overlay.locator("rect")).toHaveCount(0);
+  rect = (await overlay.boundingBox())!; // clicking controls can scroll the phone layout
   await page.mouse.move(rect.x + rect.width * 0.25, rect.y + rect.height * 0.25);
   await page.mouse.down();
   await page.mouse.move(rect.x + rect.width * 0.75, rect.y + rect.height * 0.75);

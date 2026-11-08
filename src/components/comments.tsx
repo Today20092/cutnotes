@@ -7,12 +7,12 @@ import type { Shape } from "@/lib/drawing";
 
 export const timeLabel = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
 
-export function Comments({ page, videoId, timeMs, select, selectedId, drawing = [], sent, drawingControls }: {
-  page: ReviewPage; videoId: string; timeMs: number; select: (comment: Comment) => void; selectedId: string | null;
+export function Comments({ page, videoId, timeMs, select, selectedId, drawing = [], sent, drawingControls, cacheRevisionId }: {
+  page: ReviewPage; videoId: string; timeMs: number; select: (comment: Comment) => void; selectedId: string | null; cacheRevisionId?: string;
   drawing?: Shape[]; sent?: () => void;
   drawingControls?: ReactNode;
 }) {
-  const write = useCommentWrite(videoId);
+  const write = useCommentWrite(videoId, cacheRevisionId);
   const [resolved, setResolved] = useState(false);
   const [body, setBody] = useState("");
   const [editing, setEditing] = useState<string | null>(null);

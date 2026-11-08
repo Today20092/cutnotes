@@ -19,14 +19,20 @@ export function seedReview(clerkUserId: string, ready = true) {
   return id;
 }
 
-export function seedComment(revisionId: string, memberId: string, body: string) {
+export function seedComment(revisionId: string, memberId: string, body: string, createdAt = 1) {
   const id = crypto.randomUUID();
-  executeSql(`INSERT INTO comments (id, revision_id, member_id, author_name, timecode_ms, body, created_at) VALUES ('${id}', '${revisionId}', '${memberId}', 'Other reviewer', 1000, '${body}', 1)`);
+  executeSql(`INSERT INTO comments (id, revision_id, member_id, author_name, timecode_ms, body, created_at) VALUES ('${id}', '${revisionId}', '${memberId}', 'Other reviewer', 1000, '${body}', ${createdAt})`);
   return id;
 }
 
 export function removeSeededComment(id: string) {
   executeSql(`DELETE FROM comments WHERE id = '${id}'`);
+}
+
+export function seedReadyRevision(videoId: string, memberId: string, number: number) {
+  const id = crypto.randomUUID();
+  executeSql(`INSERT INTO revisions (id, video_id, number, state, uploaded_by, mux_playback_id, duration_ms, frame_rate, created_at, ready_at) VALUES ('${id}', '${videoId}', ${number}, 'ready', '${memberId}', 'sample', 8000, 25, 1, 1)`);
+  return id;
 }
 
 function executeSql(command: string) {

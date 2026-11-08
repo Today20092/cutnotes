@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { removeSeededComment, seedComment, seedMember, seedReview } from "./support/database";
+import { removeSeededComment, seedComment, seedMember, seedReview, seedReadyRevision } from "./support/database";
 import { signInAs } from "./support/session";
 import { sampleStream } from "./support/sample-stream";
 
@@ -137,6 +137,45 @@ async function openReview(page: Page, role:"viewer" | "editor" = "editor") {
   return { id, clerkUserId };
 }
 
+test("ready Revision history is one tap away and keeps feedback on its own cut", async ({ page }) => {
+  const { id, clerkUserId } = await openReview(page);
+  await expect(page.getByRole("button", { name: "Upload new Revision", exact: true })).toBeVisible();
+  seedComment(id, clerkUserId, "Older cut feedback");
+  const newer = seedReadyRevision(id, clerkUserId, 2);
+  seedComment(newer, clerkUserId, "Current cut feedback");
+  await page.reload();
+  await expect(page.getByRole("listitem").filter({ hasText: "Current cut feedback" })).toBeVisible();
+  await page.getByRole("button", { name: "Revision 1", exact: true }).click();
+  await expect(page.getByRole("listitem").filter({ hasText: "Older cut feedback" })).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: "Current cut feedback" })).toHaveCount(0);
+  await page.getByLabel("Comment text", { exact: true }).fill("Still on the older cut");
+  await page.getByRole("button", { name: "Send Comment", exact: true }).click();
+  await expect(page.getByRole("listitem").filter({ hasText: "Still on the older cut" })).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: "Still on the older cut" }).getByRole("button", { name: "Edit Comment", exact: true })).toBeEnabled();
+  await page.evaluate(() => Promise.all(document.getAnimations().filter((motion) => motion.effect?.getComputedTiming().iterations !== Infinity).map((motion) => motion.finished.catch(() => {}))));
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
+  await page.getByRole("button", { name: "Revision 2", exact: true }).click();
+  await expect(page.getByRole("listitem").filter({ hasText: "Current cut feedback" })).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: "Still on the older cut" })).toHaveCount(0);
+});
+
+test("opening a Video clears the Member's unread marker", async ({ page }) => {
+  const { id } = await openReview(page);
+  const other = `other_${crypto.randomUUID()}`;
+  seedMember(other, "editor");
+  seedComment(id, other, "New feedback from someone else", Date.now());
+  await page.goto(`/projects/${id}`);
+  const tile = page.getByRole("link").filter({ hasText: "Playback cut" });
+  await expect(tile.getByText("Unread activity", { exact: true })).toBeVisible();
+  await tile.click();
+  await expect(page.getByRole("heading", { name: "Playback cut" })).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: "New feedback from someone else" })).toBeVisible();
+  await page.getByRole("link", { name: "Back to Playback project" }).click();
+  await expect(page.getByRole("link").filter({ hasText: "Playback cut" })).toBeVisible();
+  await expect(page.getByText("Unread activity", { exact: true })).toHaveCount(0);
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
+});
+
 test("a Comment appears before the answer; a failed send keeps its text for retry", async ({ page }) => {
   await openReview(page);
   let release = () => {};
@@ -200,6 +239,7 @@ test("Comments seek, edit, Resolve and delete with sensible focus and accessible
 
 test("Viewers can write and manage their own Comments without Resolve controls", async ({ page }) => {
   await openReview(page, "viewer");
+  await expect(page.getByRole("button", { name: "Upload new Revision", exact: true })).toHaveCount(0);
   await page.getByLabel("Comment text", { exact: true }).fill("Viewer feedback");
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
   await expect(page.getByRole("button", { name: "Edit Comment", exact: true })).toBeEnabled();

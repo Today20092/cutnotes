@@ -40,7 +40,7 @@ export type ScreenDb = Pick<Db, "select">;
  */
 export async function readAsMember<const Reads extends readonly BatchItem<"sqlite">[]>(
   minimumRole: Role,
-  reads: (db: ScreenDb) => Reads,
+  reads: (db: ScreenDb, clerkUserId: string) => Reads,
 ): Promise<{ member: Member; results: BatchResults<Reads> }> {
   const { userId, sessionClaims } = await auth();
   if (!userId) refuse(401, "signed-out");
@@ -128,12 +128,12 @@ async function writeActiveMember(
 
 async function readBatch<const Reads extends readonly BatchItem<"sqlite">[]>(
   clerkUserId: string,
-  reads: (db: ScreenDb) => Reads,
+  reads: (db: ScreenDb, clerkUserId: string) => Reads,
 ): Promise<[Member | undefined, BatchResults<Reads>]> {
   const db = getDb();
   const [memberRows, ...results] = (await db.batch([
     db.select().from(members).where(eq(members.clerkUserId, clerkUserId)),
-    ...reads(db),
+    ...reads(db, clerkUserId),
   ] as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]])) as unknown as [
     Member[],
     ...BatchResults<Reads>,

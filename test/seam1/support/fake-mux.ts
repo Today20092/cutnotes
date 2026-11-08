@@ -5,6 +5,9 @@ export const fakeSignature = (rawBody: string) => `fake-${btoa(rawBody)}`;
 
 /** Stands in for Mux at the gateway boundary, under both seams. */
 export const fakeMux: MuxGateway = {
+  deleteAsset: async () => {},
+  getAsset: async (id) => ({ id, status: "preparing" }),
+  getDirectUpload: async () => ({ status: "waiting" }),
   signPlaybackToken: async ({ playbackId, audience }) =>
     `fake.${audience}.${playbackId}`,
   createDirectUpload: async ({ passthrough }) => ({

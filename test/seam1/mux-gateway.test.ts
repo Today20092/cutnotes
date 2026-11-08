@@ -71,6 +71,28 @@ const realGateway = () =>
     webhookSecret: "webhook-secret",
   });
 
+describe("asset cleanup and reconciliation", () => {
+  afterEach(() => vi.restoreAllMocks());
+  it("treats an already-gone asset as deleted, but retries other failures", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(new Response(null, { status: 503 }));
+    await expect(realGateway().deleteAsset("gone")).resolves.toBeUndefined();
+    await expect(realGateway().deleteAsset("retry")).rejects.toThrow("503");
+  });
+  it("retrieves upload and asset state, distinguishing missing media from outages", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(Response.json({ data: { status: "asset_created", asset_id: "a" } }))
+      .mockResolvedValueOnce(Response.json({ data: { id: "a", status: "ready", duration: 30 } }))
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(new Response(null, { status: 401 }));
+    expect(await realGateway().getDirectUpload("u")).toEqual({ status: "asset_created", asset_id: "a" });
+    expect(await realGateway().getAsset("a")).toMatchObject({ id: "a", status: "ready" });
+    expect(await realGateway().getAsset("gone")).toBeNull();
+    await expect(realGateway().getDirectUpload("u")).rejects.toThrow("401");
+  });
+});
+
 describe("direct uploads", () => {
   afterEach(() => vi.restoreAllMocks());
 

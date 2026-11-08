@@ -6,11 +6,12 @@ import {
 } from "@tanstack/react-query";
 import {
   createProject,
+  deleteProject,
   getProject,
   listProjects,
   renameProject,
 } from "@/server/projects";
-import { renameVideo, setVideoStatus } from "@/server/videos";
+import { deleteVideo, renameVideo, setVideoStatus } from "@/server/videos";
 import type { VideoStatus } from "@/server/db/schema";
 
 const FOLLOW_PROCESSING_MS = 5000;
@@ -172,3 +173,27 @@ export const useSetVideoStatus = () =>
       setVideoStatus({ data: input }),
     (video, { status }) => ({ ...video, status }),
   );
+
+export function useDeleteWork(kind: "Project" | "Video", id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationKey,
+    scope: { id: `${kind.toLowerCase()}-${id}` },
+    mutationFn: () => kind === "Project"
+      ? deleteProject({ data: { projectId: id } })
+      : deleteVideo({ data: { videoId: id } }),
+    onMutate: () => client.cancelQueries({ queryKey: projectListQuery.queryKey }),
+    onSuccess: () => {
+      // Wait until the deleted tile and its focus-trapping confirmation have unmounted.
+      requestAnimationFrame(() => document.querySelector<HTMLHeadingElement>("h1")?.focus());
+      client.setQueriesData<ProjectList | ProjectPage>({ queryKey: projectListQuery.queryKey }, (data) => {
+        if (!data) return data;
+        const videos = data.videos.filter((video) => kind === "Project" ? video.projectId !== id : video.id !== id);
+        return "projects" in data && kind === "Project"
+          ? { ...data, videos, projects: data.projects.filter((project) => project.id !== id) }
+          : { ...data, videos };
+      });
+    },
+    onSettled: () => refreshAfterLastWrite(client),
+  });
+}

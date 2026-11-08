@@ -129,6 +129,39 @@ async function markReady(revisionId: string, event: MuxEvent) {
   }
 }
 
+/** The sweep shares the webhook's conditional, monotonic transitions. */
+export async function reconcileRevision(revision: typeof revisions.$inferSelect, now: number) {
+  const mux = getMuxGateway();
+  let assetId = revision.muxAssetId;
+  if (!assetId && revision.muxUploadId) {
+    const upload = await mux.getDirectUpload(revision.muxUploadId);
+    assetId = upload?.asset_id ?? null;
+    if (assetId) await markProcessing(revision.id, assetId);
+    else if (!upload || ["cancelled", "errored", "timed_out"].includes(upload.status)) {
+      await markUploadFailed(revision.id, "upload-failed");
+      return;
+    }
+  }
+  if (assetId) {
+    const asset = await mux.getAsset(assetId);
+    if (asset?.status === "ready") {
+      await markReady(revision.id, { data: asset });
+      return;
+    }
+    if (!asset || asset.status === "errored") {
+      await markErrored(revision.id, asset?.errors?.type ?? "processing-failed", assetId);
+      return;
+    }
+  }
+  // Direct uploads expire after 24 hours; allow the same window for processing.
+  if (revision.createdAt <= now - 24 * 60 * 60 * 1000) {
+    if (!assetId && revision.muxUploadId) {
+      if (!(await mux.cancelDirectUpload(revision.muxUploadId))) return;
+    }
+    await markErrored(revision.id, "timed-out", assetId ?? undefined);
+  }
+}
+
 async function applyEvent(event: MuxEvent) {
   const identifiers = identifiersOf(event);
   const handled = [
@@ -144,10 +177,12 @@ async function applyEvent(event: MuxEvent) {
   const revisionId = await findRevisionId(identifiers);
   if (!revisionId) return;
 
+  // Even a late ready/error event must leave its asset discoverable for cleanup.
+  if (identifiers.assetId) await markProcessing(revisionId, identifiers.assetId);
+
   switch (event.type) {
     case "video.upload.asset_created":
     case "video.asset.created":
-      await markProcessing(revisionId, identifiers.assetId);
       break;
     case "video.upload.cancelled":
       await markUploadFailed(revisionId, "upload-cancelled");

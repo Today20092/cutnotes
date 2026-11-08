@@ -35,6 +35,7 @@ const selectVideos = (db: ScreenDb) =>
   db
     .select({
       id: videos.id,
+      createdBy: videos.createdBy,
       title: videos.title,
       status: videos.status,
       updatedAt: videos.updatedAt,
@@ -88,7 +89,7 @@ export const listProjects = createServerFn({ method: "POST" }).handler(
       selectVideos(db).where(liveVideo).orderBy(desc(videos.updatedAt)),
     ]);
     return {
-      member: { displayName: member.displayName, role: member.role },
+      member: { id: member.id, displayName: member.displayName, role: member.role },
       projects: results[0],
       videos: await withPosters(results[1]),
     };
@@ -111,7 +112,7 @@ export const getProject = createServerFn({ method: "POST" })
     const [project] = results[0];
     if (!project) reject(404, "not-found");
     return {
-      member: { displayName: member.displayName, role: member.role },
+      member: { id: member.id, displayName: member.displayName, role: member.role },
       project,
       videos: await withPosters(results[1]),
     };
@@ -151,6 +152,19 @@ export const renameProject = createServerFn({ method: "POST" })
         ),
       )
       .returning(projectSummary);
+    if (!project) reject(404, "not-found");
+    return project;
+  });
+
+export const deleteProject = createServerFn({ method: "POST" })
+  .validator((data: { projectId: string }) => data)
+  .handler(async ({ data }) => {
+    const member = await requireMember("owner");
+    const [project] = await getDb().update(projects)
+      .set({ deletedAt: Date.now() })
+      .where(and(eq(projects.id, parseProjectId(data)), isNull(projects.deletedAt),
+        sql`EXISTS (SELECT 1 FROM members WHERE id = ${member.id} AND role = 'owner' AND removed_at IS NULL)`))
+      .returning({ id: projects.id });
     if (!project) reject(404, "not-found");
     return project;
   });

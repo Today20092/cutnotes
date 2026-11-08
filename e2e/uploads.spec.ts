@@ -87,6 +87,28 @@ test.beforeEach(async ({ page }) => {
   await signInAs(page, owner);
 });
 
+test("an Editor sees delete only for Videos they created", async ({ page }, testInfo) => {
+  await routeMux(page);
+  const projectName = await openNewProject(page, "Delete roles", testInfo);
+  await startUpload(page, "Owner cut");
+  await expect(page.getByRole("region", { name: "Uploads" }).getByText(/being processed/)).toBeVisible();
+  const editor = { clerkUserId: `user_delete_editor_${testInfo.project.name}`, email: "editor@example.com" };
+  seedMember(editor.clerkUserId, "editor");
+  await signInAs(page, editor);
+  await page.reload();
+  await expect(page.getByText("Owner cut", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Delete Owner cut", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: `Delete ${projectName}`, exact: true })).toHaveCount(0);
+  await startUpload(page, "Editor cut");
+  await expect(page.getByRole("region", { name: "Uploads" }).getByText(/being processed/)).toBeVisible();
+  await page.getByRole("button", { name: "Delete Editor cut", exact: true }).click();
+  await page.getByRole("button", { name: "Delete Editor cut permanently" }).click();
+  await expect(page.getByRole("button", { name: "Delete Editor cut", exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText("Editor cut", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Owner cut", { exact: true })).toBeVisible();
+});
+
 test("an upload is followed from progress through processing to a signed poster", async ({
   page,
 }, testInfo) => {

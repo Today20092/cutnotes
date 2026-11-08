@@ -237,3 +237,18 @@ export const setVideoStatus = createServerFn({ method: "POST" })
     if (!videoStatuses.includes(status)) reject(400, "invalid-status");
     return updateVideo(textField(data, "videoId"), { status });
   });
+
+export const deleteVideo = createServerFn({ method: "POST" })
+  .validator((data: { videoId: string }) => data)
+  .handler(async ({ data }) => {
+    const member = await requireMember("editor");
+    const db = getDb();
+    const [video] = await db.update(videos).set({ deletedAt: Date.now() })
+      .where(and(
+        eq(videos.id, textField(data, "videoId")), isNull(videos.deletedAt),
+        sql`EXISTS (SELECT 1 FROM projects WHERE id = ${videos.projectId} AND deleted_at IS NULL)`,
+        sql`EXISTS (SELECT 1 FROM members WHERE id = ${member.id} AND removed_at IS NULL AND (role = 'owner' OR (role = 'editor' AND ${videos.createdBy} = id)))`,
+      )).returning({ id: videos.id });
+    if (!video) reject(404, "not-found");
+    return video;
+  });

@@ -137,7 +137,21 @@ export function UploadSheet({
           </SheetDescription>
         </SheetHeader>
         <form onSubmit={submit} noValidate className="flex flex-col gap-3 p-4 pt-0">
-          <div className="flex flex-col gap-1">
+          <div
+            className="flex flex-col gap-1 sm:rounded-lg sm:border sm:border-dashed sm:p-3"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              const dropped = event.dataTransfer.files[0];
+              if (!dropped) return;
+              if (!dropped.type.startsWith("video/")) {
+                setError("Choose a video file.");
+                return;
+              }
+              if (fileInput.current) fileInput.current.files = event.dataTransfer.files;
+              pickFile(dropped);
+            }}
+          >
             <label htmlFor={fileId} className="text-sm font-medium">
               Video file
             </label>
@@ -151,6 +165,7 @@ export function UploadSheet({
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? errorId : undefined}
             />
+            <p className="hidden text-sm text-muted-foreground sm:block">Or drop a video here.</p>
           </div>
           {destination.kind === "new" && projects.length > 1 && (
             <div className="flex flex-col gap-1">

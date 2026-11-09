@@ -13,6 +13,10 @@ import { VideoPlayer } from "@/components/player/video-player";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { activeCommentId } from "@/lib/comment-time";
+import { useStatusToast } from "@/components/project-parts";
+import { TeamLogo, useTeam } from "@/lib/team";
+import { cn } from "@/lib/utils";
 import type { Shape } from "@/lib/drawing";
 import { createGuestComment, getGuestReview } from "@/server/sharing";
 
@@ -93,7 +97,7 @@ function Welcome({ onDone }: { onDone: (name: string) => void }) {
       >
         <h1 className="text-xl font-semibold">Welcome</h1>
         <p className="text-muted-foreground">
-          No account needed. Type your name to start reviewing.
+          No account needed. Your name appears on the Comments you leave.
         </p>
         <label htmlFor="guest-name" className="text-sm font-medium">
           Your name
@@ -185,6 +189,7 @@ function Loaded({
     seek: (ms) => setSeek({ timeMs: ms }),
     deselect: () => setSelectedId(null),
   });
+  const team = useTeam().data;
   function select(comment: GuestComment) {
     setSeek({ timeMs: comment.timecodeMs });
     setSelectedId(comment.id);
@@ -193,6 +198,12 @@ function Loaded({
   }
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-4 p-4">
+      {team && (
+        <p className="flex items-center gap-2 text-sm font-medium wrap-anywhere">
+          <TeamLogo team={team} />
+          {team.name} wants your feedback
+        </p>
+      )}
       <a href="#comments" className="sr-only focus:not-sr-only">
         Skip to Comments
       </a>
@@ -342,6 +353,8 @@ function GuestComments({
     }
   }
   const rows = page.comments.filter((comment) => (comment.resolvedAt !== null) === resolved);
+  const activeId = activeCommentId(rows, timeMs);
+  useStatusToast(status);
   return (
     <section
       id="comments"
@@ -381,7 +394,13 @@ function GuestComments({
       ) : (
         <ul className="divide-y" aria-label="Comments">
           {rows.map((comment) => (
-            <li key={comment.id} className="py-3 wrap-anywhere">
+            <li
+              key={comment.id}
+              className={cn(
+                "py-3 wrap-anywhere",
+                comment.id === activeId && "-mx-2 rounded-lg bg-muted/60 px-2",
+              )}
+            >
               <p className="text-sm text-muted-foreground">
                 {comment.authorName}
                 {comment.isGuest && " · Guest"}

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, LogOut, UserPlus, Users } from "lucide-react";
-import { useSignOut } from "@/auth/client";
+import { useAccountEmail, useSignOut } from "@/auth/client";
 import { AppShell } from "@/components/app-shell";
 import { MemberGate } from "@/components/member-gate";
 import { PageBreadcrumb, PageHeading } from "@/components/project-parts";
@@ -18,6 +18,7 @@ const teamLinks = [
 
 function SettingsPage() {
   const signOut = useSignOut();
+  const email = useAccountEmail();
   return (
     <MemberGate>
       {({ team, member }) => (
@@ -35,6 +36,12 @@ function SettingsPage() {
               <dl>
                 <dt className="text-sm text-muted-foreground">Name</dt>
                 <dd className="wrap-anywhere">{member.displayName}</dd>
+                {email && (
+                  <>
+                    <dt className="mt-2 text-sm text-muted-foreground">Email</dt>
+                    <dd className="wrap-anywhere">{email}</dd>
+                  </>
+                )}
                 <dt className="mt-2 text-sm text-muted-foreground">Role</dt>
                 <dd className="capitalize">{member.role}</dd>
               </dl>

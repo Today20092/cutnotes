@@ -249,12 +249,14 @@ test("a Video through upload, processing, and ready", async ({ page }, testInfo)
   await expect(page.getByRole("region", { name: "Video player" })).toBeVisible();
   await expectAccessible(page, "ready review");
   await page.goBack();
-  await page.getByRole("button", { name: "Delete Main cut", exact: true }).click();
+  await page.getByRole("button", { name: "More actions for Main cut" }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
   await expectAccessible(page, "confirm Video deletion");
   await page.getByRole("button", { name: "Keep Video" }).click();
   const failDelete = callTo("deleteVideo");
   await page.route(failDelete, (route) => route.abort());
-  await page.getByRole("button", { name: "Delete Main cut", exact: true }).click();
+  await page.getByRole("button", { name: "More actions for Main cut" }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
   await page.getByRole("button", { name: "Delete Main cut permanently" }).click();
   await expect(page.getByRole("alert")).toContainText("Could not delete");
   await expectAccessible(page, "failed Video deletion");
@@ -266,10 +268,11 @@ test("a Video through upload, processing, and ready", async ({ page }, testInfo)
   await expect(page.getByText("Main cut")).toBeVisible();
   await expect(page.getByRole("button", { name: "Upload" })).toHaveCount(0);
   await expectAccessible(page, "Project as a Viewer");
-  await expect(page.getByRole("button", { name: "Delete Main cut", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "More actions for Main cut" })).toHaveCount(0);
   await signInAs(page, owner);
   await page.reload();
-  await page.getByRole("button", { name: "Delete Main cut", exact: true }).click();
+  await page.getByRole("button", { name: "More actions for Main cut" }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
   await page.getByRole("button", { name: "Delete Main cut permanently" }).click();
   await expect(page.getByText(/No Videos yet/)).toBeVisible();
   await expectAccessible(page, "Video deleted");
@@ -431,6 +434,7 @@ test("the Invites and accept-Invite screens", async ({ page, browser }, testInfo
     .getByRole("button", { name: /^Revoke/ })
     .first()
     .click();
+  await page.getByRole("button", { name: / now$/ }).click();
   await expect(page.getByRole("heading", { name: "Pending Invites" })).toBeFocused();
   const revoked = await openAs(
     browser,
@@ -474,7 +478,7 @@ test("Share Links sheet and Guest pages", async ({ page, browser }, testInfo) =>
   await guest.getByRole("button", { name: "Continue" }).click();
   await expect(guest.getByRole("heading", { name: "Playback cut" })).toBeVisible();
   await expect(guest.getByText(/Resolve Comment/)).toHaveCount(0);
-  await guest.getByLabel("Comment text").fill("Too dark here");
+  await guest.getByLabel(/^Add a Comment/).fill("Too dark here");
   await guest.getByRole("button", { name: "Send Comment" }).click();
   await expect(guest.getByText("Dana · Guest")).toBeVisible();
   await expectAccessible(guest, "Guest review");

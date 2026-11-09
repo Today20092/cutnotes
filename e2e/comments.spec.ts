@@ -233,7 +233,7 @@ test("ready Revision history is one tap away and keeps feedback on its own cut",
   await expect(page.getByRole("listitem").filter({ hasText: "Current cut feedback" })).toHaveCount(
     0,
   );
-  await page.getByLabel("Comment text", { exact: true }).fill("Still on the older cut");
+  await page.getByLabel(/^Add a Comment/).fill("Still on the older cut");
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
   await expect(
     page.getByRole("listitem").filter({ hasText: "Still on the older cut" }),
@@ -306,13 +306,13 @@ test("a Comment appears before the answer; a failed send keeps its text for retr
     await held;
     await route.abort();
   });
-  await page.getByLabel("Comment text", { exact: true }).fill("Keep this feedback");
+  await page.getByLabel(/^Add a Comment/).fill("Keep this feedback");
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
   await expect(page.getByRole("listitem").filter({ hasText: "Keep this feedback" })).toBeVisible();
   release();
   await expect(page.getByRole("alert")).toContainText("Could not send");
   await expect(page.getByRole("listitem").filter({ hasText: "Keep this feedback" })).toHaveCount(0);
-  await expect(page.getByLabel("Comment text", { exact: true })).toHaveValue("Keep this feedback");
+  await expect(page.getByLabel(/^Add a Comment/)).toHaveValue("Keep this feedback");
   await page.unroute(createCall);
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
   await expect(page.getByRole("listitem").filter({ hasText: "Keep this feedback" })).toHaveCount(1);
@@ -332,7 +332,7 @@ test("Comments seek, edit, Resolve and delete with sensible focus and accessible
     video.currentTime = 3;
   });
   await expect(page.getByText("At 0:03", { exact: true })).toBeVisible();
-  await page.getByLabel("Comment text", { exact: true }).fill("Change this frame");
+  await page.getByLabel(/^Add a Comment/).fill("Change this frame");
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
   const row = page.getByRole("listitem").filter({ hasText: "Change this frame" });
   await expect(row.getByRole("button", { name: /^Edit Comment/ })).toBeEnabled();
@@ -396,7 +396,7 @@ test("Viewers can write and manage their own Comments without Resolve controls",
   await expect(page.getByRole("button", { name: "Upload new Revision", exact: true })).toHaveCount(
     0,
   );
-  await page.getByLabel("Comment text", { exact: true }).fill("Viewer feedback");
+  await page.getByLabel(/^Add a Comment/).fill("Viewer feedback");
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
   await expect(page.getByRole("button", { name: /^Edit Comment/ })).toBeEnabled();
   await expect(page.getByRole("button", { name: /^Delete Comment/ })).toBeVisible();
@@ -452,7 +452,7 @@ test("retrying after a lost answer reuses the ID and never duplicates the optimi
       await route.continue();
     }
   });
-  await page.getByLabel("Comment text", { exact: true }).fill("Lost answer");
+  await page.getByLabel(/^Add a Comment/).fill("Lost answer");
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("Could not send");
   const row = page.getByRole("listitem").filter({ hasText: "Lost answer" });
@@ -489,8 +489,8 @@ test("rapid writes are serialized per Video and only the last pending write refr
     await (sent === 1 ? first : second);
     await route.continue();
   });
-  await page.getByLabel("Comment text", { exact: true }).fill("Rapid submission");
-  await page.getByLabel("Comment text", { exact: true }).evaluate((field: HTMLTextAreaElement) => {
+  await page.getByLabel(/^Add a Comment/).fill("Rapid submission");
+  await page.getByLabel(/^Add a Comment/).evaluate((field: HTMLTextAreaElement) => {
     field.form!.requestSubmit();
     field.form!.requestSubmit();
   });
@@ -528,7 +528,7 @@ test("a Guest goes from the welcome screen to a saved Comment, then sees a plain
   await guest.goto(`/share/${shareTokenFor(videoId)}`);
   await guest.getByLabel("Your name").fill("  Dana  ");
   await guest.getByRole("button", { name: "Continue" }).click();
-  const text = guest.getByLabel("Comment text");
+  const text = guest.getByLabel(/^Add a Comment/);
   const send = async (body: string) => {
     await text.fill(body);
     await guest.getByRole("button", { name: "Send Comment" }).click();

@@ -121,7 +121,7 @@ test("Comments stay reachable at narrow widths, short heights and enlarged text"
       "*{line-height:1.5!important;letter-spacing:.12em!important;word-spacing:.16em!important}p{margin-bottom:2em!important}",
     ]) {
       const style = await page.addStyleTag({ content: css });
-      const field = page.getByLabel("Comment text", { exact: true });
+      const field = page.getByLabel(/^Add a Comment/);
       await field.focus();
       await field.scrollIntoViewIfNeeded();
       const overflow = await page.evaluate(() => ({
@@ -204,7 +204,7 @@ test("Comment writes are announced, name their Comment, and keep focus", async (
   const { open } = await openReview(page, testInfo);
   await open();
   const status = page.locator("section[aria-labelledby=comments-heading] [role=status]");
-  await page.getByLabel("Comment text", { exact: true }).fill("Announce me");
+  await page.getByLabel(/^Add a Comment/).fill("Announce me");
   await page.getByRole("button", { name: "Send Comment" }).click();
   await expect(status).toHaveText("Comment added at 0:00");
   expect(await focusIsLost(page)).toBe(false);
@@ -225,7 +225,8 @@ test("destructive confirmations retain a contrasting keyboard focus indicator", 
 }, testInfo) => {
   const { videoId } = await openReview(page, testInfo);
   await page.goto(`/projects/${videoId}`);
-  await page.getByRole("button", { name: "Delete Playback cut", exact: true }).click();
+  await page.getByRole("button", { name: "More actions for Playback cut" }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
   const dialog = page.getByRole("dialog");
   const permanent = page.getByRole("button", { name: "Delete Playback cut permanently" });
   for (const colorScheme of ["light", "dark"] as const) {
@@ -258,9 +259,7 @@ test("destructive confirmations retain a contrasting keyboard focus indicator", 
         .toBe(true);
     }
   await page.keyboard.press("Escape");
-  await expect(
-    page.getByRole("button", { name: "Delete Playback cut", exact: true }),
-  ).toBeFocused();
+  await expect(page.getByRole("button", { name: "More actions for Playback cut" })).toBeFocused();
 });
 
 test("consecutive Comments at the same time produce a fresh status update", async ({
@@ -269,7 +268,7 @@ test("consecutive Comments at the same time produce a fresh status update", asyn
   const { open } = await openReview(page, testInfo);
   await open();
   const status = page.locator("section[aria-labelledby=comments-heading] [role=status]");
-  await page.getByLabel("Comment text", { exact: true }).fill("First");
+  await page.getByLabel(/^Add a Comment/).fill("First");
   await page.getByRole("button", { name: "Send Comment" }).click();
   await expect(status).toHaveText("Comment added at 0:00");
   let release = () => {};
@@ -283,7 +282,7 @@ test("consecutive Comments at the same time produce a fresh status update", asyn
       await route.continue();
     },
   );
-  await page.getByLabel("Comment text", { exact: true }).fill("Second");
+  await page.getByLabel(/^Add a Comment/).fill("Second");
   await page.getByRole("button", { name: "Send Comment" }).click();
   try {
     await expect(status).toHaveText("");
@@ -312,10 +311,7 @@ test("selection is visible without colour and the Comment field has a clear boun
     "text-decoration-line",
     "underline",
   );
-  await expect(page.getByLabel("Comment text", { exact: true })).toHaveAttribute(
-    "aria-describedby",
-    /.+/,
-  );
+  await expect(page.getByLabel(/^Add a Comment/)).toHaveAttribute("aria-describedby", /.+/);
   for (const colorScheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme });
     const measured = {
@@ -460,7 +456,7 @@ test("a Guest arriving from the welcome screen lands on the heading and hears th
   await guest.getByLabel("Your name").fill("Dana");
   await guest.getByLabel("Your name").press("Enter");
   await expect(guest.getByRole("heading", { level: 1, name: "Playback cut" })).toBeFocused();
-  await guest.getByLabel("Comment text").fill("Heard");
+  await guest.getByLabel(/^Add a Comment/).fill("Heard");
   await guest.getByRole("button", { name: "Send Comment" }).click();
   await expect(guest.locator("section[aria-labelledby=comments-heading] [role=status]")).toHaveText(
     "Comment added at 0:00",

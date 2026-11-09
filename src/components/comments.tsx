@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { canWrite } from "@/components/project-parts";
-import { useCommentWrite, type Comment, type ReviewPage } from "@/lib/review";
+import { activeCommentId } from "@/lib/comment-time";
+import {
+  COMMENT_UNDO_MS,
+  useCommentWrite,
+  useUndoableCommentDelete,
+  type Comment,
+  type ReviewPage,
+} from "@/lib/review";
+import { toastManager } from "@/components/ui/toast";
 import type { NewComment } from "@/server/comments";
 import type { Shape } from "@/lib/drawing";
 
@@ -146,11 +155,11 @@ export function CommentComposer({
       }}
     >
       <div className="flex items-baseline justify-between gap-2">
-        <label className="text-sm font-medium" htmlFor="comment-body">
-          Comment text
+        <label className="text-sm font-medium tabular-nums" htmlFor="comment-body">
+          Add a Comment at {timeLabel(timeMs)}
         </label>
-        <p id="comment-time" className="text-sm text-muted-foreground tabular-nums">
-          At {timeLabel(timeMs)}
+        <p id="comment-time" className="sr-only">
+          The Comment is attached to this moment in the Video.
         </p>
       </div>
       <Textarea
@@ -165,7 +174,7 @@ export function CommentComposer({
       />
       <div className="flex flex-wrap items-center justify-between gap-2">
         {drawingControls}
-        <Button type="submit" className="ml-auto min-h-11 px-4 sm:min-h-8" disabled={pending}>
+        <Button type="submit" className="ml-auto px-4" disabled={pending}>
           Send Comment
         </Button>
       </div>
@@ -195,6 +204,7 @@ export function Comments({
   drawingControls?: ReactNode;
 }) {
   const write = useCommentWrite(videoId, cacheRevisionId);
+  const deleteWithUndo = useUndoableCommentDelete(videoId, cacheRevisionId);
   const [resolved, setResolved] = useState(false);
   const [body, setBody] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
@@ -212,6 +222,31 @@ export function Comments({
   const revision = page.revision!;
   const readOnly = page.video?.completedAt !== null;
   const rows = page.comments.filter((comment) => (comment.resolvedAt !== null) === resolved);
+  const activeId = activeCommentId(rows, timeMs);
+  function announce(message: string) {
+    setStatus(message);
+    toastManager.add({ title: message });
+  }
+  function removeComment(comment: Comment) {
+    setFailure("");
+    const undo = deleteWithUndo(comment, target(comment.id), () =>
+      setFailure("Could not delete Comment. Try again."),
+    );
+    focusAfterRemoval();
+    setStatus("Comment deleted");
+    const toastId = toastManager.add({
+      title: "Comment deleted",
+      timeout: COMMENT_UNDO_MS,
+      actionProps: {
+        children: "Undo",
+        onClick: () => {
+          undo();
+          toastManager.close(toastId);
+          announce("Comment restored");
+        },
+      },
+    });
+  }
   const target = (id: string) => ({ id, videoId, revisionId: revision.id });
   function focusAfterRemoval() {
     requestAnimationFrame(() => tab.current?.focus());
@@ -259,14 +294,14 @@ export function Comments({
       setBody("");
       draft.current = null;
       sent?.();
-      setStatus(`Comment added at ${timeLabel(data.timecodeMs)}`);
+      announce(`Comment added at ${timeLabel(data.timecodeMs)}`);
       if (document.activeElement === document.body) composer.current?.focus(); // Send disables while pending, which can drop focus.
     } catch {
       setFailure("Could not send Comment. Your text is kept; try again.");
     }
   }
 
-  async function change(action: "delete" | "resolve" | "edit", comment: Comment) {
+  async function change(action: "resolve" | "edit", comment: Comment) {
     setFailure("");
     setStatus("");
     try {
@@ -274,19 +309,15 @@ export function Comments({
       const pending =
         action === "edit"
           ? write.mutateAsync({ action, data: { ...data, body: editedBody } })
-          : action === "resolve"
-            ? write.mutateAsync({ action, data: { ...data, resolved: !resolved } })
-            : write.mutateAsync({ action, data });
+          : write.mutateAsync({ action, data: { ...data, resolved: !resolved } });
       if (action !== "edit") focusAfterRemoval();
       await pending;
-      setStatus(
+      announce(
         action === "edit"
           ? "Comment edited"
-          : action === "delete"
-            ? "Comment deleted"
-            : resolved
-              ? "Comment moved to To do"
-              : "Comment resolved",
+          : resolved
+            ? "Comment moved to To do"
+            : "Comment resolved",
       );
       if (action === "edit") {
         setEditing(null);
@@ -341,7 +372,13 @@ export function Comments({
       ) : (
         <ul className="divide-y" aria-label="Comments">
           {rows.map((comment) => (
-            <li key={comment.id} className="py-3 wrap-anywhere">
+            <li
+              key={comment.id}
+              className={cn(
+                "py-3 wrap-anywhere",
+                comment.id === activeId && "-mx-2 rounded-lg bg-muted/60 px-2",
+              )}
+            >
               <p className="text-sm text-muted-foreground">
                 {comment.authorName}
                 {comment.shareLinkId && " · Guest"}
@@ -409,7 +446,6 @@ export function Comments({
                   {!readOnly && comment.memberId === page.member.id && (
                     <Button
                       variant="ghost"
-                      className="min-h-11 sm:min-h-8"
                       aria-label={`Edit Comment by ${comment.authorName} at ${timeLabel(comment.timecodeMs)}`}
                       disabled={write.isPending}
                       onClick={() => {
@@ -424,10 +460,9 @@ export function Comments({
                     (comment.memberId === page.member.id || page.member.role === "owner") && (
                       <Button
                         variant="ghost"
-                        className="min-h-11 sm:min-h-8"
                         aria-label={`Delete Comment by ${comment.authorName} at ${timeLabel(comment.timecodeMs)}`}
                         disabled={write.isPending}
-                        onClick={() => void change("delete", comment)}
+                        onClick={() => removeComment(comment)}
                       >
                         Delete
                       </Button>

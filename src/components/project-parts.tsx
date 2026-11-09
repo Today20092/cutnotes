@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { Fragment } from "react";
+import { toastManager } from "@/components/ui/toast";
 import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
@@ -103,8 +104,12 @@ export function ProjectNameSheet({
   fieldLabel = "Project name",
   emptyMessage = "Enter a name for the Project.",
   onSubmit,
+  startOpen = false,
+  onClosed,
 }: {
-  trigger: ReactElement;
+  trigger?: ReactElement;
+  startOpen?: boolean;
+  onClosed?: () => void;
   title: string;
   submitLabel: string;
   initialName?: string;
@@ -113,7 +118,7 @@ export function ProjectNameSheet({
   onSubmit: (name: string) => void;
 }) {
   const isMobile = useIsMobile();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const [name, setName] = useState(initialName);
   const [error, setError] = useState("");
   const input = useRef<HTMLInputElement>(null);
@@ -125,7 +130,7 @@ export function ProjectNameSheet({
     if (next) {
       setName(initialName);
       setError("");
-    }
+    } else onClosed?.();
   }
 
   function submit(event: FormEvent) {
@@ -137,12 +142,13 @@ export function ProjectNameSheet({
       return;
     }
     setOpen(false);
+    onClosed?.();
     onSubmit(trimmed);
   }
 
   return (
     <Sheet open={open} onOpenChange={changeOpen}>
-      <SheetTrigger render={trigger} />
+      {trigger && <SheetTrigger render={trigger} />}
       <SheetContent side={isMobile ? "bottom" : "right"}>
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
@@ -202,8 +208,73 @@ export function RenameProjectButton({
   );
 }
 
+/** Shows a confirmation that everyone can see; the status region still speaks it. */
+export function useStatusToast(status: string) {
+  useEffect(() => {
+    if (status) toastManager.add({ title: status });
+  }, [status]);
+}
+
+export const unreadFirst = <Row extends { unread: boolean }>(videos: Row[]) =>
+  [...videos].sort((a, b) => Number(b.unread) - Number(a.unread));
+
+/** A two-step control for an action that cannot be undone. */
+export function ConfirmButton({
+  label,
+  text,
+  disabled,
+  onConfirm,
+}: {
+  label: string;
+  text: string;
+  disabled?: boolean;
+  onConfirm: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const first = useRef<HTMLButtonElement>(null);
+  const confirm = useRef<HTMLButtonElement>(null);
+  const was = useRef(false);
+  // The control that had focus is replaced, so focus moves with the swap.
+  useEffect(() => {
+    if (confirming) confirm.current?.focus();
+    else if (was.current) first.current?.focus();
+    was.current = confirming;
+  }, [confirming]);
+  if (!confirming)
+    return (
+      <Button
+        ref={first}
+        type="button"
+        variant="ghost"
+        aria-label={label}
+        disabled={disabled}
+        onClick={() => setConfirming(true)}
+      >
+        {text}
+      </Button>
+    );
+  return (
+    <span className="flex flex-wrap gap-2">
+      <Button
+        ref={confirm}
+        type="button"
+        variant="destructive"
+        aria-label={`${label} now`}
+        disabled={disabled}
+        onClick={onConfirm}
+      >
+        {text}?
+      </Button>
+      <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>
+        Keep
+      </Button>
+    </span>
+  );
+}
+
 /** Spoken confirmation of a write, and a visible message when one fails. */
 export function WriteFeedback({ status, failure }: { status: string; failure: string }) {
+  useStatusToast(status);
   return (
     <>
       <p role="status" className="sr-only">
@@ -284,11 +355,18 @@ export function VideoCard({
     video.latestRevision === null ? "No Revision yet" : `Revision ${video.latestRevision}`;
   return (
     <>
-      <Poster key={video.posterUrl} url={video.posterUrl} />
-      <div className="mt-2 flex items-start justify-between gap-2">
+      <div className="w-28 shrink-0 sm:w-full">
+        <Poster key={video.posterUrl} url={video.posterUrl} />
+      </div>
+      <div className="flex min-w-0 flex-1 items-start justify-between gap-2 sm:mt-2">
         <div className="min-w-0 wrap-anywhere">
           <div className="font-medium">{video.title}</div>
-          {video.unread && <span className="text-sm font-semibold">Unread activity</span>}
+          {video.unread && (
+            <span className="flex items-center gap-1.5 text-sm font-semibold">
+              <span aria-hidden className="size-2 rounded-full bg-primary" />
+              Unread activity
+            </span>
+          )}
           <div className="text-sm text-muted-foreground">
             {video.projectName} · {revision} · {formatUpdated(video.updatedAt)}
           </div>

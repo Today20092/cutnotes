@@ -13,6 +13,13 @@ export function useAuthStatus() {
   return { isLoaded: true, isSignedIn: token() !== null };
 }
 
+export function useAccountEmail() {
+  const payload = token()?.split(".")[1];
+  if (!payload) return undefined;
+  return (JSON.parse(atob(payload.replaceAll("-", "+").replaceAll("_", "/"))) as { email?: string })
+    .email;
+}
+
 export function useSignOut() {
   return () => {
     localStorage.removeItem("seam2-session-token");

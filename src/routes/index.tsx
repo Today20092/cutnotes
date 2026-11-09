@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus, Upload } from "lucide-react";
+import { FolderOpen, Plus, Upload } from "lucide-react";
 import { useState } from "react";
 import { MemberScreen } from "@/components/member-screen";
 import {
   canWrite,
+  unreadFirst,
   PageHeading,
   ProjectNameSheet,
   RenameProjectButton,
@@ -15,6 +16,14 @@ import { UploadSheet } from "@/components/upload-parts";
 import { VideoTile } from "@/components/video-tile";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import {
   isPendingProject,
   projectListQuery,
@@ -62,21 +71,25 @@ function ProjectListView({ list }: { list: ProjectList }) {
     );
   }
 
+  const newProjectSheet = (
+    <ProjectNameSheet
+      title="New project"
+      submitLabel="Create Project"
+      onSubmit={create}
+      trigger={
+        <Button variant="secondary">
+          <Plus aria-hidden /> New project
+        </Button>
+      }
+    />
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeading title="Projects">
         {writable && (
           <>
-            <ProjectNameSheet
-              title="New project"
-              submitLabel="Create Project"
-              onSubmit={create}
-              trigger={
-                <Button variant="secondary">
-                  <Plus aria-hidden /> New project
-                </Button>
-              }
-            />
+            {newProjectSheet}
             <UploadSheet
               destination={{
                 kind: "new",
@@ -96,12 +109,20 @@ function ProjectListView({ list }: { list: ProjectList }) {
       <WriteFeedback status={status} failure={failure} />
 
       {list.projects.length === 0 ? (
-        <p className="text-muted-foreground">
-          No Projects yet.{" "}
-          {writable
-            ? "Use New project to create the first one."
-            : "An Owner or Editor will create the first one."}
-        </p>
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <FolderOpen aria-hidden />
+            </EmptyMedia>
+            <EmptyTitle>No Projects yet</EmptyTitle>
+            <EmptyDescription>
+              {writable
+                ? "Create a Project to start a review."
+                : "An Owner or Editor will create the first one."}
+            </EmptyDescription>
+          </EmptyHeader>
+          {writable && <EmptyContent>{newProjectSheet}</EmptyContent>}
+        </Empty>
       ) : (
         <section aria-labelledby="projects-heading" className="flex flex-col gap-1">
           <h2 id="projects-heading" className="text-lg font-semibold">
@@ -149,7 +170,7 @@ function ProjectListView({ list }: { list: ProjectList }) {
             Videos
           </h2>
           <ul className={videoGridClass}>
-            {list.videos.map((video) => (
+            {unreadFirst(list.videos).map((video) => (
               <li key={video.id} className="min-w-0">
                 <VideoTile
                   video={video}

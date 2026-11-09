@@ -1,4 +1,5 @@
 import { queryOptions, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import {
   createComment,
   deleteComment,
@@ -93,4 +94,45 @@ export function useCommentWrite(videoId: string, revisionId?: string) {
     },
     onSettled: () => refreshAfterVideoWrite(client, videoId),
   });
+}
+
+export const COMMENT_UNDO_MS = 5000;
+
+/** Hides a Comment now and deletes it after the Undo window; leaving the page deletes at once. */
+export function useUndoableCommentDelete(videoId: string, revisionId?: string) {
+  const client = useQueryClient();
+  const write = useCommentWrite(videoId, revisionId);
+  const queryKey = reviewQuery(videoId, undefined, revisionId).queryKey;
+  const waiting = useRef(new Map<string, () => void>());
+  useEffect(() => {
+    const commits = waiting.current;
+    return () => commits.forEach((commit) => commit());
+  }, []);
+  return (comment: Comment, data: CommentTarget, failed: () => void) => {
+    client.setQueryData(
+      queryKey,
+      (page) => page && { ...page, comments: page.comments.filter((row) => row.id !== comment.id) },
+    );
+    const commit = () => {
+      clearTimeout(timer);
+      waiting.current.delete(comment.id);
+      write.mutateAsync({ action: "delete", data }).catch(failed);
+    };
+    const timer = setTimeout(commit, COMMENT_UNDO_MS);
+    waiting.current.set(comment.id, commit);
+    return () => {
+      clearTimeout(timer);
+      waiting.current.delete(comment.id);
+      client.setQueryData(
+        queryKey,
+        (page) =>
+          page && {
+            ...page,
+            comments: [...page.comments, comment].sort(
+              (a, b) => a.timecodeMs - b.timecodeMs || a.createdAt - b.createdAt,
+            ),
+          },
+      );
+    };
+  };
 }

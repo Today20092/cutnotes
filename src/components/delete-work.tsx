@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -17,30 +16,30 @@ export function DeleteWork({
   id,
   name,
   onDeleted,
-  icon = false,
+  startOpen = false,
+  onClosed,
 }: {
   kind: "Project" | "Video";
   id: string;
   name: string;
   onDeleted?: () => void;
-  icon?: boolean;
+  startOpen?: boolean;
+  onClosed?: () => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
+  function changeOpen(next: boolean) {
+    setOpen(next);
+    if (!next) onClosed?.();
+  }
   const remove = useDeleteWork(kind, id);
   const mobile = useIsMobile();
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger
-        render={
-          <Button
-            variant={icon ? "ghost" : "destructive"}
-            size={icon ? "icon" : "default"}
-            aria-label={`Delete ${name}`}
-          />
-        }
-      >
-        {icon ? <Trash2 aria-hidden /> : "Delete"}
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={changeOpen}>
+      {!startOpen && (
+        <SheetTrigger render={<Button variant="destructive" aria-label={`Delete ${name}`} />}>
+          Delete
+        </SheetTrigger>
+      )}
       <SheetContent side={mobile ? "bottom" : "right"}>
         <SheetHeader>
           <SheetTitle>Delete {kind}?</SheetTitle>
@@ -57,7 +56,7 @@ export function DeleteWork({
             onClick={() => {
               remove.mutate(undefined, {
                 onSuccess: () => {
-                  setOpen(false);
+                  changeOpen(false);
                   onDeleted?.();
                 },
               });

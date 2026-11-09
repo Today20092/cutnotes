@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Radio, RadioGroup } from "@/components/ui/radio-group";
+import { ConfirmButton, useStatusToast } from "@/components/project-parts";
 import type { Role } from "@/server/db/schema";
 import { createInvite, listInvites, revokeInvite, type PendingInvite } from "@/server/invites";
 
@@ -25,6 +27,7 @@ export function InvitesManager() {
   const [link, setLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [status, setStatus] = useState("");
+  useStatusToast(status);
   const linkHeading = useRef<HTMLHeadingElement>(null);
   const pendingHeading = useRef<HTMLHeadingElement>(null);
 
@@ -91,25 +94,25 @@ export function InvitesManager() {
       >
         <fieldset>
           <legend className="mb-2 font-medium">Invite someone as</legend>
-          {roleChoices.map((choice) => (
-            // oxlint-disable-next-line jsx-a11y/label-has-associated-control -- The label text is in nested elements, which this rule cannot read.
-            <label
-              key={choice.role}
-              className="flex min-h-11 cursor-pointer items-center gap-3 py-2"
-            >
-              <input
-                type="radio"
-                name="role"
-                className="size-4 accent-foreground"
-                checked={role === choice.role}
-                onChange={() => setRole(choice.role)}
-              />
-              <span>
-                <span className="block font-medium">{choice.label}</span>
-                <span className="block text-sm text-muted-foreground">{choice.description}</span>
-              </span>
-            </label>
-          ))}
+          <RadioGroup value={role} onValueChange={(next) => setRole(next as Role)}>
+            {roleChoices.map((choice) => (
+              <label
+                key={choice.role}
+                htmlFor={`invite-role-${choice.role}`}
+                className="flex min-h-11 cursor-pointer items-center gap-3 py-2"
+              >
+                <Radio
+                  id={`invite-role-${choice.role}`}
+                  value={choice.role}
+                  aria-labelledby={`role-${choice.role}`}
+                />
+                <span id={`role-${choice.role}`}>
+                  <span className="block font-medium">{choice.label}</span>
+                  <span className="block text-sm text-muted-foreground">{choice.description}</span>
+                </span>
+              </label>
+            ))}
+          </RadioGroup>
         </fieldset>
         <Button type="submit" disabled={create.isPending}>
           Create Invite
@@ -175,14 +178,11 @@ export function InvitesManager() {
                     Expires {expiryDate(invite.expiresAt)}
                   </span>
                 </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  aria-label={`Revoke ${roleLabel(invite.role)} Invite, expires ${expiryDate(invite.expiresAt)}`}
-                  onClick={() => revoke.mutate(invite.id)}
-                >
-                  Revoke
-                </Button>
+                <ConfirmButton
+                  label={`Revoke ${roleLabel(invite.role)} Invite, expires ${expiryDate(invite.expiresAt)}`}
+                  text="Revoke"
+                  onConfirm={() => revoke.mutate(invite.id)}
+                />
               </li>
             ))}
           </ul>

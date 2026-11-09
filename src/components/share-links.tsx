@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ConfirmButton, useStatusToast } from "@/components/project-parts";
+import { Radio, RadioGroup } from "@/components/ui/radio-group";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -37,6 +39,9 @@ function ShareLinks({ videoId }: { videoId: string }) {
   const [name, setName] = useState("");
   const [permission, setPermission] = useState<SharePermission>("comment");
   const [status, setStatus] = useState("");
+  const [createdId, setCreatedId] = useState<string | null>(null);
+  const copyNew = useRef<HTMLButtonElement>(null);
+  useStatusToast(status);
   const links = useQuery({ queryKey, queryFn: () => listShareLinks({ data: { videoId } }) });
   const refresh = () => client.invalidateQueries({ queryKey });
   const create = useMutation({
@@ -44,6 +49,7 @@ function ShareLinks({ videoId }: { videoId: string }) {
     onSuccess: (link) => {
       setName("");
       setStatus(`Share Link ${link.name} created`);
+      setCreatedId(link.id);
       return refresh();
     },
   });
@@ -54,6 +60,11 @@ function ShareLinks({ videoId }: { videoId: string }) {
       return refresh();
     },
   });
+  // The Copy button for a new link appears only after the list refreshes.
+  const newLinkListed = links.data?.links.some((link) => link.id === createdId) ?? false;
+  useEffect(() => {
+    if (newLinkListed) copyNew.current?.focus();
+  }, [newLinkListed, createdId]);
   const urlOf = (token: string) => `${location.origin}/share/${token}`;
   async function copy(token: string) {
     try {
@@ -66,7 +77,7 @@ function ShareLinks({ videoId }: { videoId: string }) {
 
   return (
     <div className="space-y-6 p-4">
-      <p role="status" className="min-h-6 text-sm">
+      <p role="status" className="sr-only">
         {status}
       </p>
       <form
@@ -90,22 +101,22 @@ function ShareLinks({ videoId }: { videoId: string }) {
         </div>
         <fieldset className="space-y-1">
           <legend className="text-sm font-medium">Permission</legend>
-          {(
-            [
-              ["comment", "Can comment and draw"],
-              ["view", "View only"],
-            ] as const
-          ).map(([value, label]) => (
-            <label key={value} className="flex min-h-11 items-center gap-2">
-              <input
-                type="radio"
-                name="share-permission"
-                checked={permission === value}
-                onChange={() => setPermission(value)}
-              />
-              {label}
-            </label>
-          ))}
+          <RadioGroup
+            value={permission}
+            onValueChange={(next) => setPermission(next as SharePermission)}
+          >
+            {(
+              [
+                ["comment", "Can comment and draw"],
+                ["view", "View only"],
+              ] as const
+            ).map(([value, label]) => (
+              <label key={value} className="flex min-h-11 items-center gap-2">
+                <Radio value={value} aria-label={label} />
+                {label}
+              </label>
+            ))}
+          </RadioGroup>
         </fieldset>
         <Button type="submit" disabled={create.isPending}>
           Create Share Link
@@ -146,22 +157,20 @@ function ShareLinks({ videoId }: { videoId: string }) {
                   Send on WhatsApp
                 </a>
                 <Button
+                  ref={link.id === createdId ? copyNew : undefined}
                   type="button"
-                  variant="secondary"
+                  variant={link.id === createdId ? "default" : "secondary"}
                   aria-label={`Copy link for ${link.name}`}
                   onClick={() => void copy(link.token)}
                 >
                   Copy link
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  aria-label={`Revoke link for ${link.name}`}
+                <ConfirmButton
+                  label={`Revoke link for ${link.name}`}
+                  text="Revoke"
                   disabled={revoke.isPending}
-                  onClick={() => revoke.mutate(link.id)}
-                >
-                  Revoke
-                </Button>
+                  onConfirm={() => revoke.mutate(link.id)}
+                />
               </div>
             </li>
           ))}

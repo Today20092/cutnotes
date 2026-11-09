@@ -96,7 +96,9 @@ test("an Editor sees delete only for Videos they created", async ({ page }, test
   await signInAs(page, editor);
   await page.reload();
   await expect(page.getByText("Owner cut", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Delete Owner cut", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "More actions for Owner cut" }).click();
+  await expect(page.getByRole("menuitem", { name: "Delete" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
   await expect(
     page.getByRole("button", { name: `Delete ${projectName}`, exact: true }),
   ).toHaveCount(0);
@@ -104,9 +106,10 @@ test("an Editor sees delete only for Videos they created", async ({ page }, test
   await expect(
     page.getByRole("region", { name: "Uploads" }).getByText(/being processed/),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Delete Editor cut", exact: true }).click();
+  await page.getByRole("button", { name: "More actions for Editor cut" }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
   await page.getByRole("button", { name: "Delete Editor cut permanently" }).click();
-  await expect(page.getByRole("button", { name: "Delete Editor cut", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "More actions for Editor cut" })).toHaveCount(0);
   await page.reload();
   await expect(page.getByText("Editor cut", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Owner cut", { exact: true })).toBeVisible();
@@ -359,7 +362,8 @@ test("a Status change and a rename appear before the server answers", async ({
   await expect(status).toHaveValue("rework");
   gate.release();
 
-  await page.getByRole("button", { name: "Rename Rough cut" }).click();
+  await page.getByRole("button", { name: "More actions for Rough cut" }).click();
+  await page.getByRole("menuitem", { name: "Rename" }).click();
   await page.getByLabel("Video title").fill("Fine cut");
   await page.getByRole("button", { name: "Save title" }).click();
   await expect(page.getByLabel("Status of Fine cut")).toHaveValue("rework");
@@ -404,7 +408,8 @@ test("a failed Status write preserves a concurrent optimistic rename", async ({
     await route.continue();
   });
   await page.getByLabel("Status of Original cut").selectOption("done");
-  await page.getByRole("button", { name: "Rename Original cut" }).click();
+  await page.getByRole("button", { name: "More actions for Original cut" }).click();
+  await page.getByRole("menuitem", { name: "Rename" }).click();
   await page.getByLabel("Video title").fill("Kept cut");
   await page.getByRole("button", { name: "Save title" }).click();
   await expect(page.getByLabel("Status of Kept cut")).toHaveValue("done");

@@ -1,4 +1,4 @@
-import { Pencil } from "lucide-react";
+import { Eraser, MoveUpRight, Pencil, Square, Undo2, Pen } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { drawingColors, readDrawing, validDrawing, type Shape, type Tool } from "@/lib/drawing";
@@ -58,7 +58,6 @@ export function useDrawingControls({
         <Button
           ref={drawButton}
           variant={active ? "default" : "ghost"}
-          className="min-h-11 sm:min-h-8"
           aria-pressed={active}
           onClick={() => {
             if (active) {
@@ -85,31 +84,53 @@ export function useDrawingControls({
                 aria-pressed={tool === name}
                 onClick={() => setTool(name)}
               >
-                <span aria-hidden="true">{tool === name ? "✓ " : ""}</span>
-                {title(name)}
+                <span aria-hidden="true">{tool === name ? "✓" : ""}</span>
+                {name === "pen" ? (
+                  <Pen aria-hidden />
+                ) : name === "arrow" ? (
+                  <MoveUpRight aria-hidden />
+                ) : (
+                  <Square aria-hidden />
+                )}
               </Button>
             ))}
             {drawingColors.map((value, i) => (
               <Button
                 key={value}
-                variant={color === value ? "default" : "outline"}
+                variant="ghost"
+                size="icon"
                 aria-label={labels[i]}
                 aria-pressed={color === value}
                 onClick={() => setColor(value)}
               >
-                <span aria-hidden="true">{color === value ? "✓ " : ""}</span>
-                {labels[i]}
+                <span
+                  aria-hidden="true"
+                  className="flex size-6 items-center justify-center rounded-full border border-foreground/40 text-xs text-black"
+                  style={{ backgroundColor: value }}
+                >
+                  {color === value ? "✓" : ""}
+                </span>
               </Button>
             ))}
             <Button
               variant="ghost"
+              size="icon"
+              aria-label="Undo Drawing"
+              title="Undo Drawing"
               disabled={!drawing.length}
               onClick={() => remove(drawing.slice(0, -1))}
             >
-              Undo Drawing
+              <Undo2 aria-hidden />
             </Button>
-            <Button variant="ghost" disabled={!drawing.length} onClick={() => remove([])}>
-              Clear Drawing
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Clear Drawing"
+              title="Clear Drawing"
+              disabled={!drawing.length}
+              onClick={() => remove([])}
+            >
+              <Eraser aria-hidden />
             </Button>
             <p className="w-full text-sm text-muted-foreground">
               Draw on the picture, or add a Comment at this moment.

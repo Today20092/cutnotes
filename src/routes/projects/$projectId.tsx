@@ -1,12 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { CompleteBanner, CompleteProject } from "@/components/complete-project";
 import { DeleteWork } from "@/components/delete-work";
-import { ChevronLeft, Upload } from "lucide-react";
+import { ChevronLeft, Clapperboard, Upload } from "lucide-react";
 import { useState } from "react";
 import { MemberScreen } from "@/components/member-screen";
 import {
   backLinkClass,
   canWrite,
+  unreadFirst,
   PageBreadcrumb,
   PageHeading,
   RenameProjectButton,
@@ -17,6 +18,14 @@ import {
 import { UploadSheet } from "@/components/upload-parts";
 import { VideoTile } from "@/components/video-tile";
 import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import {
   projectQuery,
   useRenameProject,
@@ -102,6 +111,20 @@ function ProjectView({ page }: { page: ProjectPage }) {
     );
   }
 
+  const uploadSheet = (
+    <UploadSheet
+      destination={{
+        kind: "new",
+        projects: [{ id: project.id, name: project.name }],
+      }}
+      trigger={
+        <Button>
+          <Upload aria-hidden /> Upload
+        </Button>
+      }
+    />
+  );
+
   return (
     <div className="flex flex-col gap-4">
       <PageBreadcrumb
@@ -109,19 +132,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
         current={project.name}
       />
       <PageHeading title={project.name}>
-        {writable && project.completedAt === null && (
-          <UploadSheet
-            destination={{
-              kind: "new",
-              projects: [{ id: project.id, name: project.name }],
-            }}
-            trigger={
-              <Button>
-                <Upload aria-hidden /> Upload
-              </Button>
-            }
-          />
-        )}
+        {writable && project.completedAt === null && uploadSheet}
       </PageHeading>
       <WriteFeedback status={status} failure={failure} />
       {project.deleteAfter !== null && (
@@ -141,15 +152,23 @@ function ProjectView({ page }: { page: ProjectPage }) {
         />
       )}
       {videos.length === 0 ? (
-        <p className="text-muted-foreground">
-          No Videos yet.{" "}
-          {writable
-            ? "Upload the first cut to start the review."
-            : "An Owner or Editor will upload the first cut here."}
-        </p>
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Clapperboard aria-hidden />
+            </EmptyMedia>
+            <EmptyTitle>No Videos yet</EmptyTitle>
+            <EmptyDescription>
+              {writable
+                ? "Upload the first cut to start the review."
+                : "An Owner or Editor will upload the first cut here."}
+            </EmptyDescription>
+          </EmptyHeader>
+          {writable && project.completedAt === null && <EmptyContent>{uploadSheet}</EmptyContent>}
+        </Empty>
       ) : (
         <ul className={videoGridClass}>
-          {videos.map((video) => (
+          {unreadFirst(videos).map((video) => (
             <li key={video.id} className="min-w-0">
               <VideoTile
                 video={video}

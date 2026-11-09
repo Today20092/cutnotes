@@ -189,19 +189,19 @@ export function VideoPlayer({ videoId, revisionId, frameRate, playback, seek, ti
   }
 
   return (
-    <div ref={rootRef} role="region" aria-label="Video player" className="rounded-lg bg-black p-2 text-white" style={{ colorScheme: "dark" }}>
+    <div ref={rootRef} role="region" aria-label="Video player" className="group/player rounded-lg bg-black p-2 text-white [--ring:white]" style={{ colorScheme: "dark" }}>
       <div className="relative">
       <video ref={videoRef} controls={!drawing?.active} controlsList="nodownload" crossOrigin="anonymous" playsInline
-        aria-label="Revision playback" poster={poster} className="max-h-[50dvh] w-full bg-black"
+        aria-label="Revision playback" poster={poster} className="max-h-[50dvh] w-full bg-black group-focus-within/player:outline-2"
         style={{ maxHeight: isFullscreen ? `calc(100dvh - ${timelineMarkers ? 11 : 8}rem)` : undefined }} />
       {drawing && <DrawingOverlay key={String(drawing.active)} {...drawing} videoRef={videoRef} />}
       </div>
       <Timeline videoRef={videoRef} storyboardUrl={storyboardUrl} frameRate={frameRate} onSeek={() => shuttleRef.current?.pause()} />
       {timelineMarkers}
       <div className="flex flex-wrap gap-2 pt-2">
-        <button className="min-h-11 rounded border border-white px-3 focus-visible:outline-2" onClick={() => step(-1)}>Previous frame</button>
-        <button className="min-h-11 rounded border border-white px-3 focus-visible:outline-2" onClick={() => step(1)}>Next frame</button>
-        <button className="min-h-11 rounded border border-white px-3 focus-visible:outline-2" aria-pressed={isFullscreen} onClick={fullscreen}>Full screen</button>
+        <button className="min-h-11 max-w-full rounded border border-white px-3 wrap-anywhere focus-visible:outline-2" onClick={() => step(-1)}>Previous frame</button>
+        <button className="min-h-11 max-w-full rounded border border-white px-3 wrap-anywhere focus-visible:outline-2" onClick={() => step(1)}>Next frame</button>
+        <button className="min-h-11 max-w-full rounded border border-white px-3 wrap-anywhere focus-visible:outline-2 aria-pressed:underline aria-pressed:decoration-2" aria-pressed={isFullscreen} onClick={fullscreen}>Full screen</button>
       </div>
       {failure && <div role="alert" className="p-2">
         <p>{failure}</p>

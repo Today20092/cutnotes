@@ -59,7 +59,7 @@ export function PageHeading({
       >
         {title}
       </h1>
-      {children && <div className="flex shrink-0 gap-2">{children}</div>}
+      {children && <div className="flex max-w-full flex-wrap gap-2">{children}</div>}
     </div>
   );
 }

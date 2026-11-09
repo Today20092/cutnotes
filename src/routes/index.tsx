@@ -22,7 +22,7 @@ import {
   type ProjectList,
 } from "@/lib/projects";
 
-export const Route = createFileRoute("/")({ component: Home });
+export const Route = createFileRoute("/")({ head: () => ({ meta: [{ title: "Projects · Cutnotes" }] }), component: Home });
 
 function Home() {
   return (

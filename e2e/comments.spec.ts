@@ -42,7 +42,7 @@ test("Drawing tools pause, undo, clear and replay over the picture after resizin
   await page.getByRole("button", { name: "Finish Drawing", exact: true }).click();
   await expect(page.getByRole("button", { name: "Draw", exact: true })).toBeFocused();
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Edit Comment", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: /^Edit Comment/ })).toBeEnabled();
   await page.reload();
   await page.getByRole("listitem").getByRole("button", { name: /Drawing/ }).click();
   const before = await page.getByLabel("Drawing picture", { exact: true }).locator("rect").getAttribute("x");
@@ -67,6 +67,7 @@ test("touch pen simplifies, cancelled gestures do not save, and failed sends kee
   await expect(page.getByRole("button", { name: "Pen", exact: true })).toContainText("✓");
   await expect(page.getByRole("button", { name: "Red", exact: true })).toContainText("✓");
   const overlay = page.getByLabel("Drawing picture", { exact: true });
+  await overlay.scrollIntoViewIfNeeded();
   const rect = (await overlay.boundingBox())!;
   const cdp = await page.context().newCDPSession(page);
   const touch = (type: "touchStart" | "touchMove" | "touchEnd" | "touchCancel", fraction = 0) => cdp.send("Input.dispatchTouchEvent", {
@@ -92,7 +93,7 @@ test("touch pen simplifies, cancelled gestures do not save, and failed sends kee
   await expect(overlay.locator("polyline")).toHaveCount(1);
   await page.unroute(createCall);
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Edit Comment", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: /^Edit Comment/ })).toBeEnabled();
   await page.reload();
   await page.getByRole("listitem").getByRole("button", { name: /Drawing/ }).click();
   await expect(overlay.locator("polyline")).toHaveAttribute("points", points.join(",").replace(/,([^,]+),([^,]+)$/, " $1,$2"));
@@ -115,7 +116,7 @@ test("a Drawing over the shape cap is refused with a message and replay passes a
   const axe = () => new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
   expect((await axe()).violations).toEqual([]);
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Edit Comment", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: /^Edit Comment/ })).toBeEnabled();
   await page.reload();
   await page.getByRole("listitem").getByRole("button", { name: /Drawing/ }).click();
   await expect(overlay.locator("polyline")).toHaveCount(50);
@@ -151,7 +152,7 @@ test("ready Revision history is one tap away and keeps feedback on its own cut",
   await page.getByLabel("Comment text", { exact: true }).fill("Still on the older cut");
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
   await expect(page.getByRole("listitem").filter({ hasText: "Still on the older cut" })).toBeVisible();
-  await expect(page.getByRole("listitem").filter({ hasText: "Still on the older cut" }).getByRole("button", { name: "Edit Comment", exact: true })).toBeEnabled();
+  await expect(page.getByRole("listitem").filter({ hasText: "Still on the older cut" }).getByRole("button", { name: /^Edit Comment/ })).toBeEnabled();
   await page.evaluate(() => Promise.all(document.getAnimations().filter((motion) => motion.effect?.getComputedTiming().iterations !== Infinity).map((motion) => motion.finished.catch(() => {}))));
   expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
   await page.getByRole("button", { name: "Revision 2", exact: true }).click();
@@ -204,13 +205,13 @@ test("Comments seek, edit, Resolve and delete with sensible focus and accessible
   await page.getByLabel("Comment text", { exact: true }).fill("Change this frame");
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
   const row = page.getByRole("listitem").filter({ hasText: "Change this frame" });
-  await expect(row.getByRole("button", { name: "Edit Comment", exact: true })).toBeEnabled();
+  await expect(row.getByRole("button", { name: /^Edit Comment/ })).toBeEnabled();
   await page.locator("video").evaluate((video: HTMLVideoElement) => { video.currentTime = 0; });
   await row.getByRole("button", { name: "0:03 · Change this frame", exact: true }).click();
   await expect(row.getByRole("button", { name: "0:03 · Change this frame", exact: true })).toHaveAttribute("aria-current", "true");
   await expect.poll(() => page.locator("video").evaluate((video: HTMLVideoElement) => video.currentTime)).toBeCloseTo(3, 1);
   await expect(page.getByRole("button", { name: "Comment at 0:03: Change this frame", exact: true })).toBeVisible();
-  await row.getByRole("button", { name: "Edit Comment", exact: true }).click();
+  await row.getByRole("button", { name: /^Edit Comment/ }).click();
   await page.getByLabel("Edit Comment text").fill("Edited feedback");
   await page.route(editCall, (route) => route.abort());
   await page.getByRole("button", { name: "Save Comment", exact: true }).click();
@@ -219,20 +220,20 @@ test("Comments seek, edit, Resolve and delete with sensible focus and accessible
   await page.unroute(editCall);
   await page.getByRole("button", { name: "Save Comment", exact: true }).click();
   const edited = page.getByRole("listitem").filter({ hasText: "Edited feedback" });
-  await edited.getByRole("checkbox", { name: "Resolve Comment", exact: true }).click();
+  await edited.getByRole("checkbox", { name: /^Resolve Comment/ }).click();
   await expect(page.getByRole("button", { name: "To do", exact: true })).toBeFocused();
   await expect(edited).toHaveCount(0);
   await page.getByRole("button", { name: "Resolved", exact: true }).click();
   await expect(edited).toBeVisible();
   for (const colorScheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
-    await expect(edited.getByRole("button", { name: "Edit Comment", exact: true })).toBeEnabled();
+    await expect(edited.getByRole("button", { name: /^Edit Comment/ })).toBeEnabled();
     await page.evaluate(() => Promise.all(document.getAnimations().filter((motion) => motion.effect?.getComputedTiming().iterations !== Infinity).map((motion) => motion.finished.catch(() => {}))));
     expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
   }
-  await edited.getByRole("checkbox", { name: "Unresolve Comment", exact: true }).click();
+  await edited.getByRole("checkbox", { name: /^Unresolve Comment/ }).click();
   await page.getByRole("button", { name: "To do", exact: true }).click();
-  await edited.getByRole("button", { name: "Delete Comment", exact: true }).click();
+  await edited.getByRole("button", { name: /^Delete Comment/ }).click();
   await expect(edited).toHaveCount(0);
   await expect(page.getByRole("button", { name: "To do", exact: true })).toBeFocused();
 });
@@ -242,8 +243,8 @@ test("Viewers can write and manage their own Comments without Resolve controls",
   await expect(page.getByRole("button", { name: "Upload new Revision", exact: true })).toHaveCount(0);
   await page.getByLabel("Comment text", { exact: true }).fill("Viewer feedback");
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Edit Comment", exact: true })).toBeEnabled();
-  await expect(page.getByRole("button", { name: "Delete Comment", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Edit Comment/ })).toBeEnabled();
+  await expect(page.getByRole("button", { name: /^Delete Comment/ })).toBeVisible();
   await expect(page.getByRole("checkbox")).toHaveCount(0);
   expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
 });
@@ -320,7 +321,6 @@ test("rapid writes are serialized per Video and only the last pending write refr
 });
 
 test("a Guest goes from the welcome screen to a saved Comment, then sees a plain retry message when limited", async ({ page, browser }, testInfo) => {
-  test.setTimeout(90_000);
   const person = { clerkUserId: `user_guest_${testInfo.project.name}_${Date.now()}`, email: "guest-flow@example.com" };
   seedMember(person.clerkUserId, "editor");
   const videoId = seedReview(person.clerkUserId);
@@ -347,7 +347,8 @@ test("a Guest goes from the welcome screen to a saved Comment, then sees a plain
   await page.reload();
   await expect(page.getByText("Dana · Guest")).toBeVisible();
 
-  for (let index = 1; index < 30; index++) { await send(`Note ${index}`); await expect(text).toHaveValue(""); }
+  // Thirty real sends could straddle the limiter's one-minute window. Seam 1 covers the real limit; this covers the screen.
+  await guest.route(callTo("createGuestComment"), (route) => route.fulfill({ status: 429, headers: { "x-tss-raw": "thrown" }, json: { code: "rate-limited" } }));
   await send("One too many");
   await expect(guest.getByText("Too many Comments right now. Your text is kept; wait a minute and try again.")).toBeVisible();
   await expect(text).toHaveValue("One too many");

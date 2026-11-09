@@ -48,7 +48,8 @@ export function AppShell({
   );
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-background focus:p-2">Skip to content</a>
+      <Sidebar collapsible="icon" role="navigation" aria-label="Team">
         <SidebarHeader>
           <div className="flex items-center gap-2 p-1 font-semibold">
             <TeamLogo team={team} />
@@ -64,6 +65,7 @@ export function AppShell({
                 <SidebarMenuItem key={to}>
                   <SidebarMenuButton
                     isActive={label === title}
+                    className="aria-[current=page]:underline aria-[current=page]:underline-offset-4"
                     render={<Link to={to} />}
                   >
                     <Icon />
@@ -85,7 +87,7 @@ export function AppShell({
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset className="min-h-dvh">
+      <SidebarInset id="main-content" tabIndex={-1} className="min-h-dvh">
         <header className="flex h-14 items-center gap-2 border-b px-4">
           <SidebarTrigger className="hidden md:inline-flex" />
           <div className="flex items-center gap-2 font-semibold md:hidden">

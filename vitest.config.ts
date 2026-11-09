@@ -48,6 +48,8 @@ export default defineConfig(async () => ({
     tanstackStart(),
   ],
   test: {
+    // Worker/Start cold starts contend when every file boots at once.
+    maxWorkers: 2,
     include: ["test/seam1/**/*.test.ts"],
     setupFiles: ["./test/seam1/support/setup.ts"],
   },

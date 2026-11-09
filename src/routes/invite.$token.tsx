@@ -35,7 +35,7 @@ function InvitePage() {
   const { isLoaded, isSignedIn } = useAuthStatus();
   const team = useTeam();
 
-  if (!isLoaded || !team.data) return <Skeleton className="m-6 h-40" />;
+  if (!isLoaded || !team.data) return <main aria-busy="true"><h1 className="sr-only">Loading</h1><Skeleton className="m-6 h-40" /></main>;
   if (!isSignedIn) {
     return <InviteSignInScreen team={team.data} returnTo={location.href} />;
   }
@@ -82,12 +82,12 @@ function Redeem({ team, token }: { team: Team; token: string }) {
   const result = redeem.data;
   if (!result || result.outcome === "joined") {
     return (
-      <div className="p-6">
-        <p role="status" className="sr-only">
-          Joining the Team
-        </p>
+      <main className="p-6" aria-busy="true">
+        <h1 className="sr-only">
+          <span role="status">Joining the Team</span>
+        </h1>
         <Skeleton className="h-40" />
-      </div>
+      </main>
     );
   }
 

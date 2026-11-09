@@ -4,6 +4,9 @@ import { fakeSignature } from "../test/seam1/support/fake-mux";
 import { seedMember, seedReview, shareTokenFor } from "./support/database";
 import { signInAs, type Person } from "./support/session";
 
+// Each case scans several states in both themes, including the growing seeded Projects list.
+test.describe.configure({ timeout: 60_000 });
+
 // Sorted after app-shell.spec.ts, so the first Owner already exists.
 const owner: Person = {
   clerkUserId: "user_first_owner",
@@ -29,7 +32,10 @@ async function expectAccessible(page: Page, state: string) {
     await page.waitForFunction(() =>
       document.getAnimations().every((motion) => motion.effect?.getComputedTiming().iterations === Infinity),
     );
-    const { violations } = await new AxeBuilder({ page }).withTags(wcag22AA).analyze();
+    const { violations, incomplete } = await new AxeBuilder({ page }).withTags(wcag22AA).analyze();
+    await test.info().attach(`${state} (${colorScheme}) axe`, {
+      body: JSON.stringify({ violations, incomplete }), contentType: "application/json",
+    });
     expect
       .soft(
         violations.flatMap((violation) =>

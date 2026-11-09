@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { UploadSheet } from "@/components/upload-parts";
 import { markVideoRead } from "@/server/playback";
 
-export const Route = createFileRoute("/videos/$videoId")({ component: Review });
+export const Route = createFileRoute("/videos/$videoId")({ head: () => ({ meta: [{ title: "Review · Cutnotes" }] }), component: Review });
 
 function Review() {
   const { videoId } = Route.useParams();
@@ -25,6 +25,7 @@ function Review() {
       <ReadMarker videoId={videoId} readAt={page.readAt} />
       <Link to="/projects/$projectId" params={{ projectId: page.video.projectId }} className="min-h-11 underline">Back to {page.video.projectName}</Link>
       <PageHeading title={page.video.title} />
+      <a href="#comments" className="sr-only focus:not-sr-only">Skip to Comments</a>
       {page.video.deleteAfter !== null && <CompleteBanner deleteAfter={page.video.deleteAfter} />}
       {page.member.role !== "viewer" && page.video.completedAt === null && <UploadSheet
         destination={{ kind: "existing", videoId, title: page.video.title }}

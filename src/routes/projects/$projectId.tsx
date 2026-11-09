@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { projectQuery, useRenameProject, useSetProjectComplete, type ProjectPage } from "@/lib/projects";
 
 export const Route = createFileRoute("/projects/$projectId")({
+  head: () => ({ meta: [{ title: "Project · Cutnotes" }] }),
   // Only on intent: a first page load has no session token yet.
   loader: ({ context, params, preload }) => {
     if (preload) void context.queryClient.prefetchQuery(projectQuery(params.projectId));

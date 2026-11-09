@@ -44,7 +44,7 @@ export function MemberScreen<
     retry: false,
   });
 
-  if (!isLoaded || !team.data) return <Skeleton className="m-6 h-40" />;
+  if (!isLoaded || !team.data) return <main aria-busy="true"><h1 className="sr-only">Loading</h1><Skeleton className="m-6 h-40" /></main>;
   if (!isSignedIn || isRefusal(screen.error, 401)) {
     return <SignInScreen team={team.data} />;
   }
@@ -57,10 +57,10 @@ export function MemberScreen<
     content = notFound;
   } else if (screen.isError) {
     content = (
-      <p role="alert">Something went wrong. Please reload the page.</p>
+      <><h1>Unable to load page</h1><p role="alert">Something went wrong. Please reload the page.</p></>
     );
   } else {
-    content = screen.data === undefined ? skeleton : children(screen.data);
+    content = screen.data === undefined ? <div aria-busy="true"><h1 className="sr-only">Loading</h1>{skeleton}</div> : children(screen.data);
   }
   return (
     <AppShell

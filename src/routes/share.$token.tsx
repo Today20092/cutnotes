@@ -1,7 +1,7 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState, type ReactNode } from "react";
-import { CommentMarkers, timeLabel } from "@/components/comments";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { CommentMarkers, selectedRowClass, timeLabel } from "@/components/comments";
 import { useDrawingControls } from "@/components/drawing-controls";
 import { VideoPlayer } from "@/components/player/video-player";
 import { Button } from "@/components/ui/button";
@@ -36,8 +36,9 @@ const guestQuery = (token: string) => queryOptions({
 function GuestPage() {
   const { token } = Route.useParams();
   const [name, setName] = useState(storedName);
-  if (!name) return <Welcome onDone={setName} />;
-  return <GuestReviewScreen token={token} name={name} />;
+  const entered = useRef(false);
+  if (!name) return <Welcome onDone={(value) => { entered.current = true; setName(value); }} />;
+  return <GuestReviewScreen token={token} name={name} focusHeading={entered.current} />;
 }
 
 function Welcome({ onDone }: { onDone: (name: string) => void }) {
@@ -62,24 +63,27 @@ function Welcome({ onDone }: { onDone: (name: string) => void }) {
   </main>;
 }
 
-function GuestReviewScreen({ token, name }: { token: string; name: string }) {
+function GuestReviewScreen({ token, name, focusHeading }: { token: string; name: string; focusHeading: boolean }) {
   const review = useQuery(guestQuery(token));
   if (review.isPending) return <main className="p-4"><h1 className="sr-only">Loading shared Video</h1><Skeleton className="h-64" /></main>;
   if (!review.data) return <main className="flex min-h-dvh flex-col items-center justify-center gap-2 p-6 text-center">
     <h1 className="text-xl font-semibold">{isRateLimited(review.error) ? "Too many requests" : "This link is unavailable"}</h1>
     <p className="text-muted-foreground">{isRateLimited(review.error) ? "Wait a minute, then reload this page." : "Ask the person who sent it for a new one."}</p>
   </main>;
-  return <Loaded key={review.data.revision.id} page={review.data} token={token} name={name} />;
+  return <Loaded key={review.data.revision.id} page={review.data} token={token} name={name} focusHeading={focusHeading} />;
 }
 
-function Loaded({ page, token, name }: { page: GuestReview; token: string; name: string }) {
+function Loaded({ page, token, name, focusHeading }: { page: GuestReview; token: string; name: string; focusHeading: boolean }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { if (focusHeading) heading.current?.focus(); }, [focusHeading]); // The Welcome form that held focus is gone.
   const [seek, setSeek] = useState<{ timeMs: number }>();
   const [timeMs, setTimeMs] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const pen = useDrawingControls({ timeMs, seek: (ms) => setSeek({ timeMs: ms }), deselect: () => setSelectedId(null) });
   function select(comment: GuestComment) { setSeek({ timeMs: comment.timecodeMs }); setSelectedId(comment.id); setTimeMs(comment.timecodeMs); pen.stop(); }
   return <main className="mx-auto flex max-w-6xl flex-col gap-4 p-4">
-    <h1 className="text-xl font-semibold wrap-anywhere">{page.title}</h1>
+    <a href="#comments" className="sr-only focus:not-sr-only">Skip to Comments</a>
+    <h1 ref={heading} tabIndex={-1} className="text-xl font-semibold wrap-anywhere">{page.title}</h1>
     <div className="review-layout">
       <div className="review-player" onTimeUpdate={(event) => {
         if (event.target instanceof HTMLVideoElement) setTimeMs(Math.round(event.target.currentTime * 1000));
@@ -103,6 +107,8 @@ function GuestComments({ page, token, name, timeMs, select, selectedId, drawing,
   const [resolved, setResolved] = useState(false);
   const [body, setBody] = useState("");
   const [failure, setFailure] = useState("");
+  const [status, setStatus] = useState("");
+  const composer = useRef<HTMLTextAreaElement>(null);
   const draft = useRef<{ id: string; body: string; timecodeMs: number; drawing: Shape[] | null } | null>(null);
   const write = useMutation({
     mutationFn: (data: { id: string; body: string; timecodeMs: number; drawing: Shape[] | null }) => createGuestComment({ data: { ...data, token, name } }),
@@ -116,33 +122,40 @@ function GuestComments({ page, token, name, timeMs, select, selectedId, drawing,
     onSettled: () => client.invalidateQueries({ queryKey }),
   });
   async function send() {
-    if (!body.trim() && !drawing.length) { setFailure("Enter a Comment."); return; }
+    if (!body.trim() && !drawing.length) { setFailure("Enter a Comment."); composer.current?.focus(); return; }
     const marks = drawing.length ? drawing : null;
     if (draft.current?.body !== body || JSON.stringify(draft.current.drawing) !== JSON.stringify(marks)) draft.current = { id: crypto.randomUUID(), body, timecodeMs: timeMs, drawing: marks };
     setFailure("");
+    setStatus("");
     setResolved(false);
-    try { await write.mutateAsync(draft.current); setBody(""); draft.current = null; sent(); }
+    try {
+      const { timecodeMs } = draft.current;
+      await write.mutateAsync(draft.current); setBody(""); draft.current = null; sent();
+      setStatus(`Comment added at ${timeLabel(timecodeMs)}`);
+      if (document.activeElement === document.body) composer.current?.focus(); // Send disables while pending, which can drop focus.
+    }
     catch (error) { setFailure(isRateLimited(error) ? "Too many Comments right now. Your text is kept; wait a minute and try again." : "Could not send Comment. Your text is kept; try again."); }
   }
   const rows = page.comments.filter((comment) => (comment.resolvedAt !== null) === resolved);
-  return <section aria-labelledby="comments-heading" className="min-w-0 rounded-lg border p-4">
+  return <section id="comments" tabIndex={-1} aria-labelledby="comments-heading" className="min-w-0 rounded-lg border p-4">
     <h2 id="comments-heading" className="font-semibold">Comments</h2>
-    <div role="group" aria-label="Comment filters" className="my-3 flex gap-2">
+    <p role="status" className="sr-only">{status}</p>
+    <div role="group" aria-label="Comment filters" className="my-3 flex flex-wrap gap-2">
       <Button aria-pressed={!resolved} onClick={() => setResolved(false)}>To do</Button>
       <Button aria-pressed={resolved} onClick={() => setResolved(true)}>Resolved</Button>
     </div>
     {rows.length === 0 ? <p className="text-muted-foreground">{resolved ? "No Resolved Comments." : "No Comments to do."}</p> : <ul className="space-y-4" aria-label="Comments">
       {rows.map((comment) => <li key={comment.id} className="rounded border p-3 wrap-anywhere">
         <p className="text-sm">{comment.authorName}{comment.isGuest && " · Guest"}</p>
-        <button className="min-h-11 w-full text-left underline" aria-current={selectedId === comment.id ? "true" : undefined}
+        <button className={`min-h-11 w-full text-left underline ${selectedRowClass}`} aria-current={selectedId === comment.id ? "true" : undefined}
           onClick={() => select(comment)}>{timeLabel(comment.timecodeMs)} · {comment.body}{comment.drawing && " · Drawing"}</button>
       </li>)}
     </ul>}
     {failure && <p role="alert" className="my-3">{failure}</p>}
     {drawingControls}
-    {page.permission === "view" ? <p className="mt-4">This link is view-only.</p> : <form className="sticky bottom-0 mt-4 border-t bg-background py-3" onSubmit={(event) => { event.preventDefault(); void send(); }}>
+    {page.permission === "view" ? <p className="mt-4">This link is view-only.</p> : <form className="mt-4 border-t bg-background py-3" onSubmit={(event) => { event.preventDefault(); void send(); }}>
       <label className="block" htmlFor="comment-body">Comment text</label>
-      <textarea id="comment-body" aria-describedby="comment-time" className="min-h-24 w-full rounded border p-2" maxLength={5000} value={body} onChange={(event) => setBody(event.target.value)} readOnly={write.isPending} />
+      <textarea ref={composer} id="comment-body" aria-describedby="comment-time" className="min-h-24 w-full rounded border border-input p-2" maxLength={5000} value={body} onChange={(event) => setBody(event.target.value)} readOnly={write.isPending} />
       <p id="comment-time" className="text-sm">At {timeLabel(timeMs)}</p>
       <Button type="submit" disabled={write.isPending}>Send Comment</Button>
     </form>}

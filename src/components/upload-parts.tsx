@@ -214,12 +214,13 @@ const phaseText: Record<UploadItem["phase"], (item: UploadItem) => string> = {
   paused: () => "Paused while offline. It continues when you are back online.",
   sent: () => "Sent, and being processed.",
   failed: () => "This could not be sent. Check your connection and retry.",
+  "cancel-failed": () => "Could not cancel. Check your connection and try Cancel again.",
   "too-late": () => "Already sent, so it is being processed.",
 };
 
 function UploadRow({ item }: { item: UploadItem }) {
   const active = item.phase === "sending" || item.phase === "paused";
-  const cancellable = active || item.phase === "waiting";
+  const cancellable = active || item.phase === "waiting" || item.phase === "cancel-failed";
   const finished = item.phase === "sent" || item.phase === "too-late";
   return (
     <li className="flex flex-col gap-1 rounded-md border p-2">

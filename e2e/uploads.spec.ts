@@ -215,6 +215,53 @@ test("cancelling stops the upload and removes the Video", async ({
   await expect(page.getByText(/No Videos yet/)).toBeVisible();
 });
 
+test("cancelling while creation is deferred cancels the returned Revision", async ({ page }, testInfo) => {
+  const revisions = await routeMux(page);
+  await openNewProject(page, "Deferred cancel", testInfo);
+  const response = held();
+  const created = held();
+  await page.route(callTo("startUpload"), async (route) => {
+    const result = await route.fetch();
+    created.release();
+    await response.gate;
+    await route.fulfill({ response: result });
+  });
+  await startUpload(page, "Deferred cut");
+  await created.gate;
+  await page.getByRole("button", { name: "Cancel upload of Deferred cut" }).click();
+  await expect(page.getByRole("region", { name: "Uploads" })).toBeVisible();
+  response.release();
+  await expect(page.getByRole("region", { name: "Uploads" })).toHaveCount(0);
+  expect(revisions).toEqual([]);
+  await page.reload();
+  await expect(page.getByText(/No Videos yet/)).toBeVisible();
+});
+
+test("a failed cancellation stays visible and can be retried", async ({ page }, testInfo) => {
+  const response = held();
+  const created = held();
+  await routeMux(page);
+  await openNewProject(page, "Cancel failure", testInfo);
+  await page.route(callTo("startUpload"), async (route) => {
+    const result = await route.fetch();
+    created.release();
+    await response.gate;
+    await route.fulfill({ response: result });
+  });
+  const cancelCall = callTo("cancelUpload");
+  await page.route(cancelCall, (route) => route.abort());
+  await startUpload(page, "Cancel retry");
+  await created.gate;
+  await page.getByRole("button", { name: "Cancel upload of Cancel retry" }).click();
+  response.release();
+  await expect(page.getByText(/Could not cancel/).first()).toBeVisible();
+  await page.unroute(cancelCall);
+  await page.getByRole("button", { name: "Cancel upload of Cancel retry" }).click();
+  await expect(page.getByRole("region", { name: "Uploads" })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText(/No Videos yet/)).toBeVisible();
+});
+
 test("an upload pauses while offline and continues on return", async ({
   page,
   context,
@@ -334,6 +381,70 @@ test("a failed Status change rolls back and says so", async ({
   await status.selectOption("done");
 
   await expect(page.getByRole("alert")).toContainText("Could not change");
+  await expect(status).toHaveValue("review");
+});
+
+test("a failed Status write preserves a concurrent optimistic rename", async ({ page }, testInfo) => {
+  await routeMux(page);
+  await openNewProject(page, "Concurrent edits", testInfo);
+  await startUpload(page, "Original cut");
+  await expect(page.getByRole("region", { name: "Uploads" }).getByText(/being processed/)).toBeVisible();
+  const statusGate = held();
+  const renameGate = held();
+  let renameStarted = false;
+  await page.route(callTo("setVideoStatus"), async (route) => {
+    await statusGate.gate;
+    await route.abort();
+  });
+  await page.route(callTo("renameVideo"), async (route) => {
+    renameStarted = true;
+    await renameGate.gate;
+    await route.continue();
+  });
+  await page.getByLabel("Status of Original cut").selectOption("done");
+  await page.getByRole("button", { name: "Rename Original cut" }).click();
+  await page.getByLabel("Video title").fill("Kept cut");
+  await page.getByRole("button", { name: "Save title" }).click();
+  await expect(page.getByLabel("Status of Kept cut")).toHaveValue("done");
+  expect(renameStarted).toBe(false);
+  statusGate.release();
+  await expect(page.getByLabel("Status of Kept cut")).toHaveValue("review");
+  renameGate.release();
+  await expect(page.getByText("Video renamed to Kept cut", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Status of Kept cut")).toHaveValue("review");
+});
+
+test("two failed queued Status edits restore the saved Status", async ({ page }, testInfo) => {
+  await routeMux(page);
+  await openNewProject(page, "Queued rollback", testInfo);
+  await startUpload(page, "Queued cut");
+  await expect(page.getByRole("region", { name: "Uploads" }).getByText(/being processed/)).toBeVisible();
+  const first = held();
+  const second = held();
+  const refetch = held();
+  let requests = 0;
+  await page.route(callTo("setVideoStatus"), async (route) => {
+    const gate = ++requests === 1 ? first : second;
+    await gate.gate;
+    await route.abort();
+  });
+  await page.route(callTo("getProject"), async (route) => {
+    await refetch.gate;
+    await route.continue();
+  });
+  const status = page.getByLabel("Status of Queued cut");
+  await status.selectOption("done");
+  await expect.poll(() => requests).toBe(1);
+  await status.selectOption("rework");
+  await expect(status).toHaveValue("rework");
+  first.release();
+  await expect.poll(() => requests).toBe(2);
+  await expect(status).toHaveValue("rework");
+  second.release();
+  await expect(status).toHaveValue("review");
+  refetch.release();
+  await page.reload();
   await expect(status).toHaveValue("review");
 });
 

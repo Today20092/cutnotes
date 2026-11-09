@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
-import { readAsMember, requireMember, type ScreenDb } from "@/server/access";
+import { activeMember, readAsMember, requireMember, type ScreenDb } from "@/server/access";
 import { getDb } from "@/server/db";
 import { projects, videos, type RevisionState } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
@@ -138,21 +138,17 @@ export const createProject = createServerFn({ method: "POST" })
     const now = Date.now();
     const [project] = await getDb()
       .insert(projects)
-      .values({
-        id: crypto.randomUUID(),
-        name: parseName(data),
-        createdBy: member.id,
-        createdAt: now,
-        updatedAt: now,
-      })
+      .select(sql`SELECT ${crypto.randomUUID()}, ${parseName(data)}, ${member.id}, ${now}, ${now}, NULL, NULL, NULL
+        WHERE ${activeMember(member.id, "editor")}`)
       .returning(projectSummary);
+    if (!project) reject(404, "not-found");
     return project;
   });
 
 export const renameProject = createServerFn({ method: "POST" })
   .validator((data: { projectId: string; name: string }) => data)
   .handler(async ({ data }) => {
-    await requireMember("editor");
+    const member = await requireMember("editor");
     const [project] = await getDb()
       .update(projects)
       .set({ name: parseName(data), updatedAt: Date.now() })
@@ -162,6 +158,7 @@ export const renameProject = createServerFn({ method: "POST" })
           isNull(projects.deletedAt),
           // A Complete Project is read-only until it is reopened.
           isNull(projects.completedAt),
+          activeMember(member.id, "editor"),
         ),
       )
       .returning(projectSummary);

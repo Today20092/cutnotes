@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import {
+  activeMember,
   readAsMember,
   refuse,
   requireMember,
@@ -74,9 +75,12 @@ export const createInvite = createServerFn({ method: "POST" })
       createdAt: now,
       expiresAt: now + inviteLifetimeMs,
     };
-    await getDb()
+    const [created] = await getDb()
       .insert(invites)
-      .values({ ...invite, tokenHash: await sha256(token), createdBy: owner.id });
+      .select(sql`SELECT ${invite.id}, ${await sha256(token)}, ${role}, ${owner.id}, ${now}, ${invite.expiresAt}, NULL, NULL, NULL
+        WHERE ${activeMember(owner.id, "owner")}`)
+      .returning({ id: invites.id });
+    if (!created) refuse(403, "insufficient-role");
     return { url: `${env.APP_ORIGIN}/invite/${token}`, invite };
   });
 
@@ -96,16 +100,17 @@ export const listInvites = createServerFn({ method: "POST" }).handler(
 export const revokeInvite = createServerFn({ method: "POST" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    await requireMember("owner");
+    const owner = await requireMember("owner");
     const id = field(data, "id");
     if (typeof id !== "string") refuse(400, "invalid-request");
 
-    await getDb()
+    const [revoked] = await getDb()
       .update(invites)
       .set({ revokedAt: Date.now() })
       .where(
-        and(eq(invites.id, id), isNull(invites.usedAt), isNull(invites.revokedAt)),
-      );
+        and(eq(invites.id, id), isNull(invites.usedAt), isNull(invites.revokedAt), activeMember(owner.id, "owner")),
+      ).returning({ id: invites.id });
+    if (!revoked) refuse(404, "not-found");
     return null;
   });
 

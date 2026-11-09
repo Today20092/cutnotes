@@ -19,6 +19,7 @@ export type UploadPhase =
   | "paused"
   | "sent"
   | "failed"
+  | "cancel-failed"
   | "too-late";
 
 export type UploadItem = {
@@ -35,6 +36,7 @@ type Transfer = {
   abort?: () => void;
   revisionId?: string;
   cancelled?: boolean;
+  creating?: boolean;
 };
 
 let items: UploadItem[] = [];
@@ -109,10 +111,15 @@ async function send(id: string) {
   update(id, { phase: "sending", percent: 0 });
 
   try {
+    transfer.creating = true;
     const started = await startUpload({ data: transfer.target });
+    transfer.creating = false;
     transfer.revisionId = started.revisionId;
     void refresh(transfer.client);
-    if (transfer.cancelled) return;
+    if (transfer.cancelled) {
+      await stopUpload(id);
+      return;
+    }
 
     // Browser-only, so it stays out of the Worker's bundle.
     const { createUpload } = await import("@mux/upchunk");
@@ -135,7 +142,11 @@ async function send(id: string) {
       startNext();
     });
   } catch {
-    if (!transfer.cancelled) fail(id, transfer);
+    transfer.creating = false;
+    if (transfer.cancelled) {
+      remove(id);
+      startNext();
+    } else fail(id, transfer);
   }
 }
 
@@ -167,12 +178,13 @@ export async function stopUpload(id: string) {
   if (!transfer) return;
   transfer.cancelled = true;
   transfer.abort?.();
+  // Keep progress and the leave-page warning until the server returns its Revision.
+  if (transfer.creating) return;
   try {
     await discardOnServer(transfer);
     remove(id);
-  } catch {
-    // Mux already has the whole file, so it will be processed after all.
-    update(id, { phase: "too-late" });
+  } catch (error) {
+    update(id, { phase: error instanceof Response && error.status === 409 ? "too-late" : "cancel-failed" });
   }
   startNext();
 }

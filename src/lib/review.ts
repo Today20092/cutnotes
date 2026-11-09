@@ -1,6 +1,7 @@
 import { queryOptions, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { createComment, deleteComment, editComment, resolveComment, type CommentTarget, type NewComment } from "@/server/comments";
 import { getReview } from "@/server/playback";
+import { refreshAfterVideoWrite } from "@/lib/projects";
 
 export type ReviewPage = Awaited<ReturnType<typeof getReview>>;
 export type Comment = ReviewPage["comments"][number];
@@ -52,8 +53,6 @@ export function useCommentWrite(videoId: string, revisionId?: string) {
         ...page.comments.filter((row) => row.id !== write.data.id), ...(context?.previous ? [context.previous] : []),
       ].sort((a, b) => a.timecodeMs - b.timecodeMs || a.createdAt - b.createdAt) });
     },
-    onSettled: () => {
-      if (client.isMutating({ mutationKey }) === 1) return client.invalidateQueries({ queryKey: ["review", videoId] });
-    },
+    onSettled: () => refreshAfterVideoWrite(client, videoId),
   });
 }

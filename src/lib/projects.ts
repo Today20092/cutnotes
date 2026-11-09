@@ -70,9 +70,17 @@ function restore(client: QueryClient, snapshot: Snapshot | undefined) {
 
 /** Only the last pending write refetches, so an earlier answer cannot undo a later one. */
 function refreshAfterLastWrite(client: QueryClient) {
-  if (client.isMutating({ mutationKey }) === 1) {
+  if (client.isMutating({ mutationKey }) === 1 && !client.isMutating({ mutationKey: ["video-write"] })) {
     return client.invalidateQueries({ queryKey: projectListQuery.queryKey });
   }
+}
+
+export function refreshAfterVideoWrite(client: QueryClient, videoId: string) {
+  const refreshReview = client.isMutating({ mutationKey: ["video-write", videoId] }) === 1
+    ? client.invalidateQueries({ queryKey: ["review", videoId] }) : undefined;
+  const refreshProjects = client.isMutating({ mutationKey: ["video-write"] }) === 1 && !client.isMutating({ mutationKey })
+    ? client.invalidateQueries({ queryKey: projectListQuery.queryKey }) : undefined;
+  return Promise.all([refreshReview, refreshProjects]);
 }
 
 export function useCreateProject() {
@@ -167,12 +175,16 @@ export function useSetProjectComplete() {
 
 /** A write shown at once on every screen holding this Video, undone if it fails. */
 function useVideoWrite<Input extends { videoId: string }>(
+  videoId: string,
+  field: "title" | "status",
   write: (input: Input) => Promise<unknown>,
   apply: (video: VideoSummary, input: Input) => VideoSummary,
 ) {
   const client = useQueryClient();
+  const videoMutationKey = ["video-write", videoId];
   return useMutation({
-    mutationKey,
+    mutationKey: videoMutationKey,
+    scope: { id: `video-${videoId}` },
     mutationFn: write,
     onMutate: async (input: Input) => {
       const snapshot = await snapshotProjects(client);
@@ -186,22 +198,44 @@ function useVideoWrite<Input extends { videoId: string }>(
             ),
           },
       );
-      return { snapshot };
+      return { snapshot, field };
     },
-    onError: (_error, _input, context) => restore(client, context?.snapshot),
-    onSettled: () => refreshAfterLastWrite(client),
+    onError: (_error, _input, context) => {
+      if (!context) return;
+      // Scopes serialize requests, but queued onMutate callbacks already ran.
+      // Rebase their rollback snapshots and restore only this field on this Video.
+      const restoreField = (data: ProjectList | ProjectPage | undefined, previous: ProjectList | ProjectPage | undefined) =>
+        data && { ...data, videos: data.videos.map((video) => {
+          const before = previous?.videos.find((row) => row.id === videoId);
+          return video.id === videoId && before ? { ...video, [field]: before[field] } : video;
+        }) };
+      const mutations = client.getMutationCache().findAll({ mutationKey: videoMutationKey });
+      const index = mutations.findIndex((mutation) => mutation.state.context === context);
+      let superseded = false;
+      for (const mutation of mutations.slice(index + 1)) {
+        const later = mutation.state.context as typeof context | undefined;
+        if (mutation.state.status !== "pending" || !later?.snapshot) continue;
+        if (later.field === field) superseded = true;
+        later.snapshot = later.snapshot.map(([key, data]) => [key, restoreField(data, context.snapshot.find(([oldKey]) => JSON.stringify(oldKey) === JSON.stringify(key))?.[1])]);
+      }
+      if (!superseded) context.snapshot.forEach(([key, previous]) =>
+        client.setQueryData<ProjectList | ProjectPage>(key, (data) => restoreField(data, previous)));
+    },
+    onSettled: () => refreshAfterVideoWrite(client, videoId),
   });
 }
 
-export const useRenameVideo = () =>
+export const useRenameVideo = (videoId: string) =>
   useVideoWrite(
+    videoId, "title",
     (input: { videoId: string; title: string }) =>
       renameVideo({ data: input }),
     (video, { title }) => ({ ...video, title }),
   );
 
-export const useSetVideoStatus = () =>
+export const useSetVideoStatus = (videoId: string) =>
   useVideoWrite(
+    videoId, "status",
     (input: { videoId: string; status: VideoStatus }) =>
       setVideoStatus({ data: input }),
     (video, { status }) => ({ ...video, status }),

@@ -74,9 +74,7 @@ describe("the Members list", () => {
       members: { id: string; displayName: string; role: string }[];
     }>(response);
     expect(result.youId).toBe(idOf(owner));
-    expect(
-      result.members.map(({ id, displayName, role }) => ({ id, displayName, role })),
-    ).toEqual([
+    expect(result.members.map(({ id, displayName, role }) => ({ id, displayName, role }))).toEqual([
       { id: idOf(owner), displayName: "owner@example.com", role: "owner" },
       { id: idOf(editor), displayName: "editor@example.com", role: "editor" },
       { id: idOf(viewer), displayName: "viewer@example.com", role: "viewer" },
@@ -196,9 +194,7 @@ describe("removing a Member", () => {
     expect((await remove(owner, viewer)).status).toBe(200);
 
     expect(await removedAtOf(viewer)).toBeGreaterThanOrEqual(before);
-    const listed = await resultOf<{ members: { id: string }[] }>(
-      await call(listMembers, owner),
-    );
+    const listed = await resultOf<{ members: { id: string }[] }>(await call(listMembers, owner));
     expect(listed.members.map((member) => member.id)).not.toContain(idOf(viewer));
   });
 

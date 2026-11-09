@@ -20,7 +20,7 @@ Requires [Bun](https://bun.sh). Tools that need Node use the pinned binary insta
 
 - `bun install`
 - `bun run db:migrate:local`, then `bun run dev`, with values from `.dev.vars.example` in `.dev.vars`
-- `bun run check` runs type checks, lint, Seam 1 (Workers runtime and local D1) and Seam 2 (Playwright at phone and desktop widths). The first run needs `bun scripts/node.ts node_modules/@playwright/test/cli.js install chromium`. Seam 2 serves on port 5199; set `E2E_PORT` to use another.
+- `bun run check` runs type checks, lint (Oxlint), a format check (Oxfmt; `bun run fmt` fixes it) and the browser-free tests, including Seam 1 (Workers runtime and local D1). `bun run check:full` adds Seam 2 (Playwright at phone and desktop widths). Seam 2's first run needs `bun scripts/node.ts node_modules/@playwright/test/cli.js install chromium`. It serves on port 5199; set `E2E_PORT` to use another.
 
 Clerk's session token must include `email` and `email_verified`, or no first Owner can be created. See `.dev.vars.example`.
 

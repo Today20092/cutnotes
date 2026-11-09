@@ -8,8 +8,7 @@ export type Person = { clerkUserId: string; email: string };
 /** Signs a session token as Clerk would. The Worker's real Clerk middleware verifies it. */
 export function sessionToken(person: Person, expiresInSeconds = 3600) {
   const now = Math.floor(Date.now() / 1000);
-  const encode = (value: unknown) =>
-    Buffer.from(JSON.stringify(value)).toString("base64url");
+  const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
   const unsigned = `${encode({ alg: "RS256", typ: "JWT", kid: "seam2" })}.${encode({
     sub: person.clerkUserId,
     sid: `sess_${person.clerkUserId}`,

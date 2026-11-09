@@ -104,10 +104,7 @@ export function callServerFn(id: string, options: CallOptions = {}) {
     new Request(`${env.APP_ORIGIN}/_serverFn/${id}`, {
       method: "POST",
       headers,
-      body:
-        options.data === undefined
-          ? undefined
-          : JSON.stringify(toJSON({ data: options.data })),
+      body: options.data === undefined ? undefined : JSON.stringify(toJSON({ data: options.data })),
     }),
   );
 }

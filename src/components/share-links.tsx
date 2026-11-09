@@ -2,22 +2,33 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { SharePermission } from "@/server/db/schema";
 import { createShareLink, listShareLinks, revokeShareLink } from "@/server/sharing";
 
 export function ShareLinksSheet({ videoId }: { videoId: string }) {
-  return <Sheet>
-    <SheetTrigger render={<Button variant="outline" />}>Share</SheetTrigger>
-    <SheetContent className="overflow-y-auto">
-      <SheetHeader>
-        <SheetTitle>Share Links</SheetTitle>
-        <SheetDescription>Anyone with a link can open the latest Revision without an account.</SheetDescription>
-      </SheetHeader>
-      <ShareLinks videoId={videoId} />
-    </SheetContent>
-  </Sheet>;
+  return (
+    <Sheet>
+      <SheetTrigger render={<Button variant="secondary" />}>Share</SheetTrigger>
+      <SheetContent className="overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Share Links</SheetTitle>
+          <SheetDescription>
+            Anyone with a link can open the latest Revision without an account.
+          </SheetDescription>
+        </SheetHeader>
+        <ShareLinks videoId={videoId} />
+      </SheetContent>
+    </Sheet>
+  );
 }
 
 function ShareLinks({ videoId }: { videoId: string }) {
@@ -30,52 +41,132 @@ function ShareLinks({ videoId }: { videoId: string }) {
   const refresh = () => client.invalidateQueries({ queryKey });
   const create = useMutation({
     mutationFn: () => createShareLink({ data: { videoId, name, permission } }),
-    onSuccess: (link) => { setName(""); setStatus(`Share Link ${link.name} created`); return refresh(); },
+    onSuccess: (link) => {
+      setName("");
+      setStatus(`Share Link ${link.name} created`);
+      return refresh();
+    },
   });
   const revoke = useMutation({
     mutationFn: (id: string) => revokeShareLink({ data: { id } }),
-    onSuccess: () => { setStatus("Share Link revoked"); return refresh(); },
+    onSuccess: () => {
+      setStatus("Share Link revoked");
+      return refresh();
+    },
   });
   const urlOf = (token: string) => `${location.origin}/share/${token}`;
   async function copy(token: string) {
-    try { await navigator.clipboard.writeText(urlOf(token)); setStatus("Link copied"); }
-    catch { setStatus("Could not copy. Use Send on WhatsApp instead."); }
+    try {
+      await navigator.clipboard.writeText(urlOf(token));
+      setStatus("Link copied");
+    } catch {
+      setStatus("Could not copy. Use Send on WhatsApp instead.");
+    }
   }
 
-  return <div className="space-y-6 p-4">
-    <p role="status" className="min-h-6 text-sm">{status}</p>
-    <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); create.mutate(); }}>
-      <div>
-        <label htmlFor="share-name" className="text-sm font-medium">Who is this link for?</label>
-        <Input id="share-name" required maxLength={60} value={name} onChange={(event) => setName(event.target.value)} />
-      </div>
-      <fieldset className="space-y-1">
-        <legend className="text-sm font-medium">Permission</legend>
-        {([["comment", "Can comment and draw"], ["view", "View only"]] as const).map(([value, label]) =>
-          <label key={value} className="flex min-h-11 items-center gap-2">
-            <input type="radio" name="share-permission" checked={permission === value} onChange={() => setPermission(value)} />{label}
-          </label>)}
-      </fieldset>
-      <Button type="submit" disabled={create.isPending}>Create Share Link</Button>
-      {create.isError && <p role="alert">Could not create the Share Link. Check the name and try again.</p>}
-    </form>
-    <section className="space-y-3">
-      <h3 className="font-semibold">Active links</h3>
-      <p className="text-sm text-muted-foreground">Revoking stops new access at once. A video token already issued keeps working until it expires.</p>
-      {links.isPending && <Skeleton className="h-16" />}
-      {links.isError && <p role="alert">Could not load Share Links. Close this and try again.</p>}
-      {revoke.isError && <p role="alert">Could not revoke the Share Link. Try again.</p>}
-      {links.data?.links.length === 0 && <p className="text-muted-foreground">No Share Links yet.</p>}
-      <ul className="space-y-3">
-        {links.data?.links.map((link) => <li key={link.id} className="space-y-2 rounded-lg border border-input p-3 wrap-anywhere">
-          <p className="font-medium">{link.name} <span className="text-sm font-normal">· {link.permission === "view" ? "View only" : "Can comment and draw"}</span></p>
-          <div className="flex flex-wrap gap-2">
-            <a className={buttonVariants({ variant: "outline" })} href={`https://wa.me/?text=${encodeURIComponent(urlOf(link.token))}`} target="_blank" rel="noreferrer" aria-label={`Send on WhatsApp for ${link.name}`}>Send on WhatsApp</a>
-            <Button type="button" variant="outline" aria-label={`Copy link for ${link.name}`} onClick={() => void copy(link.token)}>Copy link</Button>
-            <Button type="button" variant="outline" aria-label={`Revoke link for ${link.name}`} disabled={revoke.isPending} onClick={() => revoke.mutate(link.id)}>Revoke</Button>
-          </div>
-        </li>)}
-      </ul>
-    </section>
-  </div>;
+  return (
+    <div className="space-y-6 p-4">
+      <p role="status" className="min-h-6 text-sm">
+        {status}
+      </p>
+      <form
+        className="space-y-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          create.mutate();
+        }}
+      >
+        <div>
+          <label htmlFor="share-name" className="text-sm font-medium">
+            Who is this link for?
+          </label>
+          <Input
+            id="share-name"
+            required
+            maxLength={60}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </div>
+        <fieldset className="space-y-1">
+          <legend className="text-sm font-medium">Permission</legend>
+          {(
+            [
+              ["comment", "Can comment and draw"],
+              ["view", "View only"],
+            ] as const
+          ).map(([value, label]) => (
+            <label key={value} className="flex min-h-11 items-center gap-2">
+              <input
+                type="radio"
+                name="share-permission"
+                checked={permission === value}
+                onChange={() => setPermission(value)}
+              />
+              {label}
+            </label>
+          ))}
+        </fieldset>
+        <Button type="submit" disabled={create.isPending}>
+          Create Share Link
+        </Button>
+        {create.isError && (
+          <p role="alert">Could not create the Share Link. Check the name and try again.</p>
+        )}
+      </form>
+      <section className="space-y-3">
+        <h3 className="font-semibold">Active links</h3>
+        <p className="text-sm text-muted-foreground">
+          Revoking stops new access at once. A video token already issued keeps working until it
+          expires.
+        </p>
+        {links.isPending && <Skeleton className="h-16" />}
+        {links.isError && <p role="alert">Could not load Share Links. Close this and try again.</p>}
+        {revoke.isError && <p role="alert">Could not revoke the Share Link. Try again.</p>}
+        {links.data?.links.length === 0 && (
+          <p className="text-muted-foreground">No Share Links yet.</p>
+        )}
+        <ul className="divide-y">
+          {links.data?.links.map((link) => (
+            <li key={link.id} className="space-y-2 py-3 wrap-anywhere">
+              <p className="font-medium">
+                {link.name}{" "}
+                <span className="text-sm font-normal">
+                  · {link.permission === "view" ? "View only" : "Can comment and draw"}
+                </span>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <a
+                  className={buttonVariants({ variant: "secondary" })}
+                  href={`https://wa.me/?text=${encodeURIComponent(urlOf(link.token))}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={`Send on WhatsApp for ${link.name}`}
+                >
+                  Send on WhatsApp
+                </a>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  aria-label={`Copy link for ${link.name}`}
+                  onClick={() => void copy(link.token)}
+                >
+                  Copy link
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  aria-label={`Revoke link for ${link.name}`}
+                  disabled={revoke.isPending}
+                  onClick={() => revoke.mutate(link.id)}
+                >
+                  Revoke
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
 }

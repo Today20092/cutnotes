@@ -11,14 +11,10 @@ import {
 } from "@/components/project-parts";
 import { UploadSheet } from "@/components/upload-parts";
 import { Button } from "@/components/ui/button";
-import {
-  useRenameVideo,
-  useSetVideoStatus,
-  type VideoSummary,
-} from "@/lib/projects";
+import { useRenameVideo, useSetVideoStatus, type VideoSummary } from "@/lib/projects";
 import { videoStatuses, type VideoStatus } from "@/server/db/schema";
 
-function VideoControls({ video }: { video: VideoSummary }) {
+function VideoControls({ video, deletable }: { video: VideoSummary; deletable: boolean }) {
   const renameVideo = useRenameVideo(video.id);
   const setVideoStatus = useSetVideoStatus(video.id);
   const [status, setStatus] = useState("");
@@ -30,10 +26,8 @@ function VideoControls({ video }: { video: VideoSummary }) {
     setVideoStatus.mutate(
       { videoId: video.id, status: next },
       {
-        onSuccess: () =>
-          setStatus(`${video.title} is now ${statusLabels[next]}`),
-        onError: () =>
-          setFailure(`Could not change the Status of ${video.title}. Try again.`),
+        onSuccess: () => setStatus(`${video.title} is now ${statusLabels[next]}`),
+        onError: () => setFailure(`Could not change the Status of ${video.title}. Try again.`),
       },
     );
   }
@@ -76,7 +70,7 @@ function VideoControls({ video }: { video: VideoSummary }) {
           initialName={video.title}
           onSubmit={rename}
           trigger={
-            <Button variant="outline" size="icon" aria-label={`Rename ${video.title}`}>
+            <Button variant="ghost" size="icon" aria-label={`Rename ${video.title}`}>
               <Pencil aria-hidden />
             </Button>
           }
@@ -85,12 +79,13 @@ function VideoControls({ video }: { video: VideoSummary }) {
           <UploadSheet
             destination={{ kind: "existing", videoId: video.id, title: video.title }}
             trigger={
-              <Button variant="outline" aria-label={`Retry ${video.title} with a new upload`}>
+              <Button variant="secondary" aria-label={`Retry ${video.title} with a new upload`}>
                 <RotateCcw aria-hidden /> Retry
               </Button>
             }
           />
         )}
+        {deletable && <DeleteWork kind="Video" id={video.id} name={video.title} icon />}
       </div>
       <WriteFeedback status={status} failure={failure} />
     </div>
@@ -110,15 +105,15 @@ export function VideoTile({
   const card = <VideoCard video={video} showStatus={!manageable} />;
   return (
     <>
-      <Link
-        to="/videos/$videoId"
-        params={{ videoId: video.id }}
-        className="block"
-      >
+      <Link to="/videos/$videoId" params={{ videoId: video.id }} className="block">
         {card}
       </Link>
-      {manageable && <VideoControls video={video} />}
-      {deletable && <div className="mt-2"><DeleteWork kind="Video" id={video.id} name={video.title} /></div>}
+      {manageable && <VideoControls video={video} deletable={deletable} />}
+      {!manageable && deletable && (
+        <div className="mt-2">
+          <DeleteWork kind="Video" id={video.id} name={video.title} />
+        </div>
+      )}
     </>
   );
 }

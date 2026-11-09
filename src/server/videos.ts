@@ -17,12 +17,7 @@ const MAX_TITLE_LENGTH = 120;
 
 function reject(
   status: 400 | 404 | 409 | 502,
-  code:
-    | "invalid-title"
-    | "invalid-status"
-    | "not-found"
-    | "already-sent"
-    | "upload-unavailable",
+  code: "invalid-title" | "invalid-status" | "not-found" | "already-sent" | "upload-unavailable",
 ): never {
   throw Response.json({ code }, { status });
 }
@@ -68,20 +63,18 @@ function discardRevision(db: Db, revisionId: string, videoId: string, memberId?:
     db
       .delete(revisions)
       .where(and(eq(revisions.id, revisionId), eq(revisions.state, "uploading"), allowed)),
-    db
-      .delete(videos)
-      .where(
-        and(
-          eq(videos.id, videoId),
-          allowed,
-          notExists(
-            db
-              .select({ one: sql`1` })
-              .from(revisions)
-              .where(eq(revisions.videoId, videoId)),
-          ),
+    db.delete(videos).where(
+      and(
+        eq(videos.id, videoId),
+        allowed,
+        notExists(
+          db
+            .select({ one: sql`1` })
+            .from(revisions)
+            .where(eq(revisions.videoId, videoId)),
         ),
       ),
+    ),
   ]);
 }
 
@@ -119,16 +112,14 @@ async function insertRevision(
 
   if (newVideo) {
     const [, inserted] = await db.batch([
-      db
-        .insert(videos)
-        .select(
-          sql`SELECT ${videoId}, id, ${newVideo.title}, 'review', ${memberId}, ${now}, ${now}, NULL
+      db.insert(videos).select(
+        sql`SELECT ${videoId}, id, ${newVideo.title}, 'review', ${memberId}, ${now}, ${now}, NULL
               FROM projects
               WHERE id = ${newVideo.projectId}
                 AND deleted_at IS NULL
                 AND completed_at IS NULL
                 AND ${activeMember(memberId, "editor")}`,
-        ),
+      ),
       insertRow,
     ]);
     return inserted.length === 1;
@@ -136,16 +127,22 @@ async function insertRevision(
 
   const [inserted] = await db.batch([
     insertRow,
-    db.update(videos).set({ updatedAt: now }).where(and(videoIsWritable(db, videoId), activeMember(memberId, "editor"),
-      sql`EXISTS (SELECT 1 FROM revisions WHERE id = ${revisionId})`)),
+    db
+      .update(videos)
+      .set({ updatedAt: now })
+      .where(
+        and(
+          videoIsWritable(db, videoId),
+          activeMember(memberId, "editor"),
+          sql`EXISTS (SELECT 1 FROM revisions WHERE id = ${revisionId})`,
+        ),
+      ),
   ]);
   return inserted.length === 1;
 }
 
 export const startUpload = createServerFn({ method: "POST" })
-  .validator(
-    (data: { projectId: string; title: string } | { videoId: string }) => data,
-  )
+  .validator((data: { projectId: string; title: string } | { videoId: string }) => data)
   .handler(async ({ data }) => {
     const member = await requireMember("editor");
     const existingVideoId = textField(data, "videoId");
@@ -178,12 +175,26 @@ export const startUpload = createServerFn({ method: "POST" })
 
     const [, eligible] = await db.batch([
       // Keep the Mux ID even if Access changed, so cleanup never loses the upload.
-      db.update(revisions).set({ muxUploadId: upload.uploadId }).where(eq(revisions.id, revisionId)),
-      db.select({ id: revisions.id }).from(revisions).innerJoin(videos, eq(videos.id, revisions.videoId))
-        .where(and(eq(revisions.id, revisionId), eq(revisions.state, "uploading"), videoIsWritable(db, videoId), activeMember(member.id, "editor"))),
+      db
+        .update(revisions)
+        .set({ muxUploadId: upload.uploadId })
+        .where(eq(revisions.id, revisionId)),
+      db
+        .select({ id: revisions.id })
+        .from(revisions)
+        .innerJoin(videos, eq(videos.id, revisions.videoId))
+        .where(
+          and(
+            eq(revisions.id, revisionId),
+            eq(revisions.state, "uploading"),
+            videoIsWritable(db, videoId),
+            activeMember(member.id, "editor"),
+          ),
+        ),
     ]);
     if (!eligible.length) {
-      if (await getMuxGateway().cancelDirectUpload(upload.uploadId)) await discardRevision(db, revisionId, videoId);
+      if (await getMuxGateway().cancelDirectUpload(upload.uploadId))
+        await discardRevision(db, revisionId, videoId);
       reject(404, "not-found");
     }
     return { videoId, revisionId, uploadUrl: upload.url };
@@ -194,15 +205,19 @@ export const cancelUpload = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const member = await requireMember("editor");
     const db = getDb();
-    const [rows, acting] = await db.batch([db
-      .select({
-        videoId: revisions.videoId,
-        state: revisions.state,
-        muxUploadId: revisions.muxUploadId,
-      })
-      .from(revisions)
-      .where(eq(revisions.id, textField(data, "revisionId"))),
-      db.select({ id: members.id }).from(members).where(and(eq(members.id, member.id), activeMember(member.id, "editor"))),
+    const [rows, acting] = await db.batch([
+      db
+        .select({
+          videoId: revisions.videoId,
+          state: revisions.state,
+          muxUploadId: revisions.muxUploadId,
+        })
+        .from(revisions)
+        .where(eq(revisions.id, textField(data, "revisionId"))),
+      db
+        .select({ id: members.id })
+        .from(members)
+        .where(and(eq(members.id, member.id), activeMember(member.id, "editor"))),
     ]);
     if (!acting.length) reject(404, "not-found");
     const [revision] = rows;
@@ -216,7 +231,12 @@ export const cancelUpload = createServerFn({ method: "POST" })
     const cancelled = await getMuxGateway().cancelDirectUpload(revision.muxUploadId);
     if (!cancelled) reject(409, "already-sent");
 
-    const [discarded] = await discardRevision(db, textField(data, "revisionId"), revision.videoId, member.id);
+    const [discarded] = await discardRevision(
+      db,
+      textField(data, "revisionId"),
+      revision.videoId,
+      member.id,
+    );
     if (!discarded.meta.changes) reject(404, "not-found");
     return { cancelled: true };
   });
@@ -261,12 +281,18 @@ export const deleteVideo = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const member = await requireMember("editor");
     const db = getDb();
-    const [video] = await db.update(videos).set({ deletedAt: Date.now() })
-      .where(and(
-        eq(videos.id, textField(data, "videoId")), isNull(videos.deletedAt),
-        sql`EXISTS (SELECT 1 FROM projects WHERE id = ${videos.projectId} AND deleted_at IS NULL)`,
-        sql`EXISTS (SELECT 1 FROM members WHERE id = ${member.id} AND removed_at IS NULL AND (role = 'owner' OR (role = 'editor' AND ${videos.createdBy} = id)))`,
-      )).returning({ id: videos.id });
+    const [video] = await db
+      .update(videos)
+      .set({ deletedAt: Date.now() })
+      .where(
+        and(
+          eq(videos.id, textField(data, "videoId")),
+          isNull(videos.deletedAt),
+          sql`EXISTS (SELECT 1 FROM projects WHERE id = ${videos.projectId} AND deleted_at IS NULL)`,
+          sql`EXISTS (SELECT 1 FROM members WHERE id = ${member.id} AND removed_at IS NULL AND (role = 'owner' OR (role = 'editor' AND ${videos.createdBy} = id)))`,
+        ),
+      )
+      .returning({ id: videos.id });
     if (!video) reject(404, "not-found");
     return video;
   });

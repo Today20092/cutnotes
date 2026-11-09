@@ -4,7 +4,16 @@ import { env } from "cloudflare:workers";
 import { and, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { getDb, type Db } from "@/server/db";
-import { members, projects, revisions, roles, shareLinks, videos, type Member, type Role } from "@/server/db/schema";
+import {
+  members,
+  projects,
+  revisions,
+  roles,
+  shareLinks,
+  videos,
+  type Member,
+  type Role,
+} from "@/server/db/schema";
 
 export type RefusalCode =
   | "signed-out"
@@ -19,10 +28,7 @@ type BatchResults<Reads extends readonly unknown[]> = {
   -readonly [Index in keyof Reads]: Awaited<Reads[Index]>;
 };
 
-export function refuse(
-  status: 400 | 401 | 403 | 404 | 409 | 429,
-  code: RefusalCode,
-): never {
+export function refuse(status: 400 | 401 | 403 | 404 | 409 | 429, code: RefusalCode): never {
   throw Response.json({ code }, { status });
 }
 
@@ -69,7 +75,8 @@ export async function readAsMember<const Reads extends readonly BatchItem<"sqlit
  */
 export async function readShareLink(token: unknown) {
   const address = getRequestHeader("cf-connecting-ip");
-  if (address && !(await env.SHARE_ADDRESS_LIMIT.limit({ key: address })).success) refuse(429, "rate-limited");
+  if (address && !(await env.SHARE_ADDRESS_LIMIT.limit({ key: address })).success)
+    refuse(429, "rate-limited");
   if (typeof token !== "string" || !/^[0-9A-Za-z]{32}$/.test(token)) refuse(404, "not-found");
   const [link] = await getDb()
     .select({
@@ -85,15 +92,20 @@ export async function readShareLink(token: unknown) {
     .from(shareLinks)
     .innerJoin(videos, eq(videos.id, shareLinks.videoId))
     .innerJoin(projects, eq(projects.id, videos.projectId))
-    .innerJoin(revisions, sql`${revisions.id} = (SELECT latest.id FROM revisions AS latest
-      WHERE latest.video_id = ${videos.id} AND latest.state = 'ready' ORDER BY latest.number DESC LIMIT 1)`)
-    .where(and(
-      eq(shareLinks.token, token),
-      isNull(shareLinks.revokedAt),
-      isNull(videos.deletedAt),
-      isNull(projects.deletedAt),
-      isNull(projects.completedAt),
-    ));
+    .innerJoin(
+      revisions,
+      sql`${revisions.id} = (SELECT latest.id FROM revisions AS latest
+      WHERE latest.video_id = ${videos.id} AND latest.state = 'ready' ORDER BY latest.number DESC LIMIT 1)`,
+    )
+    .where(
+      and(
+        eq(shareLinks.token, token),
+        isNull(shareLinks.revokedAt),
+        isNull(videos.deletedAt),
+        isNull(projects.deletedAt),
+        isNull(projects.completedAt),
+      ),
+    );
   if (!link || link.playbackId === null || link.durationMs === null) refuse(404, "not-found");
   return { ...link, playbackId: link.playbackId, durationMs: link.durationMs };
 }
@@ -155,7 +167,10 @@ async function writeActiveMember(
           keepsAnOwner,
         ),
       ),
-    db.select().from(members).where(inArray(members.id, [caller.id, targetId])),
+    db
+      .select()
+      .from(members)
+      .where(inArray(members.id, [caller.id, targetId])),
   ]);
   if (written.meta.changes === 1) return;
 

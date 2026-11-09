@@ -19,17 +19,11 @@ const cors = {
   "access-control-allow-methods": "PUT, OPTIONS",
   "access-control-allow-headers": "*",
 };
-const pixel = Buffer.from(
-  "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
-  "base64",
-);
+const pixel = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
 const file = { name: "main-cut.mp4", mimeType: "video/mp4", buffer: Buffer.alloc(2048) };
 
 /** Mux's upload host and image host, which Seam 2 never reaches for real. */
-async function routeMux(
-  page: Page,
-  chunk: () => Promise<number> = async () => 200,
-) {
+async function routeMux(page: Page, chunk: () => Promise<number> = async () => 200) {
   const revisions: string[] = [];
   await page.route("https://uploads.mux.test/**", async (route) => {
     if (route.request().method() === "OPTIONS") {
@@ -91,16 +85,25 @@ test("an Editor sees delete only for Videos they created", async ({ page }, test
   await routeMux(page);
   const projectName = await openNewProject(page, "Delete roles", testInfo);
   await startUpload(page, "Owner cut");
-  await expect(page.getByRole("region", { name: "Uploads" }).getByText(/being processed/)).toBeVisible();
-  const editor = { clerkUserId: `user_delete_editor_${testInfo.project.name}`, email: "editor@example.com" };
+  await expect(
+    page.getByRole("region", { name: "Uploads" }).getByText(/being processed/),
+  ).toBeVisible();
+  const editor = {
+    clerkUserId: `user_delete_editor_${testInfo.project.name}`,
+    email: "editor@example.com",
+  };
   seedMember(editor.clerkUserId, "editor");
   await signInAs(page, editor);
   await page.reload();
   await expect(page.getByText("Owner cut", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Delete Owner cut", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: `Delete ${projectName}`, exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: `Delete ${projectName}`, exact: true }),
+  ).toHaveCount(0);
   await startUpload(page, "Editor cut");
-  await expect(page.getByRole("region", { name: "Uploads" }).getByText(/being processed/)).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Uploads" }).getByText(/being processed/),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Delete Editor cut", exact: true }).click();
   await page.getByRole("button", { name: "Delete Editor cut permanently" }).click();
   await expect(page.getByRole("button", { name: "Delete Editor cut", exact: true })).toHaveCount(0);
@@ -146,15 +149,13 @@ test("an upload is followed from progress through processing to a signed poster"
       tracks: [{ type: "video", max_frame_rate: 25 }],
     }),
   );
-  await expect(
-    page.locator(`img[src*="token=fake.t.pb_${revisionId}"]`),
-  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator(`img[src*="token=fake.t.pb_${revisionId}"]`)).toBeVisible({
+    timeout: 15_000,
+  });
   await expect(page.getByText("Revision 1")).toBeVisible();
 });
 
-test("a file over 20 GB is refused before anything is sent", async ({
-  page,
-}, testInfo) => {
+test("a file over 20 GB is refused before anything is sent", async ({ page }, testInfo) => {
   const revisions = await routeMux(page);
   await openNewProject(page, "Too big", testInfo);
   await page.getByRole("button", { name: "Upload" }).click();
@@ -173,9 +174,7 @@ test("a file over 20 GB is refused before anything is sent", async ({
   expect(revisions).toEqual([]);
 });
 
-test("a file over 12 hours is refused before anything is sent", async ({
-  page,
-}, testInfo) => {
+test("a file over 12 hours is refused before anything is sent", async ({ page }, testInfo) => {
   await page.addInitScript(() => {
     Object.defineProperty(HTMLMediaElement.prototype, "duration", {
       get: () => 12 * 3600 + 1,
@@ -196,9 +195,7 @@ test("a file over 12 hours is refused before anything is sent", async ({
   expect(revisions).toEqual([]);
 });
 
-test("cancelling stops the upload and removes the Video", async ({
-  page,
-}, testInfo) => {
+test("cancelling stops the upload and removes the Video", async ({ page }, testInfo) => {
   const chunk = held();
   await routeMux(page, async () => {
     await chunk.gate;
@@ -215,7 +212,9 @@ test("cancelling stops the upload and removes the Video", async ({
   await expect(page.getByText(/No Videos yet/)).toBeVisible();
 });
 
-test("cancelling while creation is deferred cancels the returned Revision", async ({ page }, testInfo) => {
+test("cancelling while creation is deferred cancels the returned Revision", async ({
+  page,
+}, testInfo) => {
   const revisions = await routeMux(page);
   await openNewProject(page, "Deferred cancel", testInfo);
   const response = held();
@@ -285,9 +284,7 @@ test("an upload pauses while offline and continues on return", async ({
   await expect(uploads.getByText(/being processed/)).toBeVisible({ timeout: 15_000 });
 });
 
-test("leaving the page warns while an upload runs", async ({
-  page,
-}, testInfo) => {
+test("leaving the page warns while an upload runs", async ({ page }, testInfo) => {
   const chunk = held();
   await routeMux(page, async () => {
     await chunk.gate;
@@ -321,17 +318,20 @@ test("a failed send offers a retry that works", async ({ page }, testInfo) => {
   await expect(uploads.getByText(/being processed/)).toBeVisible({ timeout: 15_000 });
 });
 
-test("failed processing is explained and can be sent again", async ({
-  page,
-}, testInfo) => {
+test("failed processing is explained and can be sent again", async ({ page }, testInfo) => {
   const revisions = await routeMux(page);
   await openNewProject(page, "Failed", testInfo);
   await startUpload(page, "Broken cut");
-  await expect(page.getByRole("region", { name: "Uploads" }).getByText(/being processed/)).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Uploads" }).getByText(/being processed/),
+  ).toBeVisible();
 
-  await deliver(page, assetEvent("errored", revisions[0] as string, {
-    errors: { type: "invalid_input" },
-  }));
+  await deliver(
+    page,
+    assetEvent("errored", revisions[0] as string, {
+      errors: { type: "invalid_input" },
+    }),
+  );
   await expect(page.getByText(/Processing failed/)).toBeVisible({ timeout: 15_000 });
 
   await page.getByRole("button", { name: "Retry Broken cut with a new upload" }).click();
@@ -368,9 +368,7 @@ test("a Status change and a rename appear before the server answers", async ({
   await expect(page.getByLabel("Status of Fine cut")).toHaveValue("rework");
 });
 
-test("a failed Status change rolls back and says so", async ({
-  page,
-}, testInfo) => {
+test("a failed Status change rolls back and says so", async ({ page }, testInfo) => {
   await routeMux(page);
   await openNewProject(page, "Rollback", testInfo);
   await startUpload(page, "Steady cut");
@@ -384,11 +382,15 @@ test("a failed Status change rolls back and says so", async ({
   await expect(status).toHaveValue("review");
 });
 
-test("a failed Status write preserves a concurrent optimistic rename", async ({ page }, testInfo) => {
+test("a failed Status write preserves a concurrent optimistic rename", async ({
+  page,
+}, testInfo) => {
   await routeMux(page);
   await openNewProject(page, "Concurrent edits", testInfo);
   await startUpload(page, "Original cut");
-  await expect(page.getByRole("region", { name: "Uploads" }).getByText(/being processed/)).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Uploads" }).getByText(/being processed/),
+  ).toBeVisible();
   const statusGate = held();
   const renameGate = held();
   let renameStarted = false;
@@ -419,7 +421,9 @@ test("two failed queued Status edits restore the saved Status", async ({ page },
   await routeMux(page);
   await openNewProject(page, "Queued rollback", testInfo);
   await startUpload(page, "Queued cut");
-  await expect(page.getByRole("region", { name: "Uploads" }).getByText(/being processed/)).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Uploads" }).getByText(/being processed/),
+  ).toBeVisible();
   const first = held();
   const second = held();
   const refetch = held();
@@ -448,9 +452,7 @@ test("two failed queued Status edits restore the saved Status", async ({ page },
   await expect(status).toHaveValue("review");
 });
 
-test("a Viewer sees the grid but no upload or management controls", async ({
-  page,
-}, testInfo) => {
+test("a Viewer sees the grid but no upload or management controls", async ({ page }, testInfo) => {
   await routeMux(page);
   await openNewProject(page, "Viewer", testInfo);
   await startUpload(page, "Watch only");

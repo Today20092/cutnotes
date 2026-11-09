@@ -8,15 +8,19 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import { Fragment } from "react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { VideoSummary } from "@/lib/projects";
@@ -33,13 +37,44 @@ export const selectClass =
 let hasShownAView = false;
 
 /** The view's one h1. On a new view it takes focus and sets the document title. */
-export function PageHeading({
-  title,
-  children,
+/** Where this view sits. On phones the current page is left to the h1 directly below. */
+export function PageBreadcrumb({
+  trail,
+  current,
 }: {
-  title: string;
-  children?: ReactNode;
+  trail: { label: string; link: ReactElement }[];
+  current: string;
 }) {
+  return (
+    <Breadcrumb className="flex min-h-11 items-center pr-12">
+      <BreadcrumbList>
+        {trail.map(({ label, link }, index) => (
+          <Fragment key={label}>
+            <BreadcrumbItem>
+              <BreadcrumbLink
+                className="inline-flex min-h-11 items-center wrap-anywhere sm:min-h-0"
+                render={link}
+              >
+                {label}
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator
+              className={index === trail.length - 1 ? "hidden sm:list-item" : undefined}
+            />
+          </Fragment>
+        ))}
+        <BreadcrumbItem className="hidden sm:inline-flex">
+          <BreadcrumbPage className="wrap-anywhere">{current}</BreadcrumbPage>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
+}
+
+export const backLinkClass =
+  "inline-flex min-h-11 w-fit items-center gap-1 text-sm underline-offset-4 hover:underline";
+
+export function PageHeading({ title, children }: { title: string; children?: ReactNode }) {
   const heading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -52,11 +87,7 @@ export function PageHeading({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h1
-        ref={heading}
-        tabIndex={-1}
-        className="min-w-0 text-xl font-semibold wrap-anywhere"
-      >
+      <h1 ref={heading} tabIndex={-1} className="min-w-0 text-xl font-semibold wrap-anywhere">
         {title}
       </h1>
       {children && <div className="flex max-w-full flex-wrap gap-2">{children}</div>}
@@ -101,11 +132,7 @@ export function ProjectNameSheet({
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed || trimmed.length > MAX_NAME_LENGTH) {
-      setError(
-        trimmed
-          ? `Keep the name to ${MAX_NAME_LENGTH} characters.`
-          : emptyMessage,
-      );
+      setError(trimmed ? `Keep the name to ${MAX_NAME_LENGTH} characters.` : emptyMessage);
       input.current?.focus();
       return;
     }
@@ -149,9 +176,11 @@ export function ProjectNameSheet({
 export function RenameProjectButton({
   name,
   onRename,
+  labeled = false,
 }: {
   name: string;
   onRename: (name: string) => void;
+  labeled?: boolean;
 }) {
   return (
     <ProjectNameSheet
@@ -160,8 +189,13 @@ export function RenameProjectButton({
       initialName={name}
       onSubmit={onRename}
       trigger={
-        <Button variant="outline" size="icon" aria-label={`Rename ${name}`}>
+        <Button
+          variant={labeled ? "secondary" : "ghost"}
+          size={labeled ? "default" : "icon"}
+          aria-label={`Rename ${name}`}
+        >
           <Pencil aria-hidden />
+          {labeled && " Rename"}
         </Button>
       }
     />
@@ -169,23 +203,14 @@ export function RenameProjectButton({
 }
 
 /** Spoken confirmation of a write, and a visible message when one fails. */
-export function WriteFeedback({
-  status,
-  failure,
-}: {
-  status: string;
-  failure: string;
-}) {
+export function WriteFeedback({ status, failure }: { status: string; failure: string }) {
   return (
     <>
       <p role="status" className="sr-only">
         {status}
       </p>
       {failure && (
-        <p
-          role="alert"
-          className="rounded-md border border-destructive p-3 text-sm wrap-anywhere"
-        >
+        <p role="alert" className="text-sm text-destructive wrap-anywhere">
           {failure}
         </p>
       )}
@@ -236,12 +261,12 @@ function Poster({ url }: { url: string | null }) {
         alt=""
         loading="lazy"
         onError={() => setBroken(true)}
-        className="aspect-video w-full rounded-md border bg-muted object-cover"
+        className="aspect-video w-full rounded-lg bg-muted object-cover"
       />
     );
   }
   return (
-    <div className="flex aspect-video w-full items-center justify-center rounded-md border bg-muted">
+    <div className="flex aspect-video w-full items-center justify-center rounded-lg bg-muted">
       <Clapperboard className="size-8 text-muted-foreground" aria-hidden />
     </div>
   );
@@ -256,9 +281,7 @@ export function VideoCard({
 }) {
   const progress = revisionProgress(video);
   const revision =
-    video.latestRevision === null
-      ? "No Revision yet"
-      : `Revision ${video.latestRevision}`;
+    video.latestRevision === null ? "No Revision yet" : `Revision ${video.latestRevision}`;
   return (
     <>
       <Poster key={video.posterUrl} url={video.posterUrl} />
@@ -270,35 +293,26 @@ export function VideoCard({
             {video.projectName} · {revision} · {formatUpdated(video.updatedAt)}
           </div>
           {progress && (
-            <div
-              className={
-                progress.failed ? "text-sm text-destructive" : "text-sm"
-              }
-            >
+            <div className={progress.failed ? "text-sm text-destructive" : "text-sm"}>
               {progress.text}
             </div>
           )}
         </div>
         {showStatus && (
-          <span className="shrink-0 rounded-md border border-foreground px-2 py-0.5 text-xs font-medium">
+          <Badge variant="secondary" className="shrink-0">
             {statusLabels[video.status]}
-          </span>
+          </Badge>
         )}
       </div>
     </>
   );
 }
 
-export const videoGridClass =
-  "grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 xl:grid-cols-3";
+export const videoGridClass = "grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 xl:grid-cols-3";
 
 export function VideoGridSkeleton() {
   return (
-    <div
-      role="status"
-      aria-label="Loading"
-      className="flex flex-col gap-4"
-    >
+    <div role="status" aria-label="Loading" className="flex flex-col gap-4">
       <Skeleton className="h-7 w-40" />
       <div className={videoGridClass}>
         {[0, 1, 2].map((key) => (

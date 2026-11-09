@@ -14,9 +14,7 @@ async function createInviteLink(page: Page, role: "Viewer" | "Editor") {
   await page.getByRole("button", { name: "Create Invite" }).click();
   const link = page.getByLabel("Link to send");
   await expect(link).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Invite link" }),
-  ).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Invite link" })).toBeFocused();
   return link.inputValue();
 }
 
@@ -69,9 +67,7 @@ test("an Owner revokes a pending Invite, and its link stops working", async ({
   const before = await page.getByRole("button", { name: /^Revoke/ }).count();
   await revoke.click();
   await expect(page.getByRole("button", { name: /^Revoke/ })).toHaveCount(before - 1);
-  await expect(
-    page.getByRole("heading", { name: "Pending Invites" }),
-  ).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Pending Invites" })).toBeFocused();
 
   const visitor = await openAs(
     browser,
@@ -81,32 +77,21 @@ test("an Owner revokes a pending Invite, and its link stops working", async ({
     },
     url,
   );
-  await expect(
-    visitor.getByRole("heading", { name: "This Invite was cancelled" }),
-  ).toBeVisible();
+  await expect(visitor.getByRole("heading", { name: "This Invite was cancelled" })).toBeVisible();
 });
 
-test("an existing Member is told so and the Invite stays pending", async ({
-  page,
-  browser,
-}) => {
+test("an existing Member is told so and the Invite stays pending", async ({ page, browser }) => {
   const url = await createInviteLink(page, "Editor");
 
   const member = await openAs(browser, owner, url);
 
-  await expect(
-    member.getByRole("heading", { name: "You are already on this Team" }),
-  ).toBeVisible();
+  await expect(member.getByRole("heading", { name: "You are already on this Team" })).toBeVisible();
   await page.reload();
-  await expect(
-    page.getByRole("button", { name: /^Revoke Editor Invite/ }).first(),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Revoke Editor Invite/ }).first()).toBeVisible();
 });
 
 test("a signed-out visitor is asked to sign in to accept", async ({ page }) => {
   await page.goto("/invite/some-token");
 
-  await expect(
-    page.getByRole("heading", { name: "You have been invited" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "You have been invited" })).toBeVisible();
 });

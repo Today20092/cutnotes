@@ -63,11 +63,7 @@ describe("permission matrix: create a Video or upload a Revision", () => {
     await seedProject("p1");
     const create = vi.spyOn(fakeMux, "createDirectUpload");
 
-    await expectRefused(
-      await call(startUpload, viewer, newVideo),
-      403,
-      "insufficient-role",
-    );
+    await expectRefused(await call(startUpload, viewer, newVideo), 403, "insufficient-role");
 
     expect(await revisions()).toEqual([]);
     expect(await videoTitles()).toEqual([]);
@@ -79,11 +75,7 @@ describe("permission matrix: create a Video or upload a Revision", () => {
     const editor = await seedMember("editor", 1000);
     await seedProject("p1");
 
-    await expectRefused(
-      await call(startUpload, editor, newVideo),
-      403,
-      "not-a-member",
-    );
+    await expectRefused(await call(startUpload, editor, newVideo), 403, "not-a-member");
   });
 
   it("refuses a Viewer who forges a cancel", async () => {
@@ -116,9 +108,7 @@ describe("starting an upload", () => {
       corsOrigin: env.APP_ORIGIN,
       passthrough: started.revisionId,
     });
-    expect(started.uploadUrl).toBe(
-      `https://uploads.mux.test/${started.revisionId}`,
-    );
+    expect(started.uploadUrl).toBe(`https://uploads.mux.test/${started.revisionId}`);
     expect(await videoTitles()).toEqual([{ title: "Main cut", status: "review" }]);
     expect(await revisions()).toMatchObject([
       {
@@ -134,9 +124,7 @@ describe("starting an upload", () => {
     const owner = await seedMember("owner");
     await seedProject("p1");
 
-    const started = await resultOf<Started>(
-      await call(startUpload, owner, newVideo),
-    );
+    const started = await resultOf<Started>(await call(startUpload, owner, newVideo));
 
     const rows = await env.DB.prepare("SELECT * FROM revisions").all();
     expect(JSON.stringify(rows.results)).not.toContain(started.uploadUrl);
@@ -153,9 +141,7 @@ describe("starting an upload", () => {
 
     expect(response.status).toBe(200);
     expect((await revisions()).map((row) => row.number)).toEqual([1, 2]);
-    expect(await videoTitles()).toEqual([
-      { title: "Video v1", status: "rework" },
-    ]);
+    expect(await videoTitles()).toEqual([{ title: "Video v1", status: "rework" }]);
   });
 
   it.each([
@@ -198,26 +184,16 @@ describe("starting an upload", () => {
     await seedProject("p1", { completedAt: 5 });
     await seedVideo("v1", "p1");
 
-    await expectRefused(
-      await call(startUpload, owner, { videoId: "v1" }),
-      404,
-      "not-found",
-    );
+    await expectRefused(await call(startUpload, owner, { videoId: "v1" }), 404, "not-found");
     expect(await revisions()).toEqual([]);
   });
 
   it("leaves nothing behind when Mux refuses a new Video's upload", async () => {
     const owner = await seedMember("owner");
     await seedProject("p1");
-    vi.spyOn(fakeMux, "createDirectUpload").mockRejectedValueOnce(
-      new Error("mux down"),
-    );
+    vi.spyOn(fakeMux, "createDirectUpload").mockRejectedValueOnce(new Error("mux down"));
 
-    await expectRefused(
-      await call(startUpload, owner, newVideo),
-      502,
-      "upload-unavailable",
-    );
+    await expectRefused(await call(startUpload, owner, newVideo), 502, "upload-unavailable");
 
     expect(await revisions()).toEqual([]);
     expect(await videoTitles()).toEqual([]);
@@ -228,9 +204,7 @@ describe("starting an upload", () => {
     await seedProject("p1");
     await seedVideo("v1", "p1");
     await seedRevision({ id: "r1", videoId: "v1", state: "ready" });
-    vi.spyOn(fakeMux, "createDirectUpload").mockRejectedValueOnce(
-      new Error("mux down"),
-    );
+    vi.spyOn(fakeMux, "createDirectUpload").mockRejectedValueOnce(new Error("mux down"));
 
     await call(startUpload, owner, { videoId: "v1" });
 
@@ -243,9 +217,7 @@ describe("cancelling an upload", () => {
   async function started() {
     const owner = await seedMember("owner");
     await seedProject("p1");
-    const result = await resultOf<Started>(
-      await call(startUpload, owner, newVideo),
-    );
+    const result = await resultOf<Started>(await call(startUpload, owner, newVideo));
     return { owner, ...result };
   }
 
@@ -278,11 +250,7 @@ describe("cancelling an upload", () => {
     const { owner, revisionId } = await started();
     vi.spyOn(fakeMux, "cancelDirectUpload").mockResolvedValueOnce(false);
 
-    await expectRefused(
-      await call(cancelUpload, owner, { revisionId }),
-      409,
-      "already-sent",
-    );
+    await expectRefused(await call(cancelUpload, owner, { revisionId }), 409, "already-sent");
     expect(await revisions()).toHaveLength(1);
   });
 

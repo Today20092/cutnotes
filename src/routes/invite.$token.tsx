@@ -2,10 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { useAuthStatus, useSignOut } from "@/auth/client";
-import {
-  InviteOutcomeScreen,
-  InviteSignInScreen,
-} from "@/components/gate-screens";
+import { InviteOutcomeScreen, InviteSignInScreen } from "@/components/gate-screens";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTeam, type Team } from "@/lib/team";
@@ -35,7 +32,13 @@ function InvitePage() {
   const { isLoaded, isSignedIn } = useAuthStatus();
   const team = useTeam();
 
-  if (!isLoaded || !team.data) return <main aria-busy="true"><h1 className="sr-only">Loading</h1><Skeleton className="m-6 h-40" /></main>;
+  if (!isLoaded || !team.data)
+    return (
+      <main aria-busy="true">
+        <h1 className="sr-only">Loading</h1>
+        <Skeleton className="m-6 h-40" />
+      </main>
+    );
   if (!isSignedIn) {
     return <InviteSignInScreen team={team.data} returnTo={location.href} />;
   }
@@ -102,8 +105,7 @@ function Redeem({ team, token }: { team: Team; token: string }) {
           </Link>
         }
       >
-        This Invite has not been used, so it still works for the person it was
-        meant for.
+        This Invite has not been used, so it still works for the person it was meant for.
       </InviteOutcomeScreen>
     );
   }
@@ -113,7 +115,7 @@ function Redeem({ team, token }: { team: Team; token: string }) {
       team={team}
       title={unavailableTitles[result.reason]}
       action={
-        <Button variant="outline" onClick={signOut}>
+        <Button variant="secondary" onClick={signOut}>
           Sign out
         </Button>
       }

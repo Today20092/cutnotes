@@ -7,12 +7,22 @@ export async function createPlayback(
   mux: Pick<MuxGateway, "signPlaybackToken">,
   { playbackId, durationSeconds }: { playbackId: string; durationSeconds: number },
 ): Promise<Playback> {
-  const expiresAt = Math.floor(Date.now() / 1000) + Math.max(3600, Math.ceil(durationSeconds) + 900);
+  const expiresAt =
+    Math.floor(Date.now() / 1000) + Math.max(3600, Math.ceil(durationSeconds) + 900);
   const tokens = await Promise.all(
-    (["v", "t", "s"] as const).map((audience) => mux.signPlaybackToken({
-      playbackId, audience, expiresAt,
-      claims: audience === "v" ? { max_resolution: "1080p" } : audience === "t" ? { time: 0 } : undefined,
-    })),
+    (["v", "t", "s"] as const).map((audience) =>
+      mux.signPlaybackToken({
+        playbackId,
+        audience,
+        expiresAt,
+        claims:
+          audience === "v"
+            ? { max_resolution: "1080p" }
+            : audience === "t"
+              ? { time: 0 }
+              : undefined,
+      }),
+    ),
   );
   const [video, poster, storyboard] = tokens as [string, string, string];
   const id = encodeURIComponent(playbackId);
@@ -55,10 +65,7 @@ export type MuxGateway = {
   /** False when Mux will not cancel because the upload is no longer waiting. */
   cancelDirectUpload(uploadId: string): Promise<boolean>;
   /** Checks the `Mux-Signature` header against the exact bytes received. */
-  verifyWebhookSignature(request: {
-    rawBody: string;
-    signature: string | null;
-  }): Promise<boolean>;
+  verifyWebhookSignature(request: { rawBody: string; signature: string | null }): Promise<boolean>;
 };
 
 const MUX_API = "https://api.mux.com/video/v1";
@@ -73,8 +80,7 @@ const toBase64Url = (bytes: Uint8Array) =>
     .replace(/\//g, "_")
     .replace(/=+$/, "");
 
-const encodeJson = (value: unknown) =>
-  toBase64Url(encoder.encode(JSON.stringify(value)));
+const encodeJson = (value: unknown) => toBase64Url(encoder.encode(JSON.stringify(value)));
 
 function derLength(length: number): number[] {
   if (length < 0x80) return [length];
@@ -87,21 +93,15 @@ function derLength(length: number): number[] {
 
 // version 0, then AlgorithmIdentifier { rsaEncryption, NULL }.
 const pkcs8Prefix = [
-  0x02, 0x01, 0x00, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d,
-  0x01, 0x01, 0x01, 0x05, 0x00,
+  0x02, 0x01, 0x00, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01,
+  0x05, 0x00,
 ];
 
 /** Web Crypto only imports PKCS#8, and Mux issues PKCS#1 keys. */
 function pkcs1ToPkcs8(pkcs1: Uint8Array): Uint8Array<ArrayBuffer> {
   const octetString = [0x04, ...derLength(pkcs1.length)];
   const bodyLength = pkcs8Prefix.length + octetString.length + pkcs1.length;
-  return new Uint8Array([
-    0x30,
-    ...derLength(bodyLength),
-    ...pkcs8Prefix,
-    ...octetString,
-    ...pkcs1,
-  ]);
+  return new Uint8Array([0x30, ...derLength(bodyLength), ...pkcs8Prefix, ...octetString, ...pkcs1]);
 }
 
 async function importSigningKey(base64Pem: string): Promise<CryptoKey> {
@@ -121,18 +121,14 @@ async function importSigningKey(base64Pem: string): Promise<CryptoKey> {
 
 const fromHex = (hex: string) =>
   /^(?:[0-9a-f]{2})+$/i.test(hex)
-    ? Uint8Array.from(hex.match(/../g) as string[], (byte) =>
-        Number.parseInt(byte, 16),
-      )
+    ? Uint8Array.from(hex.match(/../g) as string[], (byte) => Number.parseInt(byte, 16))
     : undefined;
 
 function parseSignatureHeader(header: string) {
   const fields = header.split(",").map((field) => field.trim().split("="));
   return {
     timestamp: fields.find(([name]) => name === "t")?.[1],
-    signatures: fields.flatMap(([name, value]) =>
-      name === "v1" && value ? [value] : [],
-    ),
+    signatures: fields.flatMap(([name, value]) => (name === "v1" && value ? [value] : [])),
   };
 }
 
@@ -158,10 +154,13 @@ export function createMuxGateway(config: {
     });
 
   return {
-    createPlayback(request) { return createPlayback(this, request); },
+    createPlayback(request) {
+      return createPlayback(this, request);
+    },
     async deleteAsset(assetId) {
       const response = await callMux(`/assets/${encodeURIComponent(assetId)}`, "DELETE");
-      if (!response.ok && response.status !== 404) throw new Error(`Mux could not delete asset: ${response.status}`);
+      if (!response.ok && response.status !== 404)
+        throw new Error(`Mux could not delete asset: ${response.status}`);
     },
     async getAsset(assetId) {
       const response = await callMux(`/assets/${encodeURIComponent(assetId)}`, "GET");
@@ -196,10 +195,7 @@ export function createMuxGateway(config: {
     },
 
     async cancelDirectUpload(uploadId) {
-      const response = await callMux(
-        `/uploads/${encodeURIComponent(uploadId)}/cancel`,
-        "PUT",
-      );
+      const response = await callMux(`/uploads/${encodeURIComponent(uploadId)}/cancel`, "PUT");
       if (response.ok) return true;
       if (response.status < 500) return false;
       throw new Error(`Mux could not cancel the upload: ${response.status}`);
@@ -223,10 +219,7 @@ export function createMuxGateway(config: {
       for (const candidate of signatures) {
         const bytes = fromHex(candidate);
         // subtle.verify compares in constant time.
-        if (
-          bytes &&
-          (await crypto.subtle.verify("HMAC", await webhookKey, bytes, signed))
-        ) {
+        if (bytes && (await crypto.subtle.verify("HMAC", await webhookKey, bytes, signed))) {
           return true;
         }
       }
@@ -242,11 +235,7 @@ export function createMuxGateway(config: {
         exp: expiresAt,
         kid: config.signingKeyId,
       })}`;
-      const signature = await crypto.subtle.sign(
-        algorithm,
-        await key,
-        encoder.encode(unsigned),
-      );
+      const signature = await crypto.subtle.sign(algorithm, await key, encoder.encode(unsigned));
       return `${unsigned}.${toBase64Url(new Uint8Array(signature))}`;
     },
   };

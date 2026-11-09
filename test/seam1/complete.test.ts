@@ -1,8 +1,19 @@
 import { env } from "cloudflare:workers";
-import { createExecutionContext, createScheduledController, waitOnExecutionContext } from "cloudflare:test";
+import {
+  createExecutionContext,
+  createScheduledController,
+  waitOnExecutionContext,
+} from "cloudflare:test";
 import worker from "@/server";
 import { beforeEach, expect, it } from "vitest";
-import { call, clearDatabase, seedMember, seedProject, seedRevision, seedVideo } from "./support/seed";
+import {
+  call,
+  clearDatabase,
+  seedMember,
+  seedProject,
+  seedRevision,
+  seedVideo,
+} from "./support/seed";
 import { callServerFn, resultOf, serverFunctionIds as fn } from "./support/worker";
 
 const FOURTEEN_DAYS_MS = 1_209_600_000;
@@ -10,15 +21,20 @@ const owner = "user_owner";
 const complete = (caller = owner) => call(fn.completeProject, caller, { projectId: "p" });
 const reopen = (caller = owner) => call(fn.reopenProject, caller, { projectId: "p" });
 const project = async () =>
-  (await resultOf<{ project: { completedAt: number | null; deleteAfter: number | null } }>(
-    await call(fn.getProject, owner, { projectId: "p" }),
-  )).project;
+  (
+    await resultOf<{ project: { completedAt: number | null; deleteAfter: number | null } }>(
+      await call(fn.getProject, owner, { projectId: "p" }),
+    )
+  ).project;
 const hourly = async () => {
   const context = createExecutionContext();
-  await worker.scheduled(createScheduledController({ scheduledTime: Date.now(), cron: "0 * * * *" }));
+  await worker.scheduled(
+    createScheduledController({ scheduledTime: Date.now(), cron: "0 * * * *" }),
+  );
   await waitOnExecutionContext(context);
 };
-const projectCount = async () => (await env.DB.prepare("SELECT id FROM projects").all()).results.length;
+const projectCount = async () =>
+  (await env.DB.prepare("SELECT id FROM projects").all()).results.length;
 
 beforeEach(async () => {
   await clearDatabase();
@@ -56,9 +72,17 @@ it("a repeated Complete cannot push the deadline back", async () => {
 // Uploads to a Complete Project are refused in uploads.test.ts.
 it("Members watch a Complete Project while Comments and Status changes are refused", async () => {
   await complete();
-  const review = await resultOf<{ playback: unknown }>(await call(fn.getReview, "user_viewer", { videoId: "v" }));
+  const review = await resultOf<{ playback: unknown }>(
+    await call(fn.getReview, "user_viewer", { videoId: "v" }),
+  );
   expect(review.playback).not.toBeNull();
-  const comment = { id: crypto.randomUUID(), videoId: "v", revisionId: "r", timecodeMs: 1, body: "Late note" };
+  const comment = {
+    id: crypto.randomUUID(),
+    videoId: "v",
+    revisionId: "r",
+    timecodeMs: 1,
+    body: "Late note",
+  };
   expect((await call(fn.createComment, "user_viewer", comment)).status).toBe(400);
   expect((await call(fn.setVideoStatus, owner, { videoId: "v", status: "done" })).status).toBe(404);
 });

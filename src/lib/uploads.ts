@@ -9,9 +9,7 @@ const PROBE_TIMEOUT_MS = 10_000;
 // Must be a multiple of 256 KB. To be tuned on real phones.
 const CHUNK_SIZE_KB = 8192;
 
-export type UploadTarget =
-  | { projectId: string; title: string }
-  | { videoId: string };
+export type UploadTarget = { projectId: string; title: string } | { videoId: string };
 
 export type UploadPhase =
   | "waiting"
@@ -43,10 +41,8 @@ let items: UploadItem[] = [];
 const transfers = new Map<string, Transfer>();
 const listeners = new Set<() => void>();
 
-const isRunning = ({ phase }: UploadItem) =>
-  phase === "sending" || phase === "paused";
-const isUnfinished = (item: UploadItem) =>
-  item.phase === "waiting" || isRunning(item);
+const isRunning = ({ phase }: UploadItem) => phase === "sending" || phase === "paused";
+const isUnfinished = (item: UploadItem) => item.phase === "waiting" || isRunning(item);
 
 function warnBeforeLeaving(event: BeforeUnloadEvent) {
   event.preventDefault();
@@ -184,7 +180,9 @@ export async function stopUpload(id: string) {
     await discardOnServer(transfer);
     remove(id);
   } catch (error) {
-    update(id, { phase: error instanceof Response && error.status === 409 ? "too-late" : "cancel-failed" });
+    update(id, {
+      phase: error instanceof Response && error.status === 409 ? "too-late" : "cancel-failed",
+    });
   }
   startNext();
 }
@@ -195,7 +193,11 @@ const subscribe = (listener: () => void) => {
 };
 
 export const useUploads = () =>
-  useSyncExternalStore(subscribe, () => items, () => items);
+  useSyncExternalStore(
+    subscribe,
+    () => items,
+    () => items,
+  );
 
 /** Null when the browser cannot read the file. The server re-checks at `ready`. */
 function probeDuration(file: File) {
@@ -210,8 +212,7 @@ function probeDuration(file: File) {
     };
     const timer = setTimeout(() => finish(null), PROBE_TIMEOUT_MS);
     video.preload = "metadata";
-    video.onloadedmetadata = () =>
-      finish(Number.isFinite(video.duration) ? video.duration : null);
+    video.onloadedmetadata = () => finish(Number.isFinite(video.duration) ? video.duration : null);
     video.onerror = () => finish(null);
     video.src = url;
   });

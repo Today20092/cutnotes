@@ -5,7 +5,9 @@ import { ChevronLeft, Upload } from "lucide-react";
 import { useState } from "react";
 import { MemberScreen } from "@/components/member-screen";
 import {
+  backLinkClass,
   canWrite,
+  PageBreadcrumb,
   PageHeading,
   RenameProjectButton,
   videoGridClass,
@@ -15,7 +17,12 @@ import {
 import { UploadSheet } from "@/components/upload-parts";
 import { VideoTile } from "@/components/video-tile";
 import { Button } from "@/components/ui/button";
-import { projectQuery, useRenameProject, useSetProjectComplete, type ProjectPage } from "@/lib/projects";
+import {
+  projectQuery,
+  useRenameProject,
+  useSetProjectComplete,
+  type ProjectPage,
+} from "@/lib/projects";
 
 export const Route = createFileRoute("/projects/$projectId")({
   head: () => ({ meta: [{ title: "Project · Cutnotes" }] }),
@@ -28,10 +35,7 @@ export const Route = createFileRoute("/projects/$projectId")({
 
 function BackLink() {
   return (
-    <Link
-      to="/"
-      className="inline-flex min-h-10 w-fit items-center gap-1 text-sm underline-offset-4 hover:underline"
-    >
+    <Link to="/" className={backLinkClass}>
       <ChevronLeft className="size-4" aria-hidden /> Back to Projects
     </Link>
   );
@@ -74,8 +78,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
       { projectId: project.id, name },
       {
         onSuccess: () => setStatus(`Project renamed to ${name}`),
-        onError: () =>
-          setFailure(`Could not rename ${previous}. Nothing changed. Try again.`),
+        onError: () => setFailure(`Could not rename ${previous}. Nothing changed. Try again.`),
       },
     );
   }
@@ -92,43 +95,49 @@ function ProjectView({ page }: { page: ProjectPage }) {
           requestAnimationFrame(() => document.querySelector<HTMLHeadingElement>("h1")?.focus());
         },
         onError: () =>
-          setFailure(`Could not ${complete ? "Complete" : "reopen"} ${project.name}. Nothing changed. Try again.`),
+          setFailure(
+            `Could not ${complete ? "Complete" : "reopen"} ${project.name}. Nothing changed. Try again.`,
+          ),
       },
     );
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <BackLink />
+      <PageBreadcrumb
+        trail={[{ label: "Projects", link: <Link to="/" /> }]}
+        current={project.name}
+      />
       <PageHeading title={project.name}>
-        {member.role === "owner" && project.completedAt === null && (
-          <CompleteProject name={project.name} onComplete={() => changeComplete(true)} />
-        )}
-        {member.role === "owner" && <DeleteWork kind="Project" id={project.id} name={project.name} onDeleted={() => { void navigate({ to: "/" }); }} />}
         {writable && project.completedAt === null && (
-          <>
-            <RenameProjectButton name={project.name} onRename={rename} />
-            <UploadSheet
-              destination={{
-                kind: "new",
-                projects: [{ id: project.id, name: project.name }],
-              }}
-              trigger={
-                <Button>
-                  <Upload aria-hidden /> Upload
-                </Button>
-              }
-            />
-          </>
+          <UploadSheet
+            destination={{
+              kind: "new",
+              projects: [{ id: project.id, name: project.name }],
+            }}
+            trigger={
+              <Button>
+                <Upload aria-hidden /> Upload
+              </Button>
+            }
+          />
         )}
       </PageHeading>
       <WriteFeedback status={status} failure={failure} />
       {project.deleteAfter !== null && (
         <CompleteBanner
           deleteAfter={project.deleteAfter}
-          action={member.role === "owner" && (
-            <Button variant="outline" aria-label={`Reopen ${project.name}`} onClick={() => changeComplete(false)}>Reopen</Button>
-          )}
+          action={
+            member.role === "owner" && (
+              <Button
+                variant="secondary"
+                aria-label={`Reopen ${project.name}`}
+                onClick={() => changeComplete(false)}
+              >
+                Reopen
+              </Button>
+            )
+          }
         />
       )}
       {videos.length === 0 ? (
@@ -142,10 +151,42 @@ function ProjectView({ page }: { page: ProjectPage }) {
         <ul className={videoGridClass}>
           {videos.map((video) => (
             <li key={video.id} className="min-w-0">
-              <VideoTile video={video} writable={writable} deletable={member.role === "owner" || (member.role === "editor" && video.createdBy === member.id)} />
+              <VideoTile
+                video={video}
+                writable={writable}
+                deletable={
+                  member.role === "owner" ||
+                  (member.role === "editor" && video.createdBy === member.id)
+                }
+              />
             </li>
           ))}
         </ul>
+      )}
+      {(member.role === "owner" || (writable && project.completedAt === null)) && (
+        <section aria-labelledby="manage-project-heading" className="mt-6 flex flex-col gap-2">
+          <h2 id="manage-project-heading" className="text-lg font-semibold">
+            Manage Project
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {writable && project.completedAt === null && (
+              <RenameProjectButton name={project.name} onRename={rename} labeled />
+            )}
+            {member.role === "owner" && project.completedAt === null && (
+              <CompleteProject name={project.name} onComplete={() => changeComplete(true)} />
+            )}
+            {member.role === "owner" && (
+              <DeleteWork
+                kind="Project"
+                id={project.id}
+                name={project.name}
+                onDeleted={() => {
+                  void navigate({ to: "/" });
+                }}
+              />
+            )}
+          </div>
+        </section>
       )}
     </div>
   );

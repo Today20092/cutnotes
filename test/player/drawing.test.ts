@@ -11,6 +11,19 @@ test("picture coordinates exclude letterboxing and clamp captured pointers", () 
 });
 
 test("pen simplification retains endpoints and corners while removing straight samples", () => {
-  assert.deepEqual(simplify([[0, 0], [0.1, 0.1], [0.2, 0.2], [0.5, 0.5], [1, 0.5]]), [[0, 0], [0.5, 0.5], [1, 0.5]]);
+  assert.deepEqual(
+    simplify([
+      [0, 0],
+      [0.1, 0.1],
+      [0.2, 0.2],
+      [0.5, 0.5],
+      [1, 0.5],
+    ]),
+    [
+      [0, 0],
+      [0.5, 0.5],
+      [1, 0.5],
+    ],
+  );
   assert.deepEqual(simplify([[0.2, 0.3]]), [[0.2, 0.3]]);
 });

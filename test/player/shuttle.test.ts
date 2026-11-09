@@ -220,4 +220,3 @@ test("Final Cut half-speed and reverse shortcuts preserve modifier guards", () =
   );
   assert.equal(playbackShortcut({ ...event, key: "l", altKey: true }, null, false), null);
 });
-

@@ -285,4 +285,3 @@ export function bindPlaybackShortcuts(
     window.removeEventListener("blur", reset);
   };
 }
-

@@ -5,8 +5,7 @@ import { env } from "cloudflare:workers";
 export const Route = createFileRoute("/api/team")({
   server: {
     handlers: {
-      GET: () =>
-        Response.json({ name: env.TEAM_NAME, logoUrl: env.TEAM_LOGO_URL }),
+      GET: () => Response.json({ name: env.TEAM_NAME, logoUrl: env.TEAM_LOGO_URL }),
     },
   },
 });

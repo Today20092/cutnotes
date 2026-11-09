@@ -55,10 +55,16 @@ const selectVideos = (db: ScreenDb, clerkUserId: string) =>
             AND feedback.created_at > COALESCE((SELECT last_read_at FROM video_reads WHERE member_id = reader.id AND video_id = ${videos.id}), 0))
         )
       )`.mapWith(Boolean),
-      latestRevision: sql<number | null>`(SELECT max(number) FROM revisions WHERE revisions.video_id = ${videos.id})`,
+      latestRevision: sql<
+        number | null
+      >`(SELECT max(number) FROM revisions WHERE revisions.video_id = ${videos.id})`,
       latestRevisionState: sql<RevisionState | null>`(SELECT state FROM revisions WHERE revisions.video_id = ${videos.id} ORDER BY number DESC LIMIT 1)`,
-      latestRevisionError: sql<string | null>`(SELECT error_code FROM revisions WHERE revisions.video_id = ${videos.id} ORDER BY number DESC LIMIT 1)`,
-      posterPlaybackId: sql<string | null>`(SELECT mux_playback_id FROM revisions WHERE revisions.video_id = ${videos.id} AND revisions.state = 'ready' ORDER BY number DESC LIMIT 1)`,
+      latestRevisionError: sql<
+        string | null
+      >`(SELECT error_code FROM revisions WHERE revisions.video_id = ${videos.id} ORDER BY number DESC LIMIT 1)`,
+      posterPlaybackId: sql<
+        string | null
+      >`(SELECT mux_playback_id FROM revisions WHERE revisions.video_id = ${videos.id} AND revisions.state = 'ready' ORDER BY number DESC LIMIT 1)`,
     })
     .from(videos)
     .innerJoin(projects, eq(videos.projectId, projects.id));
@@ -72,9 +78,7 @@ const SECONDS_PER_HOUR = 3600;
  * the hour, at least an hour away, so a refetch yields the identical token and
  * the image does not reload.
  */
-async function withPosters<Video extends { posterPlaybackId: string | null }>(
-  rows: Video[],
-) {
+async function withPosters<Video extends { posterPlaybackId: string | null }>(rows: Video[]) {
   const hour = Math.ceil(Date.now() / 1000 / SECONDS_PER_HOUR);
   const expiresAt = (hour + 1) * SECONDS_PER_HOUR;
   const mux = getMuxGateway();
@@ -91,23 +95,21 @@ async function withPosters<Video extends { posterPlaybackId: string | null }>(
   );
 }
 
-export const listProjects = createServerFn({ method: "POST" }).handler(
-  async () => {
-    const { member, results } = await readAsMember("viewer", (db, clerkUserId) => [
-      db
-        .select(projectSummary)
-        .from(projects)
-        .where(isNull(projects.deletedAt))
-        .orderBy(desc(projects.createdAt)),
-      selectVideos(db, clerkUserId).where(liveVideo).orderBy(desc(videos.updatedAt)),
-    ]);
-    return {
-      member: { id: member.id, displayName: member.displayName, role: member.role },
-      projects: results[0],
-      videos: await withPosters(results[1]),
-    };
-  },
-);
+export const listProjects = createServerFn({ method: "POST" }).handler(async () => {
+  const { member, results } = await readAsMember("viewer", (db, clerkUserId) => [
+    db
+      .select(projectSummary)
+      .from(projects)
+      .where(isNull(projects.deletedAt))
+      .orderBy(desc(projects.createdAt)),
+    selectVideos(db, clerkUserId).where(liveVideo).orderBy(desc(videos.updatedAt)),
+  ]);
+  return {
+    member: { id: member.id, displayName: member.displayName, role: member.role },
+    projects: results[0],
+    videos: await withPosters(results[1]),
+  };
+});
 
 export const getProject = createServerFn({ method: "POST" })
   .validator((data: { projectId: string }) => data)
@@ -170,10 +172,16 @@ export const deleteProject = createServerFn({ method: "POST" })
   .validator((data: { projectId: string }) => data)
   .handler(async ({ data }) => {
     const member = await requireMember("owner");
-    const [project] = await getDb().update(projects)
+    const [project] = await getDb()
+      .update(projects)
       .set({ deletedAt: Date.now() })
-      .where(and(eq(projects.id, parseProjectId(data)), isNull(projects.deletedAt),
-        sql`EXISTS (SELECT 1 FROM members WHERE id = ${member.id} AND role = 'owner' AND removed_at IS NULL)`))
+      .where(
+        and(
+          eq(projects.id, parseProjectId(data)),
+          isNull(projects.deletedAt),
+          sql`EXISTS (SELECT 1 FROM members WHERE id = ${member.id} AND role = 'owner' AND removed_at IS NULL)`,
+        ),
+      )
       .returning({ id: projects.id });
     if (!project) reject(404, "not-found");
     return project;
@@ -187,10 +195,18 @@ export const completeProject = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const member = await requireMember("owner");
     const now = Date.now();
-    const [project] = await getDb().update(projects)
+    const [project] = await getDb()
+      .update(projects)
       .set({ completedAt: now, deleteAfter: now + COUNTDOWN_MS, updatedAt: now })
       // Only an open Project: a repeat must not move the deadline.
-      .where(and(eq(projects.id, parseProjectId(data)), isNull(projects.deletedAt), isNull(projects.completedAt), stillOwner(member.id)))
+      .where(
+        and(
+          eq(projects.id, parseProjectId(data)),
+          isNull(projects.deletedAt),
+          isNull(projects.completedAt),
+          stillOwner(member.id),
+        ),
+      )
       .returning(projectSummary);
     if (!project) reject(404, "not-found");
     return project;
@@ -201,10 +217,19 @@ export const reopenProject = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const member = await requireMember("owner");
     const now = Date.now();
-    const [project] = await getDb().update(projects)
+    const [project] = await getDb()
+      .update(projects)
       .set({ completedAt: null, deleteAfter: null, updatedAt: now })
       // Past the deadline the Project belongs to the purge, even before the hourly run reaches it.
-      .where(and(eq(projects.id, parseProjectId(data)), isNull(projects.deletedAt), isNotNull(projects.completedAt), gt(projects.deleteAfter, now), stillOwner(member.id)))
+      .where(
+        and(
+          eq(projects.id, parseProjectId(data)),
+          isNull(projects.deletedAt),
+          isNotNull(projects.completedAt),
+          gt(projects.deleteAfter, now),
+          stillOwner(member.id),
+        ),
+      )
       .returning(projectSummary);
     if (!project) reject(404, "not-found");
     return project;

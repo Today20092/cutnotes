@@ -23,27 +23,16 @@ function newToken() {
 }
 
 async function sha256(token: string) {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(token),
-  );
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /** Reads a field from untrusted input, which is only inspected after Access has passed. */
 const field = (data: unknown, key: string) =>
-  typeof data === "object" && data !== null
-    ? (data as Record<string, unknown>)[key]
-    : undefined;
+  typeof data === "object" && data !== null ? (data as Record<string, unknown>)[key] : undefined;
 
 const isPending = (now: number) =>
-  and(
-    isNull(invites.usedAt),
-    isNull(invites.revokedAt),
-    gt(invites.expiresAt, now),
-  );
+  and(isNull(invites.usedAt), isNull(invites.revokedAt), gt(invites.expiresAt, now));
 
 const pendingFields = {
   id: invites.id,
@@ -108,8 +97,14 @@ export const revokeInvite = createServerFn({ method: "POST" })
       .update(invites)
       .set({ revokedAt: Date.now() })
       .where(
-        and(eq(invites.id, id), isNull(invites.usedAt), isNull(invites.revokedAt), activeMember(owner.id, "owner")),
-      ).returning({ id: invites.id });
+        and(
+          eq(invites.id, id),
+          isNull(invites.usedAt),
+          isNull(invites.revokedAt),
+          activeMember(owner.id, "owner"),
+        ),
+      )
+      .returning({ id: invites.id });
     if (!revoked) refuse(404, "not-found");
     return null;
   });
@@ -125,10 +120,7 @@ export type RedeemResult =
  * so their old Comments stay theirs, and is reinstated. An active Member matches
  * neither branch, so the Invite stays unused.
  */
-async function redeem(
-  person: SignedInPerson,
-  tokenHash: string,
-): Promise<RedeemResult> {
+async function redeem(person: SignedInPerson, tokenHash: string): Promise<RedeemResult> {
   const db = getDb();
   const now = Date.now();
   const newMemberId = crypto.randomUUID();

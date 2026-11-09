@@ -48,9 +48,12 @@ function parseInputs(argv: string[]) {
 
   if (!teamName) throw new Error("--team-name is required.");
   if (logoUrl && !isHttps(logoUrl)) throw new Error("--team-logo-url must be an https URL.");
-  if (!/^[^@\s]+@[^@\s]+$/.test(email)) throw new Error("--first-owner-email must be an email address.");
+  if (!/^[^@\s]+@[^@\s]+$/.test(email))
+    throw new Error("--first-owner-email must be an email address.");
   if (!isHttps(origin) || new URL(origin).origin !== origin) {
-    throw new Error("--origin must be an https origin with no path, such as https://review.example.com.");
+    throw new Error(
+      "--origin must be an https origin with no path, such as https://review.example.com.",
+    );
   }
   if (!LOCATIONS.includes(location)) {
     throw new Error(
@@ -75,9 +78,18 @@ function readValue(config: string, key: string) {
 export function runSetup(argv: string[], deps: SetupDeps) {
   const inputs = parseInputs(argv);
   let config = deps.readConfig();
-  for (const key of ["database_id", "database_name", "TEAM_NAME", "TEAM_LOGO_URL", "APP_ORIGIN", "FIRST_OWNER_EMAIL"]) {
+  for (const key of [
+    "database_id",
+    "database_name",
+    "TEAM_NAME",
+    "TEAM_LOGO_URL",
+    "APP_ORIGIN",
+    "FIRST_OWNER_EMAIL",
+  ]) {
     if (readValue(config, key) === undefined) {
-      throw new Error(`wrangler.jsonc is missing ${key}. Restore the complete config before running setup.`);
+      throw new Error(
+        `wrangler.jsonc is missing ${key}. Restore the complete config before running setup.`,
+      );
     }
   }
 
@@ -105,7 +117,10 @@ export function runSetup(argv: string[], deps: SetupDeps) {
 }
 
 function wranglerCommand(args: string[]) {
-  return [process.execPath, ["scripts/node.ts", "node_modules/wrangler/bin/wrangler.js", ...args]] as const;
+  return [
+    process.execPath,
+    ["scripts/node.ts", "node_modules/wrangler/bin/wrangler.js", ...args],
+  ] as const;
 }
 
 if (import.meta.main) {
@@ -126,7 +141,8 @@ if (import.meta.main) {
       wrangler: (args) => {
         const [command, commandArgs] = wranglerCommand(args);
         const { status } = spawnSync(command, commandArgs, { stdio: "inherit" });
-        if (status !== 0) throw new Error(`wrangler ${args.join(" ")} failed. Fix it and run setup again.`);
+        if (status !== 0)
+          throw new Error(`wrangler ${args.join(" ")} failed. Fix it and run setup again.`);
       },
       log: console.log,
     });

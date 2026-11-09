@@ -43,7 +43,9 @@ export const projects = sqliteTable(
   {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
-    createdBy: text("created_by").notNull().references(() => members.id),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
     completedAt: integer("completed_at"),
@@ -67,7 +69,9 @@ export const videos = sqliteTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     status: text("status", { enum: videoStatuses }).notNull(),
-    createdBy: text("created_by").notNull().references(() => members.id),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
     deletedAt: integer("deleted_at"),
@@ -75,12 +79,7 @@ export const videos = sqliteTable(
   (table) => [index("videos_project_id_idx").on(table.projectId)],
 );
 
-export const revisionStates = [
-  "uploading",
-  "processing",
-  "ready",
-  "errored",
-] as const;
+export const revisionStates = ["uploading", "processing", "ready", "errored"] as const;
 export type RevisionState = (typeof revisionStates)[number];
 
 export const revisions = sqliteTable(
@@ -92,7 +91,9 @@ export const revisions = sqliteTable(
       .references(() => videos.id, { onDelete: "cascade" }),
     number: integer("number").notNull(),
     state: text("state", { enum: revisionStates }).notNull(),
-    uploadedBy: text("uploaded_by").notNull().references(() => members.id),
+    uploadedBy: text("uploaded_by")
+      .notNull()
+      .references(() => members.id),
     muxUploadId: text("mux_upload_id"),
     muxAssetId: text("mux_asset_id"),
     muxPlaybackId: text("mux_playback_id"),
@@ -109,41 +110,66 @@ export const revisions = sqliteTable(
   ],
 );
 
-export const comments = sqliteTable("comments", {
-  id: text("id").primaryKey(),
-  revisionId: text("revision_id").notNull().references(() => revisions.id, { onDelete: "cascade" }),
-  memberId: text("member_id").references(() => members.id),
-  shareLinkId: text("share_link_id"),
-  authorName: text("author_name").notNull(),
-  timecodeMs: integer("timecode_ms").notNull(),
-  body: text("body").notNull(),
-  drawing: text("drawing"),
-  resolvedAt: integer("resolved_at"),
-  resolvedBy: text("resolved_by").references(() => members.id),
-  createdAt: integer("created_at").notNull(),
-  editedAt: integer("edited_at"),
-}, (table) => [
-  index("comments_revision_id_timecode_idx").on(table.revisionId, table.timecodeMs),
-  check("comments_one_author", sql`(${table.memberId} IS NOT NULL) <> (${table.shareLinkId} IS NOT NULL)`),
-]);
+export const comments = sqliteTable(
+  "comments",
+  {
+    id: text("id").primaryKey(),
+    revisionId: text("revision_id")
+      .notNull()
+      .references(() => revisions.id, { onDelete: "cascade" }),
+    memberId: text("member_id").references(() => members.id),
+    shareLinkId: text("share_link_id"),
+    authorName: text("author_name").notNull(),
+    timecodeMs: integer("timecode_ms").notNull(),
+    body: text("body").notNull(),
+    drawing: text("drawing"),
+    resolvedAt: integer("resolved_at"),
+    resolvedBy: text("resolved_by").references(() => members.id),
+    createdAt: integer("created_at").notNull(),
+    editedAt: integer("edited_at"),
+  },
+  (table) => [
+    index("comments_revision_id_timecode_idx").on(table.revisionId, table.timecodeMs),
+    check(
+      "comments_one_author",
+      sql`(${table.memberId} IS NOT NULL) <> (${table.shareLinkId} IS NOT NULL)`,
+    ),
+  ],
+);
 
-export const videoReads = sqliteTable("video_reads", {
-  memberId: text("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
-  videoId: text("video_id").notNull().references(() => videos.id, { onDelete: "cascade" }),
-  lastReadAt: integer("last_read_at").notNull(),
-}, (table) => [primaryKey({ columns: [table.memberId, table.videoId] })]);
+export const videoReads = sqliteTable(
+  "video_reads",
+  {
+    memberId: text("member_id")
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
+    videoId: text("video_id")
+      .notNull()
+      .references(() => videos.id, { onDelete: "cascade" }),
+    lastReadAt: integer("last_read_at").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.memberId, table.videoId] })],
+);
 
 export const sharePermissions = ["view", "comment"] as const;
 export type SharePermission = (typeof sharePermissions)[number];
 
-export const shareLinks = sqliteTable("share_links", {
-  id: text("id").primaryKey(),
-  videoId: text("video_id").notNull().references(() => videos.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  // Plain text so the link can be copied again; see the spec's storage decision.
-  token: text("token").notNull().unique(),
-  permission: text("permission", { enum: sharePermissions }).notNull(),
-  createdBy: text("created_by").notNull().references(() => members.id),
-  createdAt: integer("created_at").notNull(),
-  revokedAt: integer("revoked_at"),
-}, (table) => [index("share_links_video_id_idx").on(table.videoId)]);
+export const shareLinks = sqliteTable(
+  "share_links",
+  {
+    id: text("id").primaryKey(),
+    videoId: text("video_id")
+      .notNull()
+      .references(() => videos.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    // Plain text so the link can be copied again; see the spec's storage decision.
+    token: text("token").notNull().unique(),
+    permission: text("permission", { enum: sharePermissions }).notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
+    createdAt: integer("created_at").notNull(),
+    revokedAt: integer("revoked_at"),
+  },
+  (table) => [index("share_links_video_id_idx").on(table.videoId)],
+);

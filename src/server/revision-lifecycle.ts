@@ -76,11 +76,7 @@ function markProcessing(revisionId: string, assetId: string | undefined) {
     .where(eq(revisions.id, revisionId));
 }
 
-function markErrored(
-  revisionId: string,
-  errorCode: string,
-  assetId: string | undefined,
-) {
+function markErrored(revisionId: string, errorCode: string, assetId: string | undefined) {
   return getDb()
     .update(revisions)
     .set({
@@ -98,9 +94,7 @@ async function markReady(revisionId: string, event: MuxEvent) {
   if (duration > MAX_DURATION_SECONDS) {
     return markErrored(revisionId, "too-long", assetId);
   }
-  const playbackId = data.playback_ids?.find(
-    (playback) => playback.policy === "signed",
-  )?.id;
+  const playbackId = data.playback_ids?.find((playback) => playback.policy === "signed")?.id;
   if (!playbackId) return markErrored(revisionId, "no-signed-playback", assetId);
 
   const now = Date.now();
@@ -112,9 +106,7 @@ async function markReady(revisionId: string, event: MuxEvent) {
       muxAssetId: sql`COALESCE(${revisions.muxAssetId}, ${assetId ?? null})`,
       muxPlaybackId: playbackId,
       durationMs: Math.round(duration * 1000),
-      frameRate:
-        data.tracks?.find((track) => track.type === "video")?.max_frame_rate ??
-        null,
+      frameRate: data.tracks?.find((track) => track.type === "video")?.max_frame_rate ?? null,
       aspectRatio: data.aspect_ratio ?? null,
       readyAt: now,
     })
@@ -122,10 +114,7 @@ async function markReady(revisionId: string, event: MuxEvent) {
     .returning({ videoId: revisions.videoId });
 
   if (ready[0]) {
-    await db
-      .update(videos)
-      .set({ updatedAt: now })
-      .where(eq(videos.id, ready[0].videoId));
+    await db.update(videos).set({ updatedAt: now }).where(eq(videos.id, ready[0].videoId));
   }
 }
 

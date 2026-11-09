@@ -1,15 +1,10 @@
-import {
-  useQuery,
-  type QueryKey,
-  type UseQueryOptions,
-} from "@tanstack/react-query";
+import { useQuery, type QueryKey, type UseQueryOptions } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useAuthStatus } from "@/auth/client";
-import { AppShell, type ShellMember } from "@/components/app-shell";
+import { AppShell } from "@/components/app-shell";
 import { NotAMemberScreen, SignInScreen } from "@/components/gate-screens";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTeam } from "@/lib/team";
-import { getAppShell } from "@/server/app-shell";
 
 const isRefusal = (error: unknown, status: number) =>
   error instanceof Response && error.status === status;
@@ -18,10 +13,7 @@ const isRefusal = (error: unknown, status: number) =>
  * A screen whose single server call also answers who the caller is. Sign-in
  * and refusal states come from that call, and loading stays inside the shell.
  */
-export function MemberScreen<
-  Data extends { member: ShellMember },
-  Key extends QueryKey,
->({
+export function MemberScreen<Data, Key extends QueryKey>({
   query,
   skeleton,
   notFound,
@@ -36,15 +28,14 @@ export function MemberScreen<
   const team = useTeam();
   const screen = useQuery({ ...query, enabled: isLoaded && isSignedIn });
   const isNotFound = Boolean(notFound) && isRefusal(screen.error, 404);
-  // A 404 carries no Member, and the shell still needs the caller's Role.
-  const shell = useQuery({
-    queryKey: ["app-shell"],
-    queryFn: () => getAppShell(),
-    enabled: isNotFound,
-    retry: false,
-  });
 
-  if (!isLoaded || !team.data) return <main aria-busy="true"><h1 className="sr-only">Loading</h1><Skeleton className="m-6 h-40" /></main>;
+  if (!isLoaded || !team.data)
+    return (
+      <main aria-busy="true">
+        <h1 className="sr-only">Loading</h1>
+        <Skeleton className="m-6 h-40" />
+      </main>
+    );
   if (!isSignedIn || isRefusal(screen.error, 401)) {
     return <SignInScreen team={team.data} />;
   }
@@ -57,19 +48,21 @@ export function MemberScreen<
     content = notFound;
   } else if (screen.isError) {
     content = (
-      <><h1>Unable to load page</h1><p role="alert">Something went wrong. Please reload the page.</p></>
+      <>
+        <h1>Unable to load page</h1>
+        <p role="alert">Something went wrong. Please reload the page.</p>
+      </>
     );
   } else {
-    content = screen.data === undefined ? <div aria-busy="true"><h1 className="sr-only">Loading</h1>{skeleton}</div> : children(screen.data);
+    content =
+      screen.data === undefined ? (
+        <div aria-busy="true">
+          <h1 className="sr-only">Loading</h1>
+          {skeleton}
+        </div>
+      ) : (
+        children(screen.data)
+      );
   }
-  return (
-    <AppShell
-      team={team.data}
-      member={screen.data?.member ?? shell.data?.member}
-      title="Projects"
-      pageHeading
-    >
-      {content}
-    </AppShell>
-  );
+  return <AppShell team={team.data}>{content}</AppShell>;
 }

@@ -19,20 +19,11 @@ export async function seedProject(
   await env.DB.prepare(
     "INSERT INTO projects (id, name, created_by, created_at, updated_at, completed_at, deleted_at) VALUES (?, ?, 'member_owner', 1, 1, ?, ?)",
   )
-    .bind(
-      id,
-      `Project ${id}`,
-      overrides.completedAt ?? null,
-      overrides.deletedAt ?? null,
-    )
+    .bind(id, `Project ${id}`, overrides.completedAt ?? null, overrides.deletedAt ?? null)
     .run();
 }
 
-export async function seedVideo(
-  id: string,
-  projectId: string,
-  deletedAt: number | null = null,
-) {
+export async function seedVideo(id: string, projectId: string, deletedAt: number | null = null) {
   await env.DB.prepare(
     "INSERT INTO videos (id, project_id, title, status, created_by, created_at, updated_at, deleted_at) VALUES (?, ?, ?, 'review', 'member_owner', 1, 1, ?)",
   )
@@ -69,11 +60,7 @@ export async function seedRevision(seed: RevisionSeed) {
 export const call = async (id: string, clerkUserId: string, data?: unknown) =>
   callServerFn(id, { bearer: await sessionToken({ clerkUserId }), data });
 
-export async function expectRefused(
-  response: Response,
-  status: number,
-  code: string,
-) {
+export async function expectRefused(response: Response, status: number, code: string) {
   expect(response.status).toBe(status);
   expect(await response.json()).toEqual({ code });
 }

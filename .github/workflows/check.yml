@@ -17,5 +17,9 @@ jobs:
         with:
           node-version: 24
       - run: bun install --frozen-lockfile
-      - run: bunx playwright install --with-deps chromium
       - run: bun run check
+      - run: bun run audit
+      - if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
+        run: bunx playwright install --with-deps chromium
+      - if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
+        run: bun run test:seam2

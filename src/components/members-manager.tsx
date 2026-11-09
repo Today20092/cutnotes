@@ -93,16 +93,16 @@ export function MembersManager() {
   });
 
   return (
-    <div className="mx-auto max-w-xl space-y-6">
+    <div className="w-full max-w-xl space-y-6">
       <PageHeading title="Members">
-        <Link to="/invites" className={buttonVariants({ variant: "outline" })}>
+        <Link to="/invites" className={buttonVariants({ variant: "secondary" })}>
           Invite someone
         </Link>
       </PageHeading>
       <WriteFeedback status={status} failure={failure} />
 
       <section className="space-y-3">
-        <h2 ref={listHeading} tabIndex={-1} className="font-semibold outline-none">
+        <h2 ref={listHeading} tabIndex={-1} className="text-lg font-semibold outline-none">
           People on the Team
         </h2>
         {list.isPending && <Skeleton className="h-16" />}
@@ -111,7 +111,7 @@ export function MembersManager() {
           <p role="alert">Could not load Members. Please reload the page.</p>
         )}
         {list.data && (
-          <ul className="divide-y rounded-lg border border-input">
+          <ul className="divide-y">
             {list.data.members.map((member) => (
               <MemberRow
                 key={member.id}
@@ -153,7 +153,7 @@ function MemberRow({
   }, [confirming]);
 
   return (
-    <li className="space-y-3 p-3">
+    <li className="space-y-3 py-3">
       <div className="font-medium wrap-anywhere">
         {member.displayName}
         {isYou && <span className="font-normal text-muted-foreground"> (you)</span>}
@@ -175,7 +175,7 @@ function MemberRow({
             >
               Remove
             </Button>
-            <Button type="button" variant="outline" onClick={() => setConfirming(false)}>
+            <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>
               Keep
             </Button>
           </div>
@@ -202,7 +202,7 @@ function MemberRow({
           <Button
             ref={removeButton}
             type="button"
-            variant="outline"
+            variant="ghost"
             aria-label={`Remove ${member.displayName}`}
             onClick={() => setConfirming(true)}
           >

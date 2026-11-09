@@ -47,9 +47,7 @@ test("an Owner removes a Member, who loses access on their next request", async 
   await confirm.click();
 
   await expect(page.getByText(name, { exact: true })).toHaveCount(0);
-  await expect(
-    page.getByRole("heading", { name: "People on the Team" }),
-  ).toBeFocused();
+  await expect(page.getByRole("heading", { name: "People on the Team" })).toBeFocused();
 
   const context = await browser.newContext();
   const removed = await context.newPage();
@@ -96,6 +94,7 @@ test("an Owner reaches Members from the navigation", async ({ page }) => {
   await signInAs(page, owner);
   await page.goto("/");
 
+  await page.getByRole("link", { name: "Settings" }).filter({ visible: true }).click();
   await page.getByRole("link", { name: "Members" }).click();
 
   await expect(page.getByRole("heading", { level: 1, name: "Members" })).toBeFocused();

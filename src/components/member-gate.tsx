@@ -25,7 +25,13 @@ export function MemberGate({
     retry: false,
   });
 
-  if (!isLoaded || !team.data) return <main aria-busy="true"><h1 className="sr-only">Loading</h1><Skeleton className="m-6 h-40" /></main>;
+  if (!isLoaded || !team.data)
+    return (
+      <main aria-busy="true">
+        <h1 className="sr-only">Loading</h1>
+        <Skeleton className="m-6 h-40" />
+      </main>
+    );
   if (!isSignedIn || isRefusal(shell.error, 401)) {
     return <SignInScreen team={team.data} />;
   }
@@ -34,11 +40,18 @@ export function MemberGate({
   }
   if (shell.isError) {
     return (
-      <main className="p-6"><h1>Unable to load page</h1><p role="alert">
-        Something went wrong. Please reload the page.
-      </p></main>
+      <main className="p-6">
+        <h1>Unable to load page</h1>
+        <p role="alert">Something went wrong. Please reload the page.</p>
+      </main>
     );
   }
-  if (!shell.data) return <main aria-busy="true"><h1 className="sr-only">Loading</h1><Skeleton className="m-6 h-40" /></main>;
+  if (!shell.data)
+    return (
+      <main aria-busy="true">
+        <h1 className="sr-only">Loading</h1>
+        <Skeleton className="m-6 h-40" />
+      </main>
+    );
   return children({ team: team.data, member: shell.data.member });
 }

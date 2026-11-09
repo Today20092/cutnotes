@@ -32,6 +32,11 @@ export async function requireMember(minimumRole: Role): Promise<Member> {
   return member;
 }
 
+/** Re-check Access in the write itself, after any competing removal or demotion. */
+export const activeMember = (memberId: string, minimumRole: Role) =>
+  sql`EXISTS (SELECT 1 FROM members AS acting WHERE acting.id = ${memberId}
+    AND acting.removed_at IS NULL AND ${inArray(sql`acting.role`, roles.slice(roles.indexOf(minimumRole)))})`;
+
 /** Selects only: a screen's reads run before the Role is checked, so they must change nothing. */
 export type ScreenDb = Pick<Db, "select">;
 

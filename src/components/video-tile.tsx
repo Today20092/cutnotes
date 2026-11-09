@@ -19,8 +19,8 @@ import {
 import { videoStatuses, type VideoStatus } from "@/server/db/schema";
 
 function VideoControls({ video }: { video: VideoSummary }) {
-  const renameVideo = useRenameVideo();
-  const setVideoStatus = useSetVideoStatus();
+  const renameVideo = useRenameVideo(video.id);
+  const setVideoStatus = useSetVideoStatus(video.id);
   const [status, setStatus] = useState("");
   const [failure, setFailure] = useState("");
   const selectId = useId();

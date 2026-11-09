@@ -1,10 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { and, eq, exists, isNull, notExists, sql } from "drizzle-orm";
-import { requireMember } from "@/server/access";
+import { activeMember, requireMember } from "@/server/access";
 import { getDb, type Db } from "@/server/db";
 import {
   projects,
+  members,
   revisions,
   videos,
   videoStatuses,
@@ -61,16 +62,18 @@ const videoIsWritable = (db: Db, videoId: string) =>
   );
 
 /** Removes a Revision that never reached Mux, and a Video that held nothing else. */
-function discardRevision(db: Db, revisionId: string, videoId: string) {
+function discardRevision(db: Db, revisionId: string, videoId: string, memberId?: string) {
+  const allowed = memberId ? activeMember(memberId, "editor") : undefined;
   return db.batch([
     db
       .delete(revisions)
-      .where(and(eq(revisions.id, revisionId), eq(revisions.state, "uploading"))),
+      .where(and(eq(revisions.id, revisionId), eq(revisions.state, "uploading"), allowed)),
     db
       .delete(videos)
       .where(
         and(
           eq(videos.id, videoId),
+          allowed,
           notExists(
             db
               .select({ one: sql`1` })
@@ -109,7 +112,8 @@ async function insertRevision(
           WHERE videos.id = ${videoId}
             AND videos.deleted_at IS NULL
             AND projects.deleted_at IS NULL
-            AND projects.completed_at IS NULL`,
+            AND projects.completed_at IS NULL
+            AND ${activeMember(memberId, "editor")}`,
     )
     .returning({ id: revisions.id });
 
@@ -122,7 +126,8 @@ async function insertRevision(
               FROM projects
               WHERE id = ${newVideo.projectId}
                 AND deleted_at IS NULL
-                AND completed_at IS NULL`,
+                AND completed_at IS NULL
+                AND ${activeMember(memberId, "editor")}`,
         ),
       insertRow,
     ]);
@@ -131,7 +136,8 @@ async function insertRevision(
 
   const [inserted] = await db.batch([
     insertRow,
-    db.update(videos).set({ updatedAt: now }).where(eq(videos.id, videoId)),
+    db.update(videos).set({ updatedAt: now }).where(and(videoIsWritable(db, videoId), activeMember(memberId, "editor"),
+      sql`EXISTS (SELECT 1 FROM revisions WHERE id = ${revisionId})`)),
   ]);
   return inserted.length === 1;
 }
@@ -170,41 +176,53 @@ export const startUpload = createServerFn({ method: "POST" })
       reject(502, "upload-unavailable");
     }
 
-    await db
-      .update(revisions)
-      .set({ muxUploadId: upload.uploadId })
-      .where(eq(revisions.id, revisionId));
+    const [, eligible] = await db.batch([
+      // Keep the Mux ID even if Access changed, so cleanup never loses the upload.
+      db.update(revisions).set({ muxUploadId: upload.uploadId }).where(eq(revisions.id, revisionId)),
+      db.select({ id: revisions.id }).from(revisions).innerJoin(videos, eq(videos.id, revisions.videoId))
+        .where(and(eq(revisions.id, revisionId), eq(revisions.state, "uploading"), videoIsWritable(db, videoId), activeMember(member.id, "editor"))),
+    ]);
+    if (!eligible.length) {
+      if (await getMuxGateway().cancelDirectUpload(upload.uploadId)) await discardRevision(db, revisionId, videoId);
+      reject(404, "not-found");
+    }
     return { videoId, revisionId, uploadUrl: upload.url };
   });
 
 export const cancelUpload = createServerFn({ method: "POST" })
   .validator((data: { revisionId: string }) => data)
   .handler(async ({ data }) => {
-    await requireMember("editor");
+    const member = await requireMember("editor");
     const db = getDb();
-    const [revision] = await db
+    const [rows, acting] = await db.batch([db
       .select({
         videoId: revisions.videoId,
         state: revisions.state,
         muxUploadId: revisions.muxUploadId,
       })
       .from(revisions)
-      .where(eq(revisions.id, textField(data, "revisionId")));
+      .where(eq(revisions.id, textField(data, "revisionId"))),
+      db.select({ id: members.id }).from(members).where(and(eq(members.id, member.id), activeMember(member.id, "editor"))),
+    ]);
+    if (!acting.length) reject(404, "not-found");
+    const [revision] = rows;
 
     // Already gone is what the caller wanted.
     if (!revision) return { cancelled: true };
     if (revision.state !== "uploading") reject(409, "already-sent");
 
-    const cancelled =
-      revision.muxUploadId === null ||
-      (await getMuxGateway().cancelDirectUpload(revision.muxUploadId));
+    // Creation has not returned yet: do not delete the row that will hold its Mux ID.
+    if (revision.muxUploadId === null) reject(409, "already-sent");
+    const cancelled = await getMuxGateway().cancelDirectUpload(revision.muxUploadId);
     if (!cancelled) reject(409, "already-sent");
 
-    await discardRevision(db, textField(data, "revisionId"), revision.videoId);
+    const [discarded] = await discardRevision(db, textField(data, "revisionId"), revision.videoId, member.id);
+    if (!discarded.meta.changes) reject(404, "not-found");
     return { cancelled: true };
   });
 
 async function updateVideo(
+  memberId: string,
   videoId: string,
   changes: { title: string } | { status: VideoStatus },
 ) {
@@ -212,7 +230,7 @@ async function updateVideo(
   const [video] = await db
     .update(videos)
     .set({ ...changes, updatedAt: Date.now() })
-    .where(videoIsWritable(db, videoId))
+    .where(and(videoIsWritable(db, videoId), activeMember(memberId, "editor")))
     .returning({
       id: videos.id,
       title: videos.title,
@@ -225,17 +243,17 @@ async function updateVideo(
 export const renameVideo = createServerFn({ method: "POST" })
   .validator((data: { videoId: string; title: string }) => data)
   .handler(async ({ data }) => {
-    await requireMember("editor");
-    return updateVideo(textField(data, "videoId"), { title: parseTitle(data) });
+    const member = await requireMember("editor");
+    return updateVideo(member.id, textField(data, "videoId"), { title: parseTitle(data) });
   });
 
 export const setVideoStatus = createServerFn({ method: "POST" })
   .validator((data: { videoId: string; status: VideoStatus }) => data)
   .handler(async ({ data }) => {
-    await requireMember("editor");
+    const member = await requireMember("editor");
     const status = field(data, "status") as VideoStatus;
     if (!videoStatuses.includes(status)) reject(400, "invalid-status");
-    return updateVideo(textField(data, "videoId"), { status });
+    return updateVideo(member.id, textField(data, "videoId"), { status });
   });
 
 export const deleteVideo = createServerFn({ method: "POST" })

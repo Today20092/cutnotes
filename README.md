@@ -10,6 +10,10 @@ Comments appear immediately, refresh every 30 seconds and on return to the scree
 
 Parts of this project will be adapted from [Lawn](https://github.com/pingdotgg/lawn), used under the MIT licence. See `LICENSE.lawn`.
 
+## Self-hosting
+
+Follow [docs/setup.md](docs/setup.md).
+
 ## Development
 
 Requires [Bun](https://bun.sh). Tools that need Node use the pinned binary installed with the dependencies, or Node from PATH.

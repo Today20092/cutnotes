@@ -2,6 +2,8 @@
 
 One install serves one Team. A person or an agent can follow this guide, with one limit: **agents never deploy to production or run `bun run setup`. A human runs those steps.** An agent can prepare the accounts' values with the human and hand over the commands.
 
+Use a Cloudflare account on the Workers Paid plan. Install Bun and run commands from the repository root; keep `bun.lock` so installs use the tested runtime versions.
+
 ## 1. Choose the inputs
 
 | Input | Flag | Notes |
@@ -13,6 +15,8 @@ One install serves one Team. A person or an agent can follow this guide, with on
 | D1 location | `--location` | `weur`, `eeur`, `apac`, `oc`, `wnam` or `enam` |
 
 **D1 has no primary in the Middle East, Africa or South America.** Teams there should choose the nearest location, and should expect slower requests.
+
+The location is a placement hint, not a guarantee. A rerun keeps the existing database and does not relocate it.
 
 Team name and logo are kept as one setting each, `TEAM_NAME` and `TEAM_LOGO_URL`, in `wrangler.jsonc`. To change them later, edit those values and deploy.
 
@@ -39,8 +43,8 @@ Use a dedicated environment on a pay-as-you-go plan. **If another install shares
 
 In that environment, create:
 
-1. An access token with Mux Video permission: `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET`.
-2. A signing key: `MUX_SIGNING_KEY_ID`, and its base64 private key as `MUX_SIGNING_PRIVATE_KEY`.
+1. An access token with Mux Video read and write permissions: `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET`.
+2. A signing key in the Mux dashboard: `MUX_SIGNING_KEY_ID`, and its base64 private key as `MUX_SIGNING_PRIVATE_KEY`. Save the private key when it is issued; Mux will not return it again.
 3. A webhook endpoint at `<site origin>/api/mux/webhook`. Its signing secret is `MUX_WEBHOOK_SECRET`.
 
 ## 4. Check the Wrangler config
@@ -73,7 +77,7 @@ The script:
 3. Runs `wrangler secret put` for each Clerk and Mux value. Paste each when asked.
 4. Runs `wrangler d1 migrations apply DB --remote`.
 
-It is safe to run again after a failure: it keeps a database already written to the config. Commit the changed `wrangler.jsonc`.
+It is safe to run again after a failure: it keeps a database already written to the config. If database creation succeeds but writing the config fails, recover that database ID from Wrangler or the dashboard before retrying, to avoid creating another database. Commit the changed `wrangler.jsonc`; never commit `.env`, `.dev.vars` or private keys.
 
 ## 6. Deploy (human)
 

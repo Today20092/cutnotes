@@ -121,3 +121,12 @@ test("stops when Wrangler reports no database ID", () => {
   expect(() => runSetup(args, { ...deps, createDatabase: () => "oops" })).toThrow(/database ID/);
   expect(state.config).toBe(config);
 });
+
+test.each(["database_id", "database_name", "TEAM_NAME", "TEAM_LOGO_URL", "APP_ORIGIN", "FIRST_OWNER_EMAIL"])(
+  "refuses a config missing %s before provisioning anything",
+  (key) => {
+    const { state, deps } = harness(config.replace(`"${key}"`, `"missing_${key}"`));
+    expect(() => runSetup(args, deps)).toThrow(new RegExp(key));
+    expect(state.calls).toEqual([]);
+  },
+);

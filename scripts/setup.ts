@@ -75,6 +75,11 @@ function readValue(config: string, key: string) {
 export function runSetup(argv: string[], deps: SetupDeps) {
   const inputs = parseInputs(argv);
   let config = deps.readConfig();
+  for (const key of ["database_id", "database_name", "TEAM_NAME", "TEAM_LOGO_URL", "APP_ORIGIN", "FIRST_OWNER_EMAIL"]) {
+    if (readValue(config, key) === undefined) {
+      throw new Error(`wrangler.jsonc is missing ${key}. Restore the complete config before running setup.`);
+    }
+  }
 
   if (readValue(config, "database_id") === PLACEHOLDER_ID) {
     const name = readValue(config, "database_name") ?? "cutnotes";

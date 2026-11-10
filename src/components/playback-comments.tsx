@@ -31,6 +31,7 @@ export function PlaybackComments({
       title: `${comment.authorName} · ${Math.floor(comment.timecodeMs / 60000)}:${String(Math.floor(comment.timecodeMs / 1000) % 60).padStart(2, "0")}${current.length > 1 ? ` · +${current.length - 1} comments` : ""}`,
       description: <span className="line-clamp-2">{comment.body || "Drawing on this frame"}</span>,
       timeout: 5000,
+      data: { passive: true },
       actionProps: {
         children: "Read",
         onClick: () => {

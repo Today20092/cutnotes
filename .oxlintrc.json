@@ -1,0 +1,38 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "oxc", "react", "jsx-a11y"],
+  "categories": { "correctness": "error" },
+  "rules": {
+    "typescript/no-explicit-any": "error",
+    "no-useless-escape": "error",
+    "no-unused-expressions": "error",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "error",
+    "jsx-a11y/label-has-associated-control": [
+      "error",
+      { "controlComponents": ["Input", "Textarea", "Checkbox"] }
+    ],
+    // role="status" and role="group" on plain elements are deliberate, and Seam 2 checks them with axe.
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // Cutnotes plays raw cuts. Revisions have no caption tracks.
+    "jsx-a11y/media-has-caption": "off",
+    // These are React Compiler rules. Cutnotes does not use React Compiler.
+    "react/immutability": "off",
+    "react/refs": "off",
+    "react/set-state-in-effect": "off"
+  },
+  "ignorePatterns": [
+    "prototype-ui/**",
+    "dist/**",
+    ".wrangler/**",
+    ".claude/**",
+    ".codex/**",
+    ".tanstack/**",
+    "test-results/**",
+    "playwright-report/**",
+    "migrations/**",
+    "src/routeTree.gen.ts",
+    "src/components/ui/**",
+    "src/hooks/use-mobile.ts"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "types": ["@cloudflare/workers-types", "@cloudflare/vitest-plugin/types", "vite/client", "node"],
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "include": ["src", "test", "e2e", "scripts", "*.config.ts"],
+  "exclude": ["prototype-ui", "node_modules", "dist"]
+}

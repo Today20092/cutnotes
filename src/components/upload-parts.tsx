@@ -332,7 +332,12 @@ export function UploadList() {
     ["failed", "cancel-failed", "too-late"].includes(item.phase),
   );
   return (
-    <details className="mb-4 max-w-sm rounded-lg border bg-card p-3" open={failed || undefined}>
+    <details
+      role="region"
+      aria-label="Uploads"
+      className="mb-4 max-w-sm rounded-lg border bg-card p-3"
+      open={failed || undefined}
+    >
       <summary className="min-h-6 cursor-pointer text-sm font-medium">
         {failed
           ? "Upload needs attention"

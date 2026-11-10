@@ -75,6 +75,10 @@ async function startUpload(page: Page, title: string) {
   await page.getByLabel("Video file").setInputFiles(file);
   await page.getByLabel("Video title").fill(title);
   await page.getByRole("button", { name: "Start upload" }).click();
+  const activeUploads = page.getByRole("region", { name: "Uploads" });
+  if ((await activeUploads.isVisible()) && (await activeUploads.getAttribute("open")) === null) {
+    await activeUploads.locator("summary").click();
+  }
 }
 
 test.beforeEach(async ({ page }) => {
@@ -86,7 +90,7 @@ test("an Editor sees delete only for Videos they created", async ({ page }, test
   const projectName = await openNewProject(page, "Delete roles", testInfo);
   await startUpload(page, "Owner cut");
   await expect(
-    page.getByRole("region", { name: "Uploads" }).getByText(/being processed/),
+    page.getByRole("region", { name: "Notifications" }).getByText(/ready for review/),
   ).toBeVisible();
   const editor = {
     clerkUserId: `user_delete_editor_${testInfo.project.name}`,
@@ -105,7 +109,7 @@ test("an Editor sees delete only for Videos they created", async ({ page }, test
   ).toHaveCount(0);
   await startUpload(page, "Editor cut");
   await expect(
-    page.getByRole("region", { name: "Uploads" }).getByText(/being processed/),
+    page.getByRole("region", { name: "Notifications" }).getByText(/ready for review/),
   ).toBeVisible();
   await page.getByRole("button", { name: "More actions for Editor cut" }).click();
   await page.getByRole("menuitem", { name: "Delete" }).click();
@@ -132,13 +136,19 @@ test("an upload is followed from progress through processing to a signed poster"
   await expect(page.getByLabel("Video title")).toHaveValue("main-cut");
   await page.getByLabel("Video title").fill("Main cut");
   await page.getByRole("button", { name: "Start upload" }).click();
+  const activeUploads = page.getByRole("region", { name: "Uploads" });
+  if ((await activeUploads.isVisible()) && (await activeUploads.getAttribute("open")) === null) {
+    await activeUploads.locator("summary").click();
+  }
 
   const uploads = page.getByRole("region", { name: "Uploads" });
   await expect(uploads.getByRole("progressbar", { name: "Uploading Main cut" })).toBeVisible();
   await expect(page.getByText("Uploading…")).toBeVisible();
 
   chunk.release();
-  await expect(uploads.getByText(/being processed/)).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Notifications" }).getByText(/ready for review/),
+  ).toBeVisible();
   const revisionId = revisions[0] as string;
 
   await deliver(page, assetEvent("created", revisionId));
@@ -174,6 +184,10 @@ test("a file over 20 GB is refused before anything is sent", async ({ page }, te
   await expect(page.getByText(/over the 20 GB limit/)).toBeVisible();
   await page.getByLabel("Video title").fill("Huge");
   await page.getByRole("button", { name: "Start upload" }).click();
+  const activeUploads = page.getByRole("region", { name: "Uploads" });
+  if ((await activeUploads.isVisible()) && (await activeUploads.getAttribute("open")) === null) {
+    await activeUploads.locator("summary").click();
+  }
   await expect(page.getByRole("region", { name: "Uploads" })).toHaveCount(0);
   expect(revisions).toEqual([]);
 });
@@ -285,7 +299,9 @@ test("an upload pauses while offline and continues on return", async ({
   await context.setOffline(false);
   await expect(uploads.getByText(/Paused/)).toHaveCount(0);
   chunk.release();
-  await expect(uploads.getByText(/being processed/)).toBeVisible({ timeout: 15_000 });
+  await expect(
+    page.getByRole("region", { name: "Notifications" }).getByText(/ready for review/),
+  ).toBeVisible({ timeout: 15_000 });
 });
 
 test("leaving the page warns while an upload runs", async ({ page }, testInfo) => {
@@ -319,7 +335,9 @@ test("a failed send offers a retry that works", async ({ page }, testInfo) => {
   status = 200;
   await uploads.getByRole("button", { name: "Retry upload of Shaky cut" }).click();
 
-  await expect(uploads.getByText(/being processed/)).toBeVisible({ timeout: 15_000 });
+  await expect(
+    page.getByRole("region", { name: "Notifications" }).getByText(/ready for review/),
+  ).toBeVisible({ timeout: 15_000 });
 });
 
 test("failed processing is explained and can be sent again", async ({ page }, testInfo) => {
@@ -327,7 +345,7 @@ test("failed processing is explained and can be sent again", async ({ page }, te
   await openNewProject(page, "Failed", testInfo);
   await startUpload(page, "Broken cut");
   await expect(
-    page.getByRole("region", { name: "Uploads" }).getByText(/being processed/),
+    page.getByRole("region", { name: "Notifications" }).getByText(/ready for review/),
   ).toBeVisible();
 
   await deliver(
@@ -341,6 +359,10 @@ test("failed processing is explained and can be sent again", async ({ page }, te
   await page.getByRole("button", { name: "Retry Broken cut with a new upload" }).click();
   await page.getByLabel("Video file").setInputFiles(file);
   await page.getByRole("button", { name: "Start upload" }).click();
+  const activeUploads = page.getByRole("region", { name: "Uploads" });
+  if ((await activeUploads.isVisible()) && (await activeUploads.getAttribute("open")) === null) {
+    await activeUploads.locator("summary").click();
+  }
 
   await expect(page.getByText("Revision 2")).toBeVisible({ timeout: 15_000 });
 });
@@ -394,7 +416,7 @@ test("a failed Status write preserves a concurrent optimistic rename", async ({
   await openNewProject(page, "Concurrent edits", testInfo);
   await startUpload(page, "Original cut");
   await expect(
-    page.getByRole("region", { name: "Uploads" }).getByText(/being processed/),
+    page.getByRole("region", { name: "Notifications" }).getByText(/ready for review/),
   ).toBeVisible();
   const statusGate = held();
   const renameGate = held();
@@ -430,7 +452,7 @@ test("two failed queued Status edits restore the saved Status", async ({ page },
   await openNewProject(page, "Queued rollback", testInfo);
   await startUpload(page, "Queued cut");
   await expect(
-    page.getByRole("region", { name: "Uploads" }).getByText(/being processed/),
+    page.getByRole("region", { name: "Notifications" }).getByText(/ready for review/),
   ).toBeVisible();
   const first = held();
   const second = held();

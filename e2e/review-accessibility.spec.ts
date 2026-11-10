@@ -396,7 +396,7 @@ test("removing the last shape keeps keyboard focus in the Drawing controls", asy
     .toBeGreaterThanOrEqual(2);
   const draw = page.getByRole("button", { name: "Draw", exact: true });
   await draw.click();
-  const finish = page.getByRole("button", { name: "Finish Drawing" });
+  const finish = page.getByRole("button", { name: "Finish drawing" });
   for (const remove of ["Undo Drawing", "Clear Drawing"]) {
     // Focus in the controls unpins the player, so bring the picture back on screen before drawing.
     const picture = page.getByLabel("Drawing picture", { exact: true });

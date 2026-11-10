@@ -60,14 +60,14 @@ test("Drawing tools pause, undo, clear and replay over the picture after resizin
         .analyze()
     ).violations,
   ).toEqual([]);
-  await page.getByRole("button", { name: "Finish Drawing", exact: true }).click();
+  await page.getByRole("button", { name: "Finish drawing", exact: true }).click();
   await expect(page.getByRole("button", { name: "Draw", exact: true })).toBeFocused();
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
   await expect(page.getByRole("button", { name: /^Edit Comment/ })).toBeEnabled();
   await page.reload();
   await page
     .getByRole("listitem")
-    .getByRole("button", { name: /Drawing/ })
+    .getByRole("button", { name: /drawing/i })
     .click();
   const before = await page
     .getByLabel("Drawing picture", { exact: true })
@@ -105,8 +105,14 @@ test("touch pen simplifies, cancelled gestures do not save, and failed sends kee
     "true",
   );
   await page.emulateMedia({ forcedColors: "active" });
-  await expect(page.getByRole("button", { name: "Pen", exact: true })).toContainText("✓");
-  await expect(page.getByRole("button", { name: "Red", exact: true })).toContainText("✓");
+  await expect(page.getByRole("button", { name: "Pen", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByRole("button", { name: "Red", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   const overlay = page.getByLabel("Drawing picture", { exact: true });
   await overlay.scrollIntoViewIfNeeded();
   const rect = (await overlay.boundingBox())!;
@@ -133,7 +139,7 @@ test("touch pen simplifies, cancelled gestures do not save, and failed sends kee
   expect(points).toHaveLength(4);
   for (const [i, expected] of [100, 100, 800, 800].entries())
     expect(points[i]).toBeCloseTo(expected, 2);
-  await page.getByRole("button", { name: "Finish Drawing", exact: true }).focus();
+  await page.getByRole("button", { name: "Finish drawing", exact: true }).focus();
   await page.keyboard.press("Enter");
   await expect(draw).toBeFocused();
   await page.route(createCall, (route) => route.abort());
@@ -146,7 +152,7 @@ test("touch pen simplifies, cancelled gestures do not save, and failed sends kee
   await page.reload();
   await page
     .getByRole("listitem")
-    .getByRole("button", { name: /Drawing/ })
+    .getByRole("button", { name: /drawing/i })
     .click();
   await expect(overlay.locator("polyline")).toHaveAttribute(
     "points",
@@ -180,7 +186,7 @@ test("a Drawing over the shape cap is refused with a message and replay passes a
   await page.reload();
   await page
     .getByRole("listitem")
-    .getByRole("button", { name: /Drawing/ })
+    .getByRole("button", { name: /drawing/i })
     .click();
   await expect(overlay.locator("polyline")).toHaveCount(50);
   expect((await axe()).violations).toEqual([]);
@@ -274,9 +280,9 @@ test("opening a Video clears the Member's unread marker", async ({ page }) => {
   seedMember(other, "editor");
   seedComment(id, other, "New feedback from someone else", Date.now());
   await page.goto(`/projects/${id}`);
-  const tile = page.getByRole("link").filter({ hasText: "Playback cut" });
+  const tile = page.getByRole("listitem").filter({ hasText: "Playback cut" });
   await expect(tile.getByText("Unread activity", { exact: true })).toBeVisible();
-  await tile.click();
+  await tile.getByRole("link").click();
   await expect(page.getByRole("heading", { name: "Playback cut" })).toBeVisible();
   await expect(
     page.getByRole("listitem").filter({ hasText: "New feedback from someone else" }),
@@ -285,7 +291,7 @@ test("opening a Video clears the Member's unread marker", async ({ page }) => {
     .getByRole("navigation", { name: "breadcrumb" })
     .getByRole("link", { name: "Playback project" })
     .click();
-  await expect(page.getByRole("link").filter({ hasText: "Playback cut" })).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: "Playback cut" })).toBeVisible();
   await expect(page.getByText("Unread activity", { exact: true })).toHaveCount(0);
   expect(
     (
@@ -339,9 +345,9 @@ test("Comments seek, edit, Resolve and delete with sensible focus and accessible
   await page.locator("video").evaluate((video: HTMLVideoElement) => {
     video.currentTime = 0;
   });
-  await row.getByRole("button", { name: "0:03 · Change this frame", exact: true }).click();
+  await row.getByRole("button", { name: "0:03 Change this frame", exact: true }).click();
   await expect(
-    row.getByRole("button", { name: "0:03 · Change this frame", exact: true }),
+    row.getByRole("button", { name: "0:03 Change this frame", exact: true }),
   ).toHaveAttribute("aria-current", "true");
   await expect
     .poll(() => page.locator("video").evaluate((video: HTMLVideoElement) => video.currentTime))

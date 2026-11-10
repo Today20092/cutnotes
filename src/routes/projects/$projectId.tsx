@@ -6,6 +6,7 @@ import { useState } from "react";
 import { MemberScreen } from "@/components/member-screen";
 import {
   backLinkClass,
+  canDelete,
   canWrite,
   PageBreadcrumb,
   PageHeading,
@@ -151,14 +152,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
         <ul className={videoGridClass}>
           {videos.map((video) => (
             <li key={video.id} className="min-w-0">
-              <VideoTile
-                video={video}
-                writable={writable}
-                deletable={
-                  member.role === "owner" ||
-                  (member.role === "editor" && video.createdBy === member.id)
-                }
-              />
+              <VideoTile video={video} writable={writable} deletable={canDelete(member, video)} />
             </li>
           ))}
         </ul>

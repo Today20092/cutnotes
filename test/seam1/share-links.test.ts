@@ -316,3 +316,44 @@ it("revoking after a token was issued refuses new playback requests", async () =
   await call(fn.revokeShareLink, "user_owner", { id: link.id });
   await expectDead(await guest(link.token));
 });
+
+it("Members and Guests receive the same Comment shape, without Member IDs for the Guest", async () => {
+  const drawing = [
+    {
+      tool: "box",
+      color: "#ffffff",
+      pts: [
+        [0.1, 0.1],
+        [0.5, 0.5],
+      ],
+    },
+  ];
+  const input = {
+    videoId: "v",
+    revisionId: "r1",
+    id: "c1",
+    body: "Trim",
+    timecodeMs: 900,
+    drawing,
+  };
+  expect((await call(fn.createComment, "user_owner", input)).status).toBe(200);
+  const { token } = await createLink();
+  const member = await resultOf<{ comments: object[] }>(
+    await call(fn.getReview, "user_owner", { videoId: "v" }),
+  );
+  const shared = (await page(token)).comments;
+  const { mine, ...rest } = member.comments[0] as { mine: boolean };
+  expect(mine).toBe(true);
+  expect(shared).toEqual([rest]);
+  expect(rest).toMatchObject({ drawing, isGuest: false, authorName: "owner" });
+  expect(Object.keys(rest).sort()).toEqual([
+    "authorName",
+    "body",
+    "createdAt",
+    "drawing",
+    "id",
+    "isGuest",
+    "resolvedAt",
+    "timecodeMs",
+  ]);
+});

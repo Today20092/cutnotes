@@ -1,11 +1,18 @@
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { canWrite } from "@/components/project-parts";
-import { useCommentWrite, type Comment, type ReviewPage } from "@/lib/review";
-import type { NewComment } from "@/server/comments";
+import { useDrawingControls } from "@/components/drawing-controls";
+import { VideoPlayer } from "@/components/player/video-player";
+import type { Comment } from "@/lib/review";
 import type { Shape } from "@/lib/drawing";
 
 export const timeLabel = (ms: number) =>
@@ -173,35 +180,126 @@ export function CommentComposer({
   );
 }
 
-export function Comments({
-  page,
+export type Draft = { id: string; body: string; timecodeMs: number; drawing: Shape[] | null };
+
+/** What differs between a Member and a Guest on the review screen. */
+export type CommentActor = {
+  writable: boolean;
+  closedNote: string;
+  pending: boolean;
+  send: (draft: Draft) => Promise<unknown>;
+  sendFailure?: (error: unknown) => string;
+  resolve?: (comment: Comment, resolved: boolean) => Promise<unknown>;
+  /** Offered only on the viewer's own Comments. */
+  edit?: (comment: Comment, body: string) => Promise<unknown>;
+  remove?: (comment: Comment) => Promise<unknown>;
+  mayRemove?: (comment: Comment) => boolean;
+};
+
+export function Review({
   videoId,
+  revision,
+  playback,
+  comments,
+  renewPlayback,
+  actor,
+}: {
+  videoId: string;
+  revision: { id: string; frameRate: number | null; durationMs: number | null };
+  playback: ComponentProps<typeof VideoPlayer>["playback"];
+  comments: Comment[];
+  renewPlayback?: ComponentProps<typeof VideoPlayer>["renewPlayback"];
+  actor: CommentActor;
+}) {
+  const [seek, setSeek] = useState<{ timeMs: number }>();
+  const [timeMs, setTimeMs] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const pen = useDrawingControls({
+    timeMs,
+    seek: (ms) => setSeek({ timeMs: ms }),
+    deselect: () => setSelectedId(null),
+  });
+  function select(comment: Comment) {
+    setSeek({ timeMs: comment.timecodeMs });
+    setSelectedId(comment.id);
+    setTimeMs(comment.timecodeMs);
+    pen.stop();
+  }
+  return (
+    <div className="review-layout">
+      <div
+        className="review-player"
+        onTimeUpdate={(event) => {
+          if (event.target instanceof HTMLVideoElement)
+            setTimeMs(Math.round(event.target.currentTime * 1000));
+        }}
+      >
+        <VideoPlayer
+          videoId={videoId}
+          revisionId={revision.id}
+          frameRate={revision.frameRate}
+          playback={playback}
+          seek={seek}
+          drawing={pen.overlay(
+            selectedId === null
+              ? undefined
+              : { drawing: comments.find((c) => c.id === selectedId)?.drawing ?? null },
+          )}
+          renewPlayback={renewPlayback}
+          timelineMarkers={
+            <CommentMarkers
+              comments={comments}
+              durationMs={revision.durationMs}
+              selectedId={selectedId}
+              select={select}
+            />
+          }
+        />
+      </div>
+      <Comments
+        comments={comments}
+        scope={revision.id}
+        actor={actor}
+        timeMs={pen.time}
+        select={select}
+        selectedId={selectedId}
+        drawing={pen.drawing}
+        sent={pen.reset}
+        drawingControls={actor.writable && pen.controls}
+      />
+    </div>
+  );
+}
+
+function Comments({
+  comments,
+  scope,
+  actor,
   timeMs,
   select,
   selectedId,
-  drawing = [],
+  drawing,
   sent,
   drawingControls,
-  cacheRevisionId,
 }: {
-  page: ReviewPage;
-  videoId: string;
+  comments: Comment[];
+  /** A new Revision starts a new draft ID. */
+  scope: string;
+  actor: CommentActor;
   timeMs: number;
   select: (comment: Comment) => void;
   selectedId: string | null;
-  cacheRevisionId?: string;
-  drawing?: Shape[];
-  sent?: () => void;
-  drawingControls?: ReactNode;
+  drawing: Shape[];
+  sent: () => void;
+  drawingControls: ReactNode;
 }) {
-  const write = useCommentWrite(videoId, cacheRevisionId);
   const [resolved, setResolved] = useState(false);
   const [body, setBody] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editedBody, setEditedBody] = useState("");
   const [failure, setFailure] = useState("");
   const [status, setStatus] = useState("");
-  const draft = useRef<NewComment | null>(null);
+  const draft = useRef<(Draft & { scope: string }) | null>(null);
   const tab = useRef<HTMLButtonElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
   const editor = useRef<HTMLTextAreaElement>(null);
@@ -209,10 +307,8 @@ export function Comments({
   useEffect(() => {
     if (editing) editor.current?.focus();
   }, [editing]);
-  const revision = page.revision!;
-  const readOnly = page.video?.completedAt !== null;
-  const rows = page.comments.filter((comment) => (comment.resolvedAt !== null) === resolved);
-  const target = (id: string) => ({ id, videoId, revisionId: revision.id });
+  const rows = comments.filter((comment) => (comment.resolvedAt !== null) === resolved);
+  const { pending } = actor;
   function focusAfterRemoval() {
     requestAnimationFrame(() => tab.current?.focus());
   }
@@ -223,46 +319,29 @@ export function Comments({
       composer.current?.focus();
       return;
     }
+    const marks = drawing.length ? drawing : null;
+    // A retry of the same text keeps its ID, so the server ignores the duplicate.
     if (
-      !draft.current ||
-      draft.current.body !== body ||
-      draft.current.revisionId !== revision.id ||
-      JSON.stringify(draft.current.drawing) !== JSON.stringify(drawing.length ? drawing : null)
-    ) {
-      draft.current = {
-        ...target(crypto.randomUUID()),
-        body,
-        timecodeMs: timeMs,
-        drawing: drawing.length ? drawing : null,
-      };
-    }
-    const data = draft.current;
+      draft.current?.body !== body ||
+      draft.current.scope !== scope ||
+      JSON.stringify(draft.current.drawing) !== JSON.stringify(marks)
+    )
+      draft.current = { id: crypto.randomUUID(), scope, body, timecodeMs: timeMs, drawing: marks };
+    const { scope: _, ...data } = draft.current;
     setFailure("");
     setStatus("");
     setResolved(false);
     try {
-      await write.mutateAsync({
-        action: "create",
-        data,
-        comment: {
-          ...data,
-          memberId: page.member.id,
-          shareLinkId: null,
-          authorName: page.member.displayName,
-          drawing: data.drawing ? JSON.stringify(data.drawing) : null,
-          resolvedAt: null,
-          resolvedBy: null,
-          createdAt: Date.now(),
-          editedAt: null,
-        },
-      });
+      await actor.send(data);
       setBody("");
       draft.current = null;
-      sent?.();
+      sent();
       setStatus(`Comment added at ${timeLabel(data.timecodeMs)}`);
       if (document.activeElement === document.body) composer.current?.focus(); // Send disables while pending, which can drop focus.
-    } catch {
-      setFailure("Could not send Comment. Your text is kept; try again.");
+    } catch (error) {
+      setFailure(
+        actor.sendFailure?.(error) ?? "Could not send Comment. Your text is kept; try again.",
+      );
     }
   }
 
@@ -270,15 +349,14 @@ export function Comments({
     setFailure("");
     setStatus("");
     try {
-      const data = target(comment.id);
-      const pending =
+      const write =
         action === "edit"
-          ? write.mutateAsync({ action, data: { ...data, body: editedBody } })
+          ? actor.edit!(comment, editedBody)
           : action === "resolve"
-            ? write.mutateAsync({ action, data: { ...data, resolved: !resolved } })
-            : write.mutateAsync({ action, data });
+            ? actor.resolve!(comment, !resolved)
+            : actor.remove!(comment);
       if (action !== "edit") focusAfterRemoval();
-      await pending;
+      await write;
       setStatus(
         action === "edit"
           ? "Comment edited"
@@ -310,23 +388,18 @@ export function Comments({
       <p role="status" className="sr-only">
         {status}
       </p>
-      {readOnly ? (
-        <p className="mt-3 text-muted-foreground">
-          This Project is Complete. Comments are read-only.
-        </p>
-      ) : (
+      {actor.writable ? (
         <CommentComposer
           composer={composer}
           body={body}
-          setBody={(value) => {
-            setBody(value);
-            draft.current = null;
-          }}
+          setBody={setBody}
           timeMs={timeMs}
-          pending={write.isPending}
+          pending={pending}
           send={() => void send()}
           drawingControls={drawingControls}
         />
+      ) : (
+        <p className="mt-3 text-muted-foreground">{actor.closedNote}</p>
       )}
       {failure && (
         <p role="alert" className="my-3">
@@ -340,102 +413,108 @@ export function Comments({
         </p>
       ) : (
         <ul className="divide-y" aria-label="Comments">
-          {rows.map((comment) => (
-            <li key={comment.id} className="py-3 wrap-anywhere">
-              <p className="text-sm text-muted-foreground">
-                {comment.authorName}
-                {comment.shareLinkId && " · Guest"}
-              </p>
-              <button
-                className={`min-h-11 w-full text-left ${selectedRowClass}`}
-                aria-current={selectedId === comment.id ? "true" : undefined}
-                onClick={() => select(comment)}
-              >
-                <span className="font-semibold tabular-nums underline underline-offset-4">
-                  {timeLabel(comment.timecodeMs)}
-                </span>{" "}
-                · {comment.body}
-                {comment.drawing && " · Drawing"}
-              </button>
-              {editing === comment.id ? (
-                <form
-                  className="flex flex-col gap-2"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void change("edit", comment);
-                  }}
+          {rows.map((comment) => {
+            const at = `Comment by ${comment.authorName} at ${timeLabel(comment.timecodeMs)}`;
+            const canEdit = actor.edit && comment.mine;
+            const canRemove = actor.remove && actor.mayRemove?.(comment);
+            return (
+              <li key={comment.id} className="py-3 wrap-anywhere">
+                <p className="text-sm text-muted-foreground">
+                  {comment.authorName}
+                  {comment.isGuest && " · Guest"}
+                </p>
+                <button
+                  className={`min-h-11 w-full text-left ${selectedRowClass}`}
+                  aria-current={selectedId === comment.id ? "true" : undefined}
+                  onClick={() => select(comment)}
                 >
-                  <label className="flex flex-col gap-1 text-sm font-medium">
-                    Edit Comment text
-                    <Textarea
-                      ref={editor}
-                      className="min-h-24"
-                      maxLength={5000}
-                      required={!comment.drawing}
-                      value={editedBody}
-                      onChange={(event) => setEditedBody(event.target.value)}
-                      readOnly={write.isPending}
-                    />
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    <Button disabled={write.isPending} type="submit">
-                      Save Comment
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        setEditing(null);
-                        focusAfterRemoval();
-                      }}
-                    >
-                      Cancel edit
-                    </Button>
-                  </div>
-                </form>
-              ) : (
-                <div className="flex flex-wrap items-center gap-x-1">
-                  {!readOnly && canWrite(page.member.role) && (
-                    <label className="flex min-h-11 items-center gap-2 pr-2 text-sm">
-                      <Checkbox
-                        aria-label={`${resolved ? "Unresolve" : "Resolve"} Comment by ${comment.authorName} at ${timeLabel(comment.timecodeMs)}`}
-                        checked={comment.resolvedAt !== null}
-                        disabled={write.isPending}
-                        onCheckedChange={() => void change("resolve", comment)}
+                  <span className="font-semibold tabular-nums underline underline-offset-4">
+                    {timeLabel(comment.timecodeMs)}
+                  </span>{" "}
+                  · {comment.body}
+                  {comment.drawing && " · Drawing"}
+                </button>
+                {editing === comment.id ? (
+                  <form
+                    className="flex flex-col gap-2"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void change("edit", comment);
+                    }}
+                  >
+                    <label className="flex flex-col gap-1 text-sm font-medium">
+                      Edit Comment text
+                      <Textarea
+                        ref={editor}
+                        className="min-h-24"
+                        maxLength={5000}
+                        required={!comment.drawing}
+                        value={editedBody}
+                        onChange={(event) => setEditedBody(event.target.value)}
+                        readOnly={pending}
                       />
-                      {resolved ? "Unresolve" : "Resolve"}
                     </label>
-                  )}
-                  {!readOnly && comment.memberId === page.member.id && (
-                    <Button
-                      variant="ghost"
-                      className="min-h-11 sm:min-h-8"
-                      aria-label={`Edit Comment by ${comment.authorName} at ${timeLabel(comment.timecodeMs)}`}
-                      disabled={write.isPending}
-                      onClick={() => {
-                        setEditedBody(comment.body);
-                        setEditing(comment.id);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                  )}
-                  {!readOnly &&
-                    (comment.memberId === page.member.id || page.member.role === "owner") && (
-                      <Button
-                        variant="ghost"
-                        className="min-h-11 sm:min-h-8"
-                        aria-label={`Delete Comment by ${comment.authorName} at ${timeLabel(comment.timecodeMs)}`}
-                        disabled={write.isPending}
-                        onClick={() => void change("delete", comment)}
-                      >
-                        Delete
+                    <div className="flex flex-wrap gap-2">
+                      <Button disabled={pending} type="submit">
+                        Save Comment
                       </Button>
-                    )}
-                </div>
-              )}
-            </li>
-          ))}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditing(null);
+                          focusAfterRemoval();
+                        }}
+                      >
+                        Cancel edit
+                      </Button>
+                    </div>
+                  </form>
+                ) : (
+                  (actor.resolve || canEdit || canRemove) && (
+                    <div className="flex flex-wrap items-center gap-x-1">
+                      {actor.resolve && (
+                        <label className="flex min-h-11 items-center gap-2 pr-2 text-sm">
+                          <Checkbox
+                            aria-label={`${resolved ? "Unresolve" : "Resolve"} ${at}`}
+                            checked={comment.resolvedAt !== null}
+                            disabled={pending}
+                            onCheckedChange={() => void change("resolve", comment)}
+                          />
+                          {resolved ? "Unresolve" : "Resolve"}
+                        </label>
+                      )}
+                      {canEdit && (
+                        <Button
+                          variant="ghost"
+                          className="min-h-11 sm:min-h-8"
+                          aria-label={`Edit ${at}`}
+                          disabled={pending}
+                          onClick={() => {
+                            setEditedBody(comment.body);
+                            setEditing(comment.id);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                      )}
+                      {canRemove && (
+                        <Button
+                          variant="ghost"
+                          className="min-h-11 sm:min-h-8"
+                          aria-label={`Delete ${at}`}
+                          disabled={pending}
+                          onClick={() => void change("delete", comment)}
+                        >
+                          Delete
+                        </Button>
+                      )}
+                    </div>
+                  )
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

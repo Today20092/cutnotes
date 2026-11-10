@@ -3,6 +3,7 @@ import { Plus, Upload } from "lucide-react";
 import { useState } from "react";
 import { MemberScreen } from "@/components/member-screen";
 import {
+  canDelete,
   canWrite,
   PageHeading,
   ProjectNameSheet,
@@ -154,10 +155,7 @@ function ProjectListView({ list }: { list: ProjectList }) {
                 <VideoTile
                   video={video}
                   writable={writable}
-                  deletable={
-                    list.member.role === "owner" ||
-                    (list.member.role === "editor" && video.createdBy === list.member.id)
-                  }
+                  deletable={canDelete(list.member, video)}
                 />
               </li>
             ))}

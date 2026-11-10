@@ -30,6 +30,10 @@ const MAX_NAME_LENGTH = 120;
 
 export const canWrite = (role: Role) => role !== "viewer";
 
+/** Mirrors the server's deleteVideo guard: Owners delete any Video, Editors only their own. */
+export const canDelete = (member: { id: string; role: Role }, video: { createdBy: string }) =>
+  member.role === "owner" || (member.role === "editor" && video.createdBy === member.id);
+
 export const selectClass =
   "h-10 rounded-lg border border-input bg-background px-2.5 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring md:text-sm";
 

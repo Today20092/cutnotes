@@ -1,13 +1,21 @@
-import { useQuery, type QueryKey, type UseQueryOptions } from "@tanstack/react-query";
+import { queryOptions, useQuery, type QueryKey, type UseQueryOptions } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useAuthStatus } from "@/auth/client";
 import { AppShell } from "@/components/app-shell";
 import { NotAMemberScreen, SignInScreen } from "@/components/gate-screens";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTeam } from "@/lib/team";
+import { getAppShell } from "@/server/app-shell";
 
 const isRefusal = (error: unknown, status: number) =>
   error instanceof Response && error.status === status;
+
+/** For screens whose only call is the caller's own Member record. */
+export const appShellQuery = queryOptions({
+  queryKey: ["app-shell"],
+  queryFn: () => getAppShell(),
+  retry: false,
+});
 
 /**
  * A screen whose single server call also answers who the caller is. Sign-in

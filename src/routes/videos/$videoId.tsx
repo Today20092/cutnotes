@@ -4,16 +4,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { CompleteBanner } from "@/components/complete-project";
 import { MemberScreen } from "@/components/member-screen";
 import { PageBreadcrumb, PageHeading } from "@/components/project-parts";
-import { VideoPlayer } from "@/components/player/video-player";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CommentMarkers, Comments } from "@/components/comments";
+import { Review as ReviewPanel } from "@/components/comments";
 import { ShareLinksSheet } from "@/components/share-links";
-import { reviewQuery, type Comment, type ReviewPage } from "@/lib/review";
-import { useDrawingControls } from "@/components/drawing-controls";
+import { reviewQuery, useMemberActor, type ReviewPage } from "@/lib/review";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { UploadSheet } from "@/components/upload-parts";
 import { markVideoRead } from "@/server/playback";
+import { refreshProjects } from "@/lib/writes";
 
 export const Route = createFileRoute("/videos/$videoId")({
   head: () => ({ meta: [{ title: "Review · Cutnotes" }] }),
@@ -122,7 +121,7 @@ function ReadMarker({ videoId, readAt }: { videoId: string; readAt: number }) {
   const client = useQueryClient();
   const { mutate, isError } = useMutation({
     mutationFn: () => markVideoRead({ data: { videoId, readAt } }),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["projects"] }),
+    onSuccess: () => refreshProjects(client),
   });
   useEffect(() => {
     if (document.visibilityState === "visible") mutate();
@@ -146,62 +145,14 @@ function ReviewContent({
   videoId: string;
   cacheRevisionId?: string;
 }) {
-  const [seek, setSeek] = useState<{ timeMs: number }>();
-  const [timeMs, setTimeMs] = useState(0);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const pen = useDrawingControls({
-    timeMs,
-    seek: (ms) => setSeek({ timeMs: ms }),
-    deselect: () => setSelectedId(null),
-  });
-  const revision = page.revision!;
-  function select(comment: Comment) {
-    setSeek({ timeMs: comment.timecodeMs });
-    setSelectedId(comment.id);
-    setTimeMs(comment.timecodeMs);
-    pen.stop();
-  }
+  const actor = useMemberActor(page, videoId, cacheRevisionId);
   return (
-    <div className="review-layout">
-      <div
-        className="review-player"
-        onTimeUpdate={(event) => {
-          if (event.target instanceof HTMLVideoElement)
-            setTimeMs(Math.round(event.target.currentTime * 1000));
-        }}
-      >
-        <VideoPlayer
-          videoId={videoId}
-          revisionId={revision.id}
-          frameRate={revision.frameRate}
-          playback={page.playback!}
-          seek={seek}
-          drawing={pen.overlay(
-            selectedId === null
-              ? undefined
-              : { drawing: page.comments.find((c) => c.id === selectedId)?.drawing ?? null },
-          )}
-          timelineMarkers={
-            <CommentMarkers
-              comments={page.comments}
-              durationMs={revision.durationMs}
-              selectedId={selectedId}
-              select={select}
-            />
-          }
-        />
-      </div>
-      <Comments
-        page={page}
-        videoId={videoId}
-        timeMs={pen.time}
-        select={select}
-        selectedId={selectedId}
-        cacheRevisionId={cacheRevisionId}
-        drawing={pen.drawing}
-        sent={pen.reset}
-        drawingControls={page.video?.completedAt === null && pen.controls}
-      />
-    </div>
+    <ReviewPanel
+      videoId={videoId}
+      revision={page.revision!}
+      playback={page.playback!}
+      comments={page.comments}
+      actor={actor}
+    />
   );
 }

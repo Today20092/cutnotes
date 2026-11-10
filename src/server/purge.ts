@@ -2,29 +2,9 @@ import { env } from "cloudflare:workers";
 import { and, gt, inArray } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import { revisions } from "@/server/db/schema";
-import { getMuxGateway } from "@/server/mux";
-import { reconcileRevision } from "@/server/revision-lifecycle";
+import { reconcileRevision, releaseMedia } from "@/server/revision-lifecycle";
 
 const CHUNK = 1000;
-
-/** Finish remote cleanup before allowing a Revision's row to disappear. */
-async function removeMedia(revision: {
-  mux_asset_id: string | null;
-  mux_upload_id: string | null;
-}) {
-  const mux = getMuxGateway();
-  let assetId = revision.mux_asset_id;
-  if (!assetId && revision.mux_upload_id) {
-    const upload = await mux.getDirectUpload(revision.mux_upload_id);
-    assetId = upload?.asset_id ?? null;
-    if (!assetId && upload && !["cancelled", "errored", "timed_out"].includes(upload.status)) {
-      // Cancellation can race asset creation. Keep the row and discover it next run.
-      if (!(await mux.cancelDirectUpload(revision.mux_upload_id))) return false;
-    }
-  }
-  if (assetId) await mux.deleteAsset(assetId);
-  return true;
-}
 
 export async function runHourly(now: number) {
   // Claim due Projects before touching Mux, so a concurrent Reopen cannot revive deleted media.
@@ -82,14 +62,13 @@ export async function runHourly(now: number) {
           revision.created_at > now - 24 * 60 * 60 * 1000
         )
           continue;
-        if (!(await removeMedia(revision))) continue;
+        const media = {
+          id: revision.id,
+          muxAssetId: revision.mux_asset_id,
+          muxUploadId: revision.mux_upload_id,
+        };
+        if (!(await releaseMedia(media, !revision.deleted))) continue;
         if (revision.deleted) removed.push(revision.id);
-        else
-          await env.DB.prepare(
-            "UPDATE revisions SET mux_asset_id = NULL, mux_upload_id = NULL WHERE id = ? AND state = 'errored'",
-          )
-            .bind(revision.id)
-            .run();
       } catch {
         console.error("Revision media cleanup failed", revision.id);
       }

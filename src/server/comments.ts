@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, eq, sql } from "drizzle-orm";
-import { refuse, requireMember } from "@/server/access";
+import { and, eq, or, sql } from "drizzle-orm";
+import { activeMember, id, readyRevision, refuse, requireMember } from "@/server/access";
 import { bodyOf } from "@/server/comment-rules";
 import { getDb } from "@/server/db";
 import { comments, type Member } from "@/server/db/schema";
@@ -14,25 +14,15 @@ export type NewComment = CommentTarget & {
 };
 
 const validTarget = (data: CommentTarget) => {
-  if (
-    ![data?.id, data?.videoId, data?.revisionId].every(
-      (id) => typeof id === "string" && id.length > 0 && id.length <= 128,
-    )
-  )
-    refuse(400, "invalid-request");
+  for (const field of ["id", "videoId", "revisionId"]) id(data, field);
 };
-
-const writableRevision = (data: CommentTarget, member: Member) => sql`EXISTS (
-  SELECT 1 FROM revisions r JOIN videos v ON v.id = r.video_id JOIN projects p ON p.id = v.project_id
-  JOIN members m ON m.id = ${member.id}
-  WHERE r.id = ${data.revisionId} AND v.id = ${data.videoId} AND r.state = 'ready'
-    AND v.deleted_at IS NULL AND p.deleted_at IS NULL AND p.completed_at IS NULL AND m.removed_at IS NULL)`;
 
 const targetComment = (data: CommentTarget, member: Member) =>
   and(
     eq(comments.id, data.id),
     eq(comments.revisionId, data.revisionId),
-    writableRevision(data, member),
+    readyRevision(data.revisionId, data.videoId),
+    activeMember(member.id, "viewer"),
   );
 
 export const createComment = createServerFn({ method: "POST" })
@@ -51,11 +41,9 @@ export const createComment = createServerFn({ method: "POST" })
         .insert(comments)
         .select(sql`SELECT ${data.id}, r.id, m.id, NULL, m.display_name,
           ${data.timecodeMs}, ${body}, ${drawing}, NULL, NULL, ${now}, NULL
-        FROM revisions r JOIN videos v ON v.id = r.video_id JOIN projects p ON p.id = v.project_id
-        JOIN members m ON m.id = ${member.id}
-        WHERE r.id = ${data.revisionId} AND v.id = ${data.videoId} AND r.state = 'ready'
-          AND ${data.timecodeMs} <= r.duration_ms AND v.deleted_at IS NULL
-          AND p.deleted_at IS NULL AND p.completed_at IS NULL AND m.removed_at IS NULL`)
+        FROM revisions r JOIN members m ON m.id = ${member.id}
+        WHERE r.id = ${data.revisionId} AND ${data.timecodeMs} <= r.duration_ms
+          AND ${readyRevision(data.revisionId, data.videoId)} AND ${activeMember(member.id, "viewer")}`)
         .onConflictDoNothing()
         .returning({ id: comments.id }),
       db
@@ -110,7 +98,7 @@ export const deleteComment = createServerFn({ method: "POST" })
       .where(
         and(
           targetComment(data, member),
-          sql`(${comments.memberId} = ${member.id} OR EXISTS (SELECT 1 FROM members WHERE id = ${member.id} AND role = 'owner' AND removed_at IS NULL))`,
+          or(eq(comments.memberId, member.id), activeMember(member.id, "owner")),
         ),
       )
       .returning({ id: comments.id });
@@ -130,12 +118,7 @@ export const resolveComment = createServerFn({ method: "POST" })
         resolvedAt: data.resolved ? Date.now() : null,
         resolvedBy: data.resolved ? member.id : null,
       })
-      .where(
-        and(
-          targetComment(data, member),
-          sql`EXISTS (SELECT 1 FROM members WHERE id = ${member.id} AND role IN ('owner', 'editor') AND removed_at IS NULL)`,
-        ),
-      )
+      .where(and(targetComment(data, member), activeMember(member.id, "editor")))
       .returning({ id: comments.id });
     if (!written) refuse(404, "not-found");
     return written;

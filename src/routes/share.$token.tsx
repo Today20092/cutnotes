@@ -1,19 +1,11 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import {
-  CommentMarkers,
-  selectedRowClass,
-  timeLabel,
-  CommentComposer,
-  CommentFilter,
-} from "@/components/comments";
-import { useDrawingControls } from "@/components/drawing-controls";
-import { VideoPlayer } from "@/components/player/video-player";
+import { useEffect, useRef, useState } from "react";
+import { Review, type CommentActor, type Draft } from "@/components/comments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Shape } from "@/lib/drawing";
+import { draftComment, sortComments } from "@/lib/review";
 import { createGuestComment, getGuestReview } from "@/server/sharing";
 
 export const Route = createFileRoute("/share/$token")({
@@ -29,7 +21,6 @@ export const Route = createFileRoute("/share/$token")({
 });
 
 type GuestReview = Awaited<ReturnType<typeof getGuestReview>>;
-type GuestComment = GuestReview["comments"][number];
 
 const nameKey = "cutnotes-guest-name";
 const storedName = () => {
@@ -177,20 +168,7 @@ function Loaded({
   useEffect(() => {
     if (focusHeading) heading.current?.focus();
   }, [focusHeading]); // The Welcome form that held focus is gone.
-  const [seek, setSeek] = useState<{ timeMs: number }>();
-  const [timeMs, setTimeMs] = useState(0);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const pen = useDrawingControls({
-    timeMs,
-    seek: (ms) => setSeek({ timeMs: ms }),
-    deselect: () => setSelectedId(null),
-  });
-  function select(comment: GuestComment) {
-    setSeek({ timeMs: comment.timecodeMs });
-    setSelectedId(comment.id);
-    setTimeMs(comment.timecodeMs);
-    pen.stop();
-  }
+  const actor = useGuestActor(token, name, page.permission === "comment");
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-4 p-4">
       <a href="#comments" className="sr-only focus:not-sr-only">
@@ -199,208 +177,53 @@ function Loaded({
       <h1 ref={heading} tabIndex={-1} className="text-xl font-semibold wrap-anywhere">
         {page.title}
       </h1>
-      <div className="review-layout">
-        <div
-          className="review-player"
-          onTimeUpdate={(event) => {
-            if (event.target instanceof HTMLVideoElement)
-              setTimeMs(Math.round(event.target.currentTime * 1000));
-          }}
-        >
-          <VideoPlayer
-            videoId={page.revision.id}
-            revisionId={page.revision.id}
-            frameRate={page.revision.frameRate}
-            playback={page.playback}
-            seek={seek}
-            drawing={pen.overlay(
-              selectedId === null
-                ? undefined
-                : { drawing: page.comments.find((c) => c.id === selectedId)?.drawing ?? null },
-            )}
-            renewPlayback={() => getGuestReview({ data: { token } })}
-            timelineMarkers={
-              <CommentMarkers
-                comments={page.comments}
-                durationMs={page.revision.durationMs}
-                selectedId={selectedId}
-                select={select}
-              />
-            }
-          />
-        </div>
-        <GuestComments
-          page={page}
-          token={token}
-          name={name}
-          timeMs={pen.time}
-          select={select}
-          selectedId={selectedId}
-          drawing={pen.drawing}
-          sent={pen.reset}
-          drawingControls={page.permission === "comment" && pen.controls}
-        />
-      </div>
+      <Review
+        videoId={page.revision.id}
+        revision={page.revision}
+        playback={page.playback}
+        comments={page.comments}
+        renewPlayback={() => getGuestReview({ data: { token } })}
+        actor={actor}
+      />
     </main>
   );
 }
 
-function GuestComments({
-  page,
-  token,
-  name,
-  timeMs,
-  select,
-  selectedId,
-  drawing,
-  sent,
-  drawingControls,
-}: {
-  drawing: Shape[];
-  sent: () => void;
-  drawingControls: ReactNode;
-  page: GuestReview;
-  token: string;
-  name: string;
-  timeMs: number;
-  select: (comment: GuestComment) => void;
-  selectedId: string | null;
-}) {
+/** Guest adapter: Guests only send; Resolve, edit and delete stay with Members. */
+function useGuestActor(token: string, name: string, writable: boolean): CommentActor {
   const client = useQueryClient();
   const { queryKey } = guestQuery(token);
-  const [resolved, setResolved] = useState(false);
-  const [body, setBody] = useState("");
-  const [failure, setFailure] = useState("");
-  const [status, setStatus] = useState("");
-  const composer = useRef<HTMLTextAreaElement>(null);
-  const draft = useRef<{
-    id: string;
-    body: string;
-    timecodeMs: number;
-    drawing: Shape[] | null;
-  } | null>(null);
   const write = useMutation({
-    mutationFn: (data: { id: string; body: string; timecodeMs: number; drawing: Shape[] | null }) =>
-      createGuestComment({ data: { ...data, token, name } }),
-    onMutate: async (data) => {
+    mutationFn: (draft: Draft) => createGuestComment({ data: { ...draft, token, name } }),
+    onMutate: async (draft) => {
       await client.cancelQueries({ queryKey });
       client.setQueryData(
         queryKey,
         (old) =>
           old && {
             ...old,
-            comments: [
-              ...old.comments.filter((row) => row.id !== data.id),
-              {
-                ...data,
-                authorName: name,
-                drawing: data.drawing && JSON.stringify(data.drawing),
-                resolvedAt: null,
-                createdAt: Date.now(),
-                isGuest: true,
-              },
-            ].sort((a, b) => a.timecodeMs - b.timecodeMs || a.createdAt - b.createdAt),
+            comments: sortComments([
+              ...old.comments.filter((row) => row.id !== draft.id),
+              draftComment(draft, name, true),
+            ]),
           },
       );
     },
-    onError: (_error, data) =>
+    onError: (_error, draft) =>
       client.setQueryData(
         queryKey,
-        (old) => old && { ...old, comments: old.comments.filter((row) => row.id !== data.id) },
+        (old) => old && { ...old, comments: old.comments.filter((row) => row.id !== draft.id) },
       ),
     onSettled: () => client.invalidateQueries({ queryKey }),
   });
-  async function send() {
-    if (!body.trim() && !drawing.length) {
-      setFailure("Enter a Comment.");
-      composer.current?.focus();
-      return;
-    }
-    const marks = drawing.length ? drawing : null;
-    if (
-      draft.current?.body !== body ||
-      JSON.stringify(draft.current.drawing) !== JSON.stringify(marks)
-    )
-      draft.current = { id: crypto.randomUUID(), body, timecodeMs: timeMs, drawing: marks };
-    setFailure("");
-    setStatus("");
-    setResolved(false);
-    try {
-      const { timecodeMs } = draft.current;
-      await write.mutateAsync(draft.current);
-      setBody("");
-      draft.current = null;
-      sent();
-      setStatus(`Comment added at ${timeLabel(timecodeMs)}`);
-      if (document.activeElement === document.body) composer.current?.focus(); // Send disables while pending, which can drop focus.
-    } catch (error) {
-      setFailure(
-        isRateLimited(error)
-          ? "Too many Comments right now. Your text is kept; wait a minute and try again."
-          : "Could not send Comment. Your text is kept; try again.",
-      );
-    }
-  }
-  const rows = page.comments.filter((comment) => (comment.resolvedAt !== null) === resolved);
-  return (
-    <section
-      id="comments"
-      tabIndex={-1}
-      aria-labelledby="comments-heading"
-      className="min-w-0 outline-none"
-    >
-      <h2 id="comments-heading" className="text-lg font-semibold">
-        Comments
-      </h2>
-      <p role="status" className="sr-only">
-        {status}
-      </p>
-      {page.permission === "view" ? (
-        <p className="mt-3 text-muted-foreground">This link is view-only.</p>
-      ) : (
-        <CommentComposer
-          composer={composer}
-          body={body}
-          setBody={setBody}
-          timeMs={timeMs}
-          pending={write.isPending}
-          send={() => void send()}
-          drawingControls={drawingControls}
-        />
-      )}
-      {failure && (
-        <p role="alert" className="my-3">
-          {failure}
-        </p>
-      )}
-      <CommentFilter resolved={resolved} setResolved={setResolved} />
-      {rows.length === 0 ? (
-        <p className="py-3 text-muted-foreground">
-          {resolved ? "No Resolved Comments." : "No Comments to do."}
-        </p>
-      ) : (
-        <ul className="divide-y" aria-label="Comments">
-          {rows.map((comment) => (
-            <li key={comment.id} className="py-3 wrap-anywhere">
-              <p className="text-sm text-muted-foreground">
-                {comment.authorName}
-                {comment.isGuest && " · Guest"}
-              </p>
-              <button
-                className={`min-h-11 w-full text-left ${selectedRowClass}`}
-                aria-current={selectedId === comment.id ? "true" : undefined}
-                onClick={() => select(comment)}
-              >
-                <span className="font-semibold tabular-nums underline underline-offset-4">
-                  {timeLabel(comment.timecodeMs)}
-                </span>{" "}
-                · {comment.body}
-                {comment.drawing && " · Drawing"}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
+  return {
+    writable,
+    closedNote: "This link is view-only.",
+    pending: write.isPending,
+    send: write.mutateAsync,
+    sendFailure: (error) =>
+      isRateLimited(error)
+        ? "Too many Comments right now. Your text is kept; wait a minute and try again."
+        : "Could not send Comment. Your text is kept; try again.",
+  };
 }

@@ -1,82 +1,21 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
-import { and, eq, exists, isNull, notExists, sql } from "drizzle-orm";
-import { activeMember, requireMember } from "@/server/access";
-import { getDb, type Db } from "@/server/db";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 import {
-  projects,
-  members,
-  revisions,
-  videos,
-  videoStatuses,
-  type VideoStatus,
-} from "@/server/db/schema";
+  activeMember,
+  id,
+  openProject,
+  refuse,
+  requireMember,
+  text,
+  writableVideo,
+} from "@/server/access";
+import { getDb, type Db } from "@/server/db";
+import { members, revisions, videos, videoStatuses, type VideoStatus } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
+import { discardRevision } from "@/server/revision-lifecycle";
 
 const MAX_TITLE_LENGTH = 120;
-
-function reject(
-  status: 400 | 404 | 409 | 502,
-  code: "invalid-title" | "invalid-status" | "not-found" | "already-sent" | "upload-unavailable",
-): never {
-  throw Response.json({ code }, { status });
-}
-
-// Input is checked in the handlers, not an input validator, so Access always runs first.
-const field = (data: unknown, name: string) =>
-  (data as Record<string, unknown> | undefined)?.[name];
-
-const textField = (data: unknown, name: string) => {
-  const raw = field(data, name);
-  return typeof raw === "string" ? raw : "";
-};
-
-function parseTitle(data: unknown) {
-  const title = textField(data, "title").trim();
-  if (!title || title.length > MAX_TITLE_LENGTH) reject(400, "invalid-title");
-  return title;
-}
-
-/** The Video can still change: it and its Project are live, and the Project is not Complete. */
-const videoIsWritable = (db: Db, videoId: string) =>
-  and(
-    eq(videos.id, videoId),
-    isNull(videos.deletedAt),
-    exists(
-      db
-        .select({ one: sql`1` })
-        .from(projects)
-        .where(
-          and(
-            eq(projects.id, videos.projectId),
-            isNull(projects.deletedAt),
-            isNull(projects.completedAt),
-          ),
-        ),
-    ),
-  );
-
-/** Removes a Revision that never reached Mux, and a Video that held nothing else. */
-function discardRevision(db: Db, revisionId: string, videoId: string, memberId?: string) {
-  const allowed = memberId ? activeMember(memberId, "editor") : undefined;
-  return db.batch([
-    db
-      .delete(revisions)
-      .where(and(eq(revisions.id, revisionId), eq(revisions.state, "uploading"), allowed)),
-    db.delete(videos).where(
-      and(
-        eq(videos.id, videoId),
-        allowed,
-        notExists(
-          db
-            .select({ one: sql`1` })
-            .from(revisions)
-            .where(eq(revisions.videoId, videoId)),
-        ),
-      ),
-    ),
-  ]);
-}
 
 /**
  * One statement per row, conditional on the Project being open, so a Complete
@@ -100,25 +39,15 @@ async function insertRevision(
       sql`SELECT ${revisionId}, ${videoId},
             COALESCE((SELECT MAX(number) FROM revisions WHERE video_id = ${videoId}), 0) + 1,
             'uploading', ${memberId}, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ${now}, NULL
-          FROM videos
-          JOIN projects ON projects.id = videos.project_id
-          WHERE videos.id = ${videoId}
-            AND videos.deleted_at IS NULL
-            AND projects.deleted_at IS NULL
-            AND projects.completed_at IS NULL
-            AND ${activeMember(memberId, "editor")}`,
+          WHERE ${writableVideo(videoId)} AND ${activeMember(memberId, "editor")}`,
     )
     .returning({ id: revisions.id });
 
   if (newVideo) {
     const [, inserted] = await db.batch([
       db.insert(videos).select(
-        sql`SELECT ${videoId}, id, ${newVideo.title}, 'review', ${memberId}, ${now}, ${now}, NULL
-              FROM projects
-              WHERE id = ${newVideo.projectId}
-                AND deleted_at IS NULL
-                AND completed_at IS NULL
-                AND ${activeMember(memberId, "editor")}`,
+        sql`SELECT ${videoId}, ${newVideo.projectId}, ${newVideo.title}, 'review', ${memberId}, ${now}, ${now}, NULL
+              WHERE ${openProject(newVideo.projectId)} AND ${activeMember(memberId, "editor")}`,
       ),
       insertRow,
     ]);
@@ -132,7 +61,8 @@ async function insertRevision(
       .set({ updatedAt: now })
       .where(
         and(
-          videoIsWritable(db, videoId),
+          eq(videos.id, videoId),
+          writableVideo(videoId),
           activeMember(memberId, "editor"),
           sql`EXISTS (SELECT 1 FROM revisions WHERE id = ${revisionId})`,
         ),
@@ -145,14 +75,17 @@ export const startUpload = createServerFn({ method: "POST" })
   .validator((data: { projectId: string; title: string } | { videoId: string }) => data)
   .handler(async ({ data }) => {
     const member = await requireMember("editor");
-    const existingVideoId = textField(data, "videoId");
+    const existingVideoId = "videoId" in Object(data) ? id(data, "videoId") : undefined;
     const newVideo = existingVideoId
       ? undefined
-      : { projectId: textField(data, "projectId"), title: parseTitle(data) };
+      : {
+          projectId: id(data, "projectId"),
+          title: text(data, "title", MAX_TITLE_LENGTH, "invalid-title"),
+        };
 
     const db = getDb();
     const revisionId = crypto.randomUUID();
-    const videoId = existingVideoId || crypto.randomUUID();
+    const videoId = existingVideoId ?? crypto.randomUUID();
     const created = await insertRevision(db, {
       revisionId,
       videoId,
@@ -160,7 +93,7 @@ export const startUpload = createServerFn({ method: "POST" })
       now: Date.now(),
       newVideo,
     });
-    if (!created) reject(404, "not-found");
+    if (!created) refuse(404, "not-found");
 
     let upload: { uploadId: string; url: string };
     try {
@@ -170,7 +103,7 @@ export const startUpload = createServerFn({ method: "POST" })
       });
     } catch {
       await discardRevision(db, revisionId, videoId);
-      reject(502, "upload-unavailable");
+      refuse(502, "upload-unavailable");
     }
 
     const [, eligible] = await db.batch([
@@ -182,12 +115,12 @@ export const startUpload = createServerFn({ method: "POST" })
       db
         .select({ id: revisions.id })
         .from(revisions)
-        .innerJoin(videos, eq(videos.id, revisions.videoId))
         .where(
           and(
             eq(revisions.id, revisionId),
             eq(revisions.state, "uploading"),
-            videoIsWritable(db, videoId),
+            eq(revisions.videoId, videoId),
+            writableVideo(videoId),
             activeMember(member.id, "editor"),
           ),
         ),
@@ -195,7 +128,7 @@ export const startUpload = createServerFn({ method: "POST" })
     if (!eligible.length) {
       if (await getMuxGateway().cancelDirectUpload(upload.uploadId))
         await discardRevision(db, revisionId, videoId);
-      reject(404, "not-found");
+      refuse(404, "not-found");
     }
     return { videoId, revisionId, uploadUrl: upload.url };
   });
@@ -213,31 +146,31 @@ export const cancelUpload = createServerFn({ method: "POST" })
           muxUploadId: revisions.muxUploadId,
         })
         .from(revisions)
-        .where(eq(revisions.id, textField(data, "revisionId"))),
+        .where(eq(revisions.id, id(data, "revisionId"))),
       db
         .select({ id: members.id })
         .from(members)
         .where(and(eq(members.id, member.id), activeMember(member.id, "editor"))),
     ]);
-    if (!acting.length) reject(404, "not-found");
+    if (!acting.length) refuse(404, "not-found");
     const [revision] = rows;
 
     // Already gone is what the caller wanted.
     if (!revision) return { cancelled: true };
-    if (revision.state !== "uploading") reject(409, "already-sent");
+    if (revision.state !== "uploading") refuse(409, "already-sent");
 
     // Creation has not returned yet: do not delete the row that will hold its Mux ID.
-    if (revision.muxUploadId === null) reject(409, "already-sent");
+    if (revision.muxUploadId === null) refuse(409, "already-sent");
     const cancelled = await getMuxGateway().cancelDirectUpload(revision.muxUploadId);
-    if (!cancelled) reject(409, "already-sent");
+    if (!cancelled) refuse(409, "already-sent");
 
     const [discarded] = await discardRevision(
       db,
-      textField(data, "revisionId"),
+      id(data, "revisionId"),
       revision.videoId,
       member.id,
     );
-    if (!discarded.meta.changes) reject(404, "not-found");
+    if (!discarded.meta.changes) refuse(404, "not-found");
     return { cancelled: true };
   });
 
@@ -250,13 +183,13 @@ async function updateVideo(
   const [video] = await db
     .update(videos)
     .set({ ...changes, updatedAt: Date.now() })
-    .where(and(videoIsWritable(db, videoId), activeMember(memberId, "editor")))
+    .where(and(eq(videos.id, videoId), writableVideo(videoId), activeMember(memberId, "editor")))
     .returning({
       id: videos.id,
       title: videos.title,
       status: videos.status,
     });
-  if (!video) reject(404, "not-found");
+  if (!video) refuse(404, "not-found");
   return video;
 }
 
@@ -264,16 +197,18 @@ export const renameVideo = createServerFn({ method: "POST" })
   .validator((data: { videoId: string; title: string }) => data)
   .handler(async ({ data }) => {
     const member = await requireMember("editor");
-    return updateVideo(member.id, textField(data, "videoId"), { title: parseTitle(data) });
+    return updateVideo(member.id, id(data, "videoId"), {
+      title: text(data, "title", MAX_TITLE_LENGTH, "invalid-title"),
+    });
   });
 
 export const setVideoStatus = createServerFn({ method: "POST" })
   .validator((data: { videoId: string; status: VideoStatus }) => data)
   .handler(async ({ data }) => {
     const member = await requireMember("editor");
-    const status = field(data, "status") as VideoStatus;
-    if (!videoStatuses.includes(status)) reject(400, "invalid-status");
-    return updateVideo(member.id, textField(data, "videoId"), { status });
+    const status = (data as { status?: unknown } | undefined)?.status as VideoStatus;
+    if (!videoStatuses.includes(status)) refuse(400, "invalid-status");
+    return updateVideo(member.id, id(data, "videoId"), { status });
   });
 
 export const deleteVideo = createServerFn({ method: "POST" })
@@ -286,13 +221,16 @@ export const deleteVideo = createServerFn({ method: "POST" })
       .set({ deletedAt: Date.now() })
       .where(
         and(
-          eq(videos.id, textField(data, "videoId")),
+          eq(videos.id, id(data, "videoId")),
           isNull(videos.deletedAt),
           sql`EXISTS (SELECT 1 FROM projects WHERE id = ${videos.projectId} AND deleted_at IS NULL)`,
-          sql`EXISTS (SELECT 1 FROM members WHERE id = ${member.id} AND removed_at IS NULL AND (role = 'owner' OR (role = 'editor' AND ${videos.createdBy} = id)))`,
+          or(
+            activeMember(member.id, "owner"),
+            and(activeMember(member.id, "editor"), eq(videos.createdBy, member.id)),
+          ),
         ),
       )
       .returning({ id: videos.id });
-    if (!video) reject(404, "not-found");
+    if (!video) refuse(404, "not-found");
     return video;
   });

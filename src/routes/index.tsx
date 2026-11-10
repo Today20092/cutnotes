@@ -1,3 +1,4 @@
+import { Card, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { FolderOpen, Plus, Upload } from "lucide-react";
 import { useState } from "react";
@@ -125,40 +126,52 @@ function ProjectListView({ list }: { list: ProjectList }) {
           {writable && <EmptyContent>{newProjectSheet}</EmptyContent>}
         </Empty>
       ) : (
-        <section aria-labelledby="projects-heading" className="flex flex-col gap-1">
+        <section aria-labelledby="projects-heading" className="flex flex-col gap-2">
           <h2 id="projects-heading" className="text-lg font-semibold">
-            All Projects
+            Projects
           </h2>
-          <ul className="divide-y">
+          <ul className={videoGridClass}>
             {list.projects.map((project) => (
-              <li
-                key={project.id}
-                className="flex min-h-14 items-center justify-between gap-2 py-1"
-              >
-                {isPendingProject(project) ? (
-                  <span className="min-w-0 font-medium wrap-anywhere">{project.name}</span>
-                ) : (
-                  <Link
-                    to="/projects/$projectId"
-                    params={{ projectId: project.id }}
-                    className="flex min-h-11 min-w-0 flex-1 items-center font-medium wrap-anywhere underline-offset-4 hover:underline"
-                  >
-                    {project.name}
-                  </Link>
-                )}
-                {project.completedAt !== null ? (
-                  <Badge variant="secondary" className="shrink-0">
-                    Complete
-                  </Badge>
-                ) : (
-                  writable &&
-                  !isPendingProject(project) && (
-                    <RenameProjectButton
-                      name={project.name}
-                      onRename={(name) => rename(project.id, project.name, name)}
-                    />
-                  )
-                )}
+              <li key={project.id} className="min-w-0">
+                <Card className="h-full">
+                  <CardHeader className="p-4">
+                    <CardTitle>
+                      <FolderOpen className="mb-3 size-5 text-muted-foreground" aria-hidden />
+                      {isPendingProject(project) ? (
+                        <span className="min-w-0 font-medium wrap-anywhere">{project.name}</span>
+                      ) : (
+                        <Link
+                          to="/projects/$projectId"
+                          params={{ projectId: project.id }}
+                          className="inline-flex min-h-11 items-center rounded font-medium wrap-anywhere underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                        >
+                          {project.name}
+                        </Link>
+                      )}
+                    </CardTitle>
+                    <CardDescription>
+                      {list.videos.filter((video) => video.projectId === project.id).length}{" "}
+                      {list.videos.filter((video) => video.projectId === project.id).length === 1
+                        ? "video"
+                        : "videos"}
+                    </CardDescription>
+                    <CardAction>
+                      {project.completedAt !== null ? (
+                        <Badge variant="secondary" className="shrink-0">
+                          Complete
+                        </Badge>
+                      ) : (
+                        writable &&
+                        !isPendingProject(project) && (
+                          <RenameProjectButton
+                            name={project.name}
+                            onRename={(name) => rename(project.id, project.name, name)}
+                          />
+                        )
+                      )}
+                    </CardAction>
+                  </CardHeader>
+                </Card>
               </li>
             ))}
           </ul>
@@ -168,7 +181,7 @@ function ProjectListView({ list }: { list: ProjectList }) {
       {list.videos.length > 0 && (
         <section aria-labelledby="videos-heading" className="flex flex-col gap-2">
           <h2 id="videos-heading" className="text-lg font-semibold">
-            Videos
+            Recent videos
           </h2>
           <ul className={videoGridClass}>
             {unreadFirst(list.videos).map((video) => (

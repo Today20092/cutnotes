@@ -1,3 +1,4 @@
+import { PendingButton } from "@/components/pending-button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { ConfirmButton, useStatusToast } from "@/components/project-parts";
@@ -76,12 +77,12 @@ function ShareLinks({ videoId }: { videoId: string }) {
   }
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="flex flex-col gap-6 p-4">
       <p role="status" className="sr-only">
         {status}
       </p>
       <form
-        className="space-y-3"
+        className="flex flex-col gap-3"
         onSubmit={(event) => {
           event.preventDefault();
           create.mutate();
@@ -118,14 +119,14 @@ function ShareLinks({ videoId }: { videoId: string }) {
             ))}
           </RadioGroup>
         </fieldset>
-        <Button type="submit" disabled={create.isPending}>
+        <PendingButton type="submit" pending={create.isPending}>
           Create Share Link
-        </Button>
+        </PendingButton>
         {create.isError && (
           <p role="alert">Could not create the Share Link. Check the name and try again.</p>
         )}
       </form>
-      <section className="space-y-3">
+      <section className="flex flex-col gap-3">
         <h3 className="font-semibold">Active links</h3>
         <p className="text-sm text-muted-foreground">
           Revoking stops new access at once. A video token already issued keeps working until it
@@ -139,7 +140,7 @@ function ShareLinks({ videoId }: { videoId: string }) {
         )}
         <ul className="divide-y">
           {links.data?.links.map((link) => (
-            <li key={link.id} className="space-y-2 py-3 wrap-anywhere">
+            <li key={link.id} className="flex flex-col gap-2 py-3 wrap-anywhere">
               <p className="font-medium">
                 {link.name}{" "}
                 <span className="text-sm font-normal">

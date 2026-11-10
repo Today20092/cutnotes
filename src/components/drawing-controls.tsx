@@ -1,3 +1,6 @@
+import { cn } from "@/lib/utils";
+import { Group } from "@/components/ui/group";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Eraser, MoveUpRight, Pencil, Square, Undo2, Pen } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -54,11 +57,15 @@ export function useDrawingControls({
       change,
     }),
     controls: (
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Drawing controls">
+      <div
+        className={cn("flex flex-wrap items-center gap-2", active && "w-full")}
+        role="group"
+        aria-label="Drawing controls"
+      >
         <Button
           ref={drawButton}
           variant={active ? "default" : "ghost"}
-          aria-pressed={active}
+          className="w-fit"
           onClick={() => {
             if (active) {
               setActive(false);
@@ -72,66 +79,84 @@ export function useDrawingControls({
           }}
         >
           <Pencil data-icon="inline-start" aria-hidden />
-          {active ? "Finish Drawing" : "Draw"}
+          {active ? "Finish drawing" : "Draw"}
         </Button>
         {active && (
           <>
-            {(["pen", "arrow", "box"] as const).map((name) => (
+            <ToggleGroup
+              aria-label="Drawing tool"
+              value={[tool]}
+              onValueChange={(values) => {
+                const next = values[0];
+                if (next === "pen" || next === "arrow" || next === "box") setTool(next);
+              }}
+              variant="outline"
+            >
+              {(["pen", "arrow", "box"] as const).map((name) => (
+                <ToggleGroupItem
+                  key={name}
+                  value={name}
+                  className="size-11 p-0 data-pressed:ring-2 data-pressed:ring-inset data-pressed:ring-foreground"
+                  aria-label={title(name)}
+                  title={title(name)}
+                >
+                  {name === "pen" ? (
+                    <Pen aria-hidden />
+                  ) : name === "arrow" ? (
+                    <MoveUpRight aria-hidden />
+                  ) : (
+                    <Square aria-hidden />
+                  )}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <ToggleGroup
+              aria-label="Drawing color"
+              value={[color]}
+              onValueChange={(values) => {
+                if (values[0]) setColor(values[0]);
+              }}
+            >
+              {drawingColors.map((value, i) => (
+                <ToggleGroupItem
+                  key={value}
+                  value={value}
+                  className="size-11 p-0 data-pressed:ring-2 data-pressed:ring-inset data-pressed:ring-foreground"
+                  aria-label={labels[i]}
+                  title={labels[i]}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="flex size-6 items-center justify-center rounded-full border border-foreground/40 text-xs text-black"
+                    style={{ backgroundColor: value }}
+                  >
+                    {color === value ? "✓" : ""}
+                  </span>
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <Group aria-label="Edit drawing">
               <Button
-                key={name}
-                variant={tool === name ? "default" : "outline"}
-                aria-label={title(name)}
-                aria-pressed={tool === name}
-                onClick={() => setTool(name)}
-              >
-                <span aria-hidden="true">{tool === name ? "✓" : ""}</span>
-                {name === "pen" ? (
-                  <Pen aria-hidden />
-                ) : name === "arrow" ? (
-                  <MoveUpRight aria-hidden />
-                ) : (
-                  <Square aria-hidden />
-                )}
-              </Button>
-            ))}
-            {drawingColors.map((value, i) => (
-              <Button
-                key={value}
                 variant="ghost"
                 size="icon"
-                aria-label={labels[i]}
-                aria-pressed={color === value}
-                onClick={() => setColor(value)}
+                aria-label="Undo Drawing"
+                title="Undo Drawing"
+                disabled={!drawing.length}
+                onClick={() => remove(drawing.slice(0, -1))}
               >
-                <span
-                  aria-hidden="true"
-                  className="flex size-6 items-center justify-center rounded-full border border-foreground/40 text-xs text-black"
-                  style={{ backgroundColor: value }}
-                >
-                  {color === value ? "✓" : ""}
-                </span>
+                <Undo2 aria-hidden />
               </Button>
-            ))}
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Undo Drawing"
-              title="Undo Drawing"
-              disabled={!drawing.length}
-              onClick={() => remove(drawing.slice(0, -1))}
-            >
-              <Undo2 aria-hidden />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Clear Drawing"
-              title="Clear Drawing"
-              disabled={!drawing.length}
-              onClick={() => remove([])}
-            >
-              <Eraser aria-hidden />
-            </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Clear Drawing"
+                title="Clear Drawing"
+                disabled={!drawing.length}
+                onClick={() => remove([])}
+              >
+                <Eraser aria-hidden />
+              </Button>
+            </Group>
             <p className="w-full text-sm text-muted-foreground">
               Draw on the picture, or add a Comment at this moment.
             </p>

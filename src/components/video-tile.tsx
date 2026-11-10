@@ -1,10 +1,14 @@
+import { NativeSelect } from "@/components/ui/native-select";
+import { statusTone } from "@/components/video-status";
+import { PendingButton } from "@/components/pending-button";
+import { toastManager } from "@/components/ui/toast";
+import { Input } from "@/components/ui/input";
 import { Link } from "@tanstack/react-router";
 import { DeleteWork } from "@/components/delete-work";
-import { Ellipsis, RotateCcw } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { Check, Ellipsis, Pencil, RotateCcw, X } from "lucide-react";
+import { useCallback, useId, useRef, useState } from "react";
 import {
   ProjectNameSheet,
-  selectClass,
   statusLabels,
   VideoCard,
   WriteFeedback,
@@ -14,6 +18,118 @@ import { Button } from "@/components/ui/button";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
 import { useRenameVideo, useSetVideoStatus, type VideoSummary } from "@/lib/projects";
 import { videoStatuses, type VideoStatus } from "@/server/db/schema";
+
+function EditableVideoTitle({ video }: { video: VideoSummary }) {
+  const rename = useRenameVideo(video.id);
+  const focusInput = useCallback((input: HTMLInputElement | null) => {
+    input?.focus();
+    input?.select();
+  }, []);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(video.title);
+  const [error, setError] = useState("");
+  const trigger = useRef<HTMLButtonElement>(null);
+  function close() {
+    setEditing(false);
+    requestAnimationFrame(() => trigger.current?.focus());
+  }
+  if (!editing)
+    return (
+      <button
+        ref={trigger}
+        type="button"
+        className="inline-flex min-h-11 items-center gap-2 rounded text-left hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+        aria-label={`Rename ${video.title}`}
+        onClick={() => {
+          setDraft(video.title);
+          setError("");
+          setEditing(true);
+        }}
+      >
+        {video.title}
+        <Pencil className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+      </button>
+    );
+  return (
+    <form
+      className="flex h-11 min-w-0 items-center gap-1"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (rename.isPending) return;
+        const title = draft.trim();
+        if (!title) {
+          setError("Enter a video title.");
+          toastManager.add({ title: "Enter a video title.", type: "error" });
+          return;
+        }
+        if (title === video.title) {
+          close();
+          return;
+        }
+        setError("");
+        rename.mutate(
+          { videoId: video.id, title },
+          {
+            onSuccess: () => {
+              toastManager.add({ title: "Video renamed" });
+              close();
+            },
+            onError: () => {
+              setError("Could not save the title. Try again.");
+              toastManager.add({ title: "Could not save the title. Try again.", type: "error" });
+            },
+          },
+        );
+      }}
+    >
+      <Input
+        className="h-11 min-w-0 flex-1"
+        ref={focusInput}
+        aria-label="Video title"
+        value={draft}
+        maxLength={120}
+        disabled={rename.isPending}
+        aria-invalid={!!error}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && !rename.isPending) {
+            event.preventDefault();
+            close();
+          }
+        }}
+      />
+      <div className="flex shrink-0 gap-1">
+        <PendingButton
+          pending={rename.isPending}
+          size="icon"
+          variant="ghost"
+          type="submit"
+          aria-label="Save title"
+          title="Save title"
+          disabled={rename.isPending}
+        >
+          {!rename.isPending && <Check aria-hidden />}
+        </PendingButton>
+        <Button
+          size="icon"
+          variant="ghost"
+          type="button"
+          aria-label="Cancel rename"
+          title="Cancel rename"
+          disabled={rename.isPending}
+          onClick={close}
+        >
+          <X aria-hidden />
+        </Button>
+      </div>
+      {error && (
+        <p role="alert" className="sr-only">
+          {error}
+        </p>
+      )}
+    </form>
+  );
+}
 
 function VideoControls({ video, deletable }: { video: VideoSummary; deletable: boolean }) {
   const [sheet, setSheet] = useState<"rename" | "delete" | null>(null);
@@ -53,14 +169,15 @@ function VideoControls({ video, deletable }: { video: VideoSummary; deletable: b
   }
 
   return (
-    <div className="mt-2 ml-31 flex flex-col gap-2 sm:ml-0">
-      <div className="flex items-center gap-2">
-        <label htmlFor={selectId} className="sr-only">
-          Status of {video.title}
+    <div className="mt-2 flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor={selectId} className="text-sm text-muted-foreground">
+          Status<span className="sr-only"> of {video.title}</span>
         </label>
-        <select
+        <NativeSelect
           id={selectId}
-          className={`${selectClass} min-w-0 flex-1`}
+          className={statusTone[video.status]}
+          disabled={setVideoStatus.isPending}
           value={video.status}
           onChange={(event) => changeStatus(event.target.value as VideoStatus)}
         >
@@ -69,7 +186,7 @@ function VideoControls({ video, deletable }: { video: VideoSummary; deletable: b
               {statusLabels[value]}
             </option>
           ))}
-        </select>
+        </NativeSelect>
         {video.latestRevisionState === "errored" && (
           <UploadSheet
             destination={{ kind: "existing", videoId: video.id, title: video.title }}
@@ -136,9 +253,23 @@ export function VideoTile({
   const card = <VideoCard video={video} showStatus={!manageable} />;
   return (
     <>
-      <Link to="/videos/$videoId" params={{ videoId: video.id }} className="flex gap-3 sm:block">
-        {card}
-      </Link>
+      {manageable ? (
+        <div className="block min-[400px]:flex min-[400px]:gap-3 sm:block">
+          <VideoCard
+            video={video}
+            showStatus={false}
+            editableTitle={<EditableVideoTitle video={video} />}
+          />
+        </div>
+      ) : (
+        <Link
+          to="/videos/$videoId"
+          params={{ videoId: video.id }}
+          className="block min-[400px]:flex min-[400px]:gap-3 sm:block"
+        >
+          {card}
+        </Link>
+      )}
       {manageable && <VideoControls video={video} deletable={deletable} />}
       {!manageable && deletable && (
         <div className="mt-2">

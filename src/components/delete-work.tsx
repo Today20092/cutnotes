@@ -1,3 +1,4 @@
+import { PendingButton } from "@/components/pending-button";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,9 +51,9 @@ export function DeleteWork({
           </p>
           {remove.isError && <p role="alert">Could not delete {name}. Please try again.</p>}
           <SheetClose render={<Button variant="outline" />}>Keep {kind}</SheetClose>
-          <Button
+          <PendingButton
             variant="destructive"
-            disabled={remove.isPending}
+            pending={remove.isPending}
             onClick={() => {
               remove.mutate(undefined, {
                 onSuccess: () => {
@@ -63,7 +64,7 @@ export function DeleteWork({
             }}
           >
             Delete {name} permanently
-          </Button>
+          </PendingButton>
         </div>
       </SheetContent>
     </Sheet>

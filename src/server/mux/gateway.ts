@@ -44,6 +44,8 @@ export type MuxAsset = {
 };
 
 export type MuxGateway = {
+  /** Local media providers can supply their own thumbnail endpoint. */
+  thumbnailUrl?: (playbackId: string) => string;
   createPlayback(request: { playbackId: string; durationSeconds: number }): Promise<Playback>;
   deleteAsset(assetId: string): Promise<void>;
   getAsset(assetId: string): Promise<MuxAsset | null>;

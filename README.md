@@ -25,3 +25,11 @@ Requires [Bun](https://bun.sh). Tools that need Node use the pinned binary insta
 Clerk's session token must include `email` and `email_verified`, or no first Owner can be created. See `.dev.vars.example`.
 
 The Cloudflare tools are pinned together to `workerd` 1.20261023.1: on Windows, 1.20261101 and 1.20261104 fail to start with `CreateDirectory: Access is denied`. Check for that error before upgrading them.
+
+## Local UI preview without service credentials
+
+Run `bun run dev:preview` and open http://127.0.0.1:5199. Requires `ffmpeg` and `ffprobe` on PATH. The preview automatically signs in as a local test owner. Create a project, then select or drop a browser-playable video. Files stay in `.wrangler/preview-videos`; project data stays in the separate `.wrangler/e2e` local database. Restarting this command preserves both. Running the end-to-end test suite resets that test database.
+
+This explicit Vite preview mode replaces Clerk and Mux locally. Normal development and production retain their existing authentication and media services. It exercises project management, video playback, comments, drawings, and revisions without external accounts. It does not reproduce Mux transcoding, real email invitations, or multi-user authentication. Use an H.264 MP4 for broad browser compatibility; local playback does not transcode. Local frame stepping currently assumes 30 fps.
+
+Validation: typecheck and lint pass; a generated MP4 upload returned HTTP 200 and a 100-byte playback range returned HTTP 206. Full browser flow validation was unavailable because the installed Playwright browser binary is missing.

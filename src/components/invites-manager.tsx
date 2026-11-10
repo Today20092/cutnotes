@@ -1,3 +1,4 @@
+import { PendingButton } from "@/components/pending-button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -114,14 +115,14 @@ export function InvitesManager() {
             ))}
           </RadioGroup>
         </fieldset>
-        <Button type="submit" disabled={create.isPending}>
+        <PendingButton type="submit" pending={create.isPending}>
           Create Invite
-        </Button>
+        </PendingButton>
         {create.isError && <p role="alert">Could not create the Invite. Please try again.</p>}
       </form>
 
       {link && (
-        <section className="space-y-3">
+        <section className="flex flex-col gap-3">
           <h2 ref={linkHeading} tabIndex={-1} className="font-semibold outline-none">
             Invite link
           </h2>
@@ -155,7 +156,7 @@ export function InvitesManager() {
         </section>
       )}
 
-      <section className="space-y-3">
+      <section className="flex flex-col gap-3">
         <h2 ref={pendingHeading} tabIndex={-1} className="text-lg font-semibold outline-none">
           Pending Invites
         </h2>

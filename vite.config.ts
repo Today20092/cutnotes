@@ -1,4 +1,5 @@
 import path from "node:path";
+import { localPreview } from "./scripts/preview/plugin";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -8,7 +9,8 @@ import { defineConfig } from "vite";
 const src = path.resolve(import.meta.dirname, "src");
 
 export default defineConfig(({ mode }) => {
-  const e2e = mode === "e2e";
+  const preview = mode === "preview";
+  const e2e = mode === "e2e" || preview;
   return {
     server: { port: 5173, strictPort: true },
     resolve: {
@@ -18,11 +20,17 @@ export default defineConfig(({ mode }) => {
           ? [
               {
                 find: /^@\/server\/mux$/,
-                replacement: path.resolve(import.meta.dirname, "e2e/support/fake-mux-module.ts"),
+                replacement: path.resolve(
+                  import.meta.dirname,
+                  preview ? "scripts/preview/mux.ts" : "e2e/support/fake-mux-module.ts",
+                ),
               },
               {
                 find: "@/auth/client",
-                replacement: path.resolve(import.meta.dirname, "e2e/support/fake-auth-client.tsx"),
+                replacement: path.resolve(
+                  import.meta.dirname,
+                  preview ? "scripts/preview/auth.tsx" : "e2e/support/fake-auth-client.tsx",
+                ),
               },
             ]
           : []),
@@ -30,6 +38,7 @@ export default defineConfig(({ mode }) => {
       ],
     },
     plugins: [
+      ...(preview ? [localPreview()] : []),
       cloudflare({
         viteEnvironment: { name: "ssr" },
         ...(e2e ? { persistState: { path: ".wrangler/e2e" } } : {}),

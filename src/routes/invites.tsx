@@ -1,3 +1,4 @@
+import { SettingsLayout } from "@/components/settings-layout";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { InvitesManager } from "@/components/invites-manager";
 import { appShellQuery, MemberScreen } from "@/components/member-screen";
@@ -14,7 +15,7 @@ function InvitesPage() {
     <MemberScreen query={appShellQuery} skeleton={<Skeleton className="h-40" />}>
       {({ member }) =>
         member.role === "owner" ? (
-          <div className="flex flex-col gap-2">
+          <SettingsLayout>
             <PageBreadcrumb
               trail={[
                 { label: "Projects", link: <Link to="/" /> },
@@ -24,12 +25,12 @@ function InvitesPage() {
             />
             <PageHeading title="Invites" />
             <InvitesManager />
-          </div>
+          </SettingsLayout>
         ) : (
-          <div className="flex flex-col gap-2">
+          <SettingsLayout>
             <PageHeading title="Invites" />
             <p>Only an Owner can manage Invites.</p>
-          </div>
+          </SettingsLayout>
         )
       }
     </MemberScreen>

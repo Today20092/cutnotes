@@ -14,6 +14,8 @@ Self-hosted video review for small production teams. TanStack Start on Cloudflar
 - Never hand-edit `src/routeTree.gen.ts`: TanStack Router regenerates it.
 - Do not upgrade the Cloudflare tools (`wrangler`, `workerd`, the Vite and Vitest plugins) without reading the `workerd` pin note in `README.md`.
 
+For branch setup, merging, promotion or cleanup, read [the Git workflow](docs/branch-workflow.md).
+
 ## UI components
 
 Use cnippet by default: `npx shadcn@latest add @cnippet/<name>`. Use `@shadcn` only when cnippet has no equivalent. Never overwrite `src/components/ui/button.tsx` or `input.tsx` without checking the diff: they carry local accessibility changes.

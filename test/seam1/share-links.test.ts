@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   call,
   clearDatabase,
@@ -19,6 +19,8 @@ type GuestPage = {
   playback: { videoUrl: string };
   comments: { id: string; body: string; authorName: string; isGuest: boolean }[];
 };
+
+afterEach(() => vi.restoreAllMocks());
 
 beforeEach(async () => {
   await clearDatabase();
@@ -206,15 +208,23 @@ it("the 31st Comment in a minute on one link is refused with a retry response", 
 
 it("one client address over its limit is refused", async () => {
   const { token } = await createLink();
-  let last = await callServerFn(fn.getGuestReview, {
-    address: "203.0.113.9",
-    data: { token: "x" },
-  });
-  for (let index = 0; index < 300 && last.status !== 429; index++) {
-    last = await callServerFn(fn.getGuestReview, { address: "203.0.113.9", data: { token: "x" } });
-  }
-  await expectRefused(last, 429, "rate-limited");
-  await expectRefused(await comment(token, {}, "203.0.113.9"), 429, "rate-limited");
+  const address = "203.0.113.9";
+  // Exhausting a real counter can cross its minute boundary and reset mid-test.
+  const limit = vi.spyOn(env.SHARE_ADDRESS_LIMIT, "limit").mockImplementation(async ({ key }) => ({
+    success: key !== address,
+  }));
+  await expectRefused(
+    await callServerFn(fn.getGuestReview, { address, data: { token: "x" } }),
+    429,
+    "rate-limited",
+  );
+  await expectRefused(await comment(token, {}, address), 429, "rate-limited");
+  expect(limit).toHaveBeenNthCalledWith(1, { key: address });
+  expect(limit).toHaveBeenNthCalledWith(2, { key: address });
+  expect(
+    (await callServerFn(fn.getGuestReview, { address: "203.0.113.10", data: { token } })).status,
+  ).toBe(200);
+  expect(limit).toHaveBeenNthCalledWith(3, { key: "203.0.113.10" });
   expect((await guest(token)).status).toBe(200);
 });
 

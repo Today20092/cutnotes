@@ -130,6 +130,10 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.708 0 0);
+    --info-foreground: var(--color-blue-300);
+    --success-foreground: var(--color-emerald-300);
+    --warning-foreground: var(--color-amber-300);
+    --destructive-foreground: var(--color-red-300);
   }
 }
 

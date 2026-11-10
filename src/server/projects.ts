@@ -79,9 +79,10 @@ async function withPosters<Video extends { posterPlaybackId: string | null }>(ro
       posterUrl:
         posterPlaybackId === null
           ? null
-          : `https://image.mux.com/${posterPlaybackId}/thumbnail.webp?token=${await mux.signPlaybackToken(
+          : (mux.thumbnailUrl?.(posterPlaybackId) ??
+            `https://image.mux.com/${posterPlaybackId}/thumbnail.webp?token=${await mux.signPlaybackToken(
               { playbackId: posterPlaybackId, audience: "t", expiresAt },
-            )}`,
+            )}`),
     })),
   );
 }

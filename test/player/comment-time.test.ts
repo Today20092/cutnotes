@@ -16,3 +16,23 @@ test("the last Comment reached stays active until the next", () => {
   assert.equal(activeCommentId(rows, 3999), "a");
   assert.equal(activeCommentId(rows, 9000), "b");
 });
+
+import { playbackComments } from "../../src/lib/comment-time";
+test("playback previews group the latest unresolved timestamp and expire", () => {
+  const rows = [
+    { id: "a", timecodeMs: 1000, resolvedAt: null },
+    { id: "b", timecodeMs: 1000, resolvedAt: null },
+    { id: "c", timecodeMs: 2000, resolvedAt: 1 },
+  ];
+  assert.deepEqual(playbackComments(rows, 999), []);
+  assert.deepEqual(
+    playbackComments(rows, 1000).map((r) => r.id),
+    ["a", "b"],
+  );
+  assert.deepEqual(
+    playbackComments(rows, 2500).map((r) => r.id),
+    ["a", "b"],
+  );
+  assert.deepEqual(playbackComments(rows, 7000), []);
+  assert.deepEqual(playbackComments(rows, 0), []);
+});

@@ -177,7 +177,10 @@ function ProjectView({ page }: { page: ProjectPage }) {
         </ul>
       )}
       {(member.role === "owner" || (writable && project.completedAt === null)) && (
-        <section aria-labelledby="manage-project-heading" className="mt-6 flex flex-col gap-2">
+        <section
+          aria-labelledby="manage-project-heading"
+          className="mt-8 flex flex-col gap-4 border-t pt-6"
+        >
           <h2 id="manage-project-heading" className="text-lg font-semibold">
             Manage Project
           </h2>

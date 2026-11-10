@@ -2,7 +2,7 @@ name: Check
 
 on:
   push:
-    branches: [main, "integration/**"]
+    branches: [main, development, "integration/**"]
   pull_request:
 
 jobs:

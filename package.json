@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev:preview": "bun scripts/preview/start.ts",
     "dev": "bun scripts/node.ts node_modules/vite/bin/vite.js dev",
     "build": "bun scripts/node.ts node_modules/vite/bin/vite.js build",
     "db:generate": "bunx --bun drizzle-kit generate",

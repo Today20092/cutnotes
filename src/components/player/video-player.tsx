@@ -65,6 +65,7 @@ export function VideoPlayer({
   playback,
   seek,
   timelineMarkers,
+  commentPreview,
   drawing,
   renewPlayback,
 }: {
@@ -76,6 +77,7 @@ export function VideoPlayer({
   playback: Playback;
   seek?: { timeMs: number };
   timelineMarkers?: ReactNode;
+  commentPreview?: ReactNode;
   drawing?: Omit<Parameters<typeof DrawingOverlay>[0], "videoRef">;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -175,7 +177,7 @@ export function VideoPlayer({
         failed();
       }
     }
-    if (Hls.isSupported()) {
+    if (Hls.isSupported() && !current.videoUrl.startsWith("/__preview/")) {
       hls = new Hls();
       hls.attachMedia(video);
       hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -347,6 +349,7 @@ export function VideoPlayer({
           <DrawingOverlay key={String(drawing.active)} {...drawing} videoRef={videoRef} />
         )}
       </div>
+      {commentPreview}
       <div className="review-controls">
         <Timeline
           videoRef={videoRef}
@@ -355,7 +358,7 @@ export function VideoPlayer({
           onSeek={() => shuttleRef.current?.pause()}
           markers={timelineMarkers}
         />
-        <div className="player-deck flex flex-wrap items-center gap-1">
+        <div className="player-deck flex flex-wrap items-center gap-0 sm:gap-1">
           <ControlTip label="Previous frame" root={rootRef}>
             <Button
               variant="ghost"
@@ -390,7 +393,7 @@ export function VideoPlayer({
               <StepForward aria-hidden />
             </Button>
           </ControlTip>
-          <span className="ml-2 text-sm tabular-nums">
+          <span className="text-xs tabular-nums sm:ml-2 sm:text-sm">
             {clock(position)} / {clock(duration)}
           </span>
           <span className="ml-auto" />

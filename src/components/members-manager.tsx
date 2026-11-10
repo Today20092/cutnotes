@@ -1,3 +1,4 @@
+import { NativeSelect } from "@/components/ui/native-select";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useId, useRef, useState } from "react";
@@ -93,7 +94,7 @@ export function MembersManager() {
   });
 
   return (
-    <div className="w-full max-w-xl space-y-6">
+    <div className="flex w-full flex-col gap-6">
       <PageHeading title="Members">
         <Link to="/invites" className={buttonVariants({ variant: "secondary" })}>
           Invite someone
@@ -101,7 +102,7 @@ export function MembersManager() {
       </PageHeading>
       <WriteFeedback status={status} failure={failure} />
 
-      <section className="space-y-3">
+      <section className="flex flex-col gap-3">
         <h2 ref={listHeading} tabIndex={-1} className="text-lg font-semibold outline-none">
           People on the Team
         </h2>
@@ -153,13 +154,13 @@ function MemberRow({
   }, [confirming]);
 
   return (
-    <li className="space-y-3 py-3">
+    <li className="flex flex-col gap-3 py-3">
       <div className="font-medium wrap-anywhere">
         {member.displayName}
         {isYou && <span className="font-normal text-muted-foreground"> (you)</span>}
       </div>
       {confirming ? (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           <p className="text-sm">
             {isYou
               ? "Remove yourself from the Team? You will lose access straight away."
@@ -181,23 +182,22 @@ function MemberRow({
           </div>
         </div>
       ) : (
-        <div className="flex flex-wrap items-end justify-between gap-2">
+        <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <label htmlFor={roleId} className="text-sm font-medium">
               Role<span className="sr-only"> for {member.displayName}</span>
             </label>
-            <select
+            <NativeSelect
               id={roleId}
               value={member.role}
               onChange={(event) => onChangeRole(event.target.value as Role)}
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
             >
               {roleOptions.map((role) => (
                 <option key={role} value={role}>
                   {roleLabels[role]}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
           <Button
             ref={removeButton}

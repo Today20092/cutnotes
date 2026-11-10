@@ -1,3 +1,4 @@
+import { ExportMarkers } from "@/components/export-markers";
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -50,6 +51,16 @@ function Review() {
               current={page.video.title}
             />
             <PageHeading title={page.video.title}>
+              {page.member.role !== "viewer" && page.revision && (
+                <ExportMarkers
+                  key={page.revision.id}
+                  title={page.video.title}
+                  revision={page.history.find((r) => r.id === page.revision?.id)?.number ?? 1}
+                  comments={page.comments}
+                  frameRate={page.revision.frameRate}
+                  durationMs={page.revision.durationMs}
+                />
+              )}
               {page.member.role !== "viewer" && page.video.completedAt === null && (
                 <>
                   <ShareLinksSheet videoId={videoId} />

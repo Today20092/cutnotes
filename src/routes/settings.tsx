@@ -1,3 +1,4 @@
+import { SettingsLayout } from "@/components/settings-layout";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, LogOut, UserPlus, Users } from "lucide-react";
 import { useAccountEmail, useSignOut } from "@/auth/client";
@@ -22,13 +23,16 @@ function SettingsPage() {
   return (
     <MemberScreen query={appShellQuery} skeleton={<Skeleton className="h-40" />}>
       {({ member }) => (
-        <div className="flex w-full max-w-xl flex-col gap-4">
+        <SettingsLayout>
           <PageBreadcrumb
             trail={[{ label: "Projects", link: <Link to="/" /> }]}
             current="Settings"
           />
           <PageHeading title="Settings" />
-          <section aria-labelledby="account-heading" className="flex flex-col gap-2">
+          <section
+            aria-labelledby="account-heading"
+            className="flex flex-col gap-4 rounded-xl border bg-card p-4 sm:p-6"
+          >
             <h2 id="account-heading" className="text-lg font-semibold">
               Your account
             </h2>
@@ -46,14 +50,20 @@ function SettingsPage() {
             </dl>
           </section>
           {member.role === "owner" && (
-            <section aria-labelledby="team-heading" className="flex flex-col gap-2">
+            <section
+              aria-labelledby="team-heading"
+              className="flex flex-col gap-4 rounded-xl border bg-card p-4 sm:p-6"
+            >
               <h2 id="team-heading" className="text-lg font-semibold">
                 Team
               </h2>
               <ul className="divide-y">
                 {teamLinks.map(({ to, label, detail, icon: Icon }) => (
                   <li key={to}>
-                    <Link to={to} className="flex min-h-14 items-center gap-3 py-3">
+                    <Link
+                      to={to}
+                      className="flex min-h-14 items-center gap-3 rounded-md px-2 py-3 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+                    >
                       <Icon className="size-5 shrink-0" aria-hidden />
                       <span className="min-w-0 flex-1">
                         <span className="block font-medium">{label}</span>
@@ -69,7 +79,7 @@ function SettingsPage() {
           <Button variant="secondary" className="w-fit" onClick={signOut}>
             <LogOut aria-hidden /> Sign out
           </Button>
-        </div>
+        </SettingsLayout>
       )}
     </MemberScreen>
   );

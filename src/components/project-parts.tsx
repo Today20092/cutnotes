@@ -1,3 +1,5 @@
+import { VideoStatusBadge } from "@/components/video-status";
+import { Link } from "@tanstack/react-router";
 import { Clapperboard, Pencil } from "lucide-react";
 import {
   useEffect,
@@ -10,7 +12,6 @@ import {
 } from "react";
 import { Fragment } from "react";
 import { toastManager } from "@/components/ui/toast";
-import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -34,9 +35,6 @@ export const canWrite = (role: Role) => role !== "viewer";
 /** Mirrors the server's deleteVideo guard: Owners delete any Video, Editors only their own. */
 export const canDelete = (member: { id: string; role: Role }, video: { createdBy: string }) =>
   member.role === "owner" || (member.role === "editor" && video.createdBy === member.id);
-
-export const selectClass =
-  "h-10 rounded-lg border border-input bg-background px-2.5 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring md:text-sm";
 
 // The first view keeps focus where the browser put it.
 let hasShownAView = false;
@@ -293,7 +291,7 @@ export function WriteFeedback({ status, failure }: { status: string; failure: st
   );
 }
 
-export const statusLabels = { review: "Review", rework: "Rework", done: "Done" };
+export { statusLabels } from "@/components/video-status";
 
 function formatUpdated(timestamp: number) {
   const minutes = Math.floor((Date.now() - timestamp) / 60_000);
@@ -350,21 +348,33 @@ function Poster({ url }: { url: string | null }) {
 export function VideoCard({
   video,
   showStatus = true,
+  editableTitle,
 }: {
   video: VideoSummary;
   showStatus?: boolean;
+  editableTitle?: ReactNode;
 }) {
   const progress = revisionProgress(video);
   const revision =
     video.latestRevision === null ? "No Revision yet" : `Revision ${video.latestRevision}`;
   return (
     <>
-      <div className="w-28 shrink-0 sm:w-full">
-        <Poster key={video.posterUrl} url={video.posterUrl} />
+      <div className="w-full shrink-0 min-[400px]:w-28 sm:w-full">
+        {editableTitle ? (
+          <Link
+            to="/videos/$videoId"
+            params={{ videoId: video.id }}
+            aria-label={`Open ${video.title}`}
+          >
+            <Poster key={video.posterUrl} url={video.posterUrl} />
+          </Link>
+        ) : (
+          <Poster key={video.posterUrl} url={video.posterUrl} />
+        )}
       </div>
-      <div className="flex min-w-0 flex-1 items-start justify-between gap-2 sm:mt-2">
-        <div className="min-w-0 wrap-anywhere">
-          <div className="font-medium">{video.title}</div>
+      <div className="mt-2 flex min-w-0 flex-1 items-start justify-between gap-2 min-[400px]:mt-0 sm:mt-2">
+        <div className="min-w-0 flex-1 wrap-anywhere">
+          <div className="font-medium">{editableTitle ?? video.title}</div>
           {video.unread && (
             <span className="flex items-center gap-1.5 text-sm font-semibold">
               <span aria-hidden className="size-2 rounded-full bg-primary" />
@@ -380,11 +390,7 @@ export function VideoCard({
             </div>
           )}
         </div>
-        {showStatus && (
-          <Badge variant="secondary" className="shrink-0">
-            {statusLabels[video.status]}
-          </Badge>
-        )}
+        {showStatus && <VideoStatusBadge status={video.status} />}
       </div>
     </>
   );

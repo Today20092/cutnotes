@@ -1,3 +1,6 @@
+import { PlaybackComments } from "@/components/playback-comments";
+import { PendingButton } from "@/components/pending-button";
+import { Pencil } from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -149,7 +152,7 @@ export function CommentComposer({
 }) {
   return (
     <form
-      className="mt-3 flex flex-col gap-2"
+      className="mt-3 flex flex-col gap-3 rounded-xl border bg-card p-3"
       onSubmit={(event) => {
         event.preventDefault();
         send();
@@ -175,9 +178,9 @@ export function CommentComposer({
       />
       <div className="flex flex-wrap items-center justify-between gap-2">
         {drawingControls}
-        <Button type="submit" className="ml-auto px-4" disabled={pending}>
+        <PendingButton type="submit" className="w-full px-4" pending={pending}>
           Send Comment
-        </Button>
+        </PendingButton>
       </div>
     </form>
   );
@@ -250,6 +253,20 @@ export function Review({
               : { drawing: comments.find((c) => c.id === selectedId)?.drawing ?? null },
           )}
           renewPlayback={renewPlayback}
+          commentPreview={
+            <PlaybackComments
+              comments={comments}
+              timeMs={timeMs}
+              read={(comment) => {
+                select(comment);
+                requestAnimationFrame(() => {
+                  const row = document.getElementById(`comment-${comment.id}`);
+                  row?.scrollIntoView({ block: "nearest" });
+                  row?.querySelector<HTMLButtonElement>("button")?.focus();
+                });
+              }}
+            />
+          }
           timelineMarkers={
             <CommentMarkers
               comments={comments}
@@ -442,6 +459,7 @@ function Comments({
             return (
               <li
                 key={comment.id}
+                id={`comment-${comment.id}`}
                 className={cn(
                   "py-3 wrap-anywhere",
                   comment.id === activeId && "-mx-2 rounded-lg bg-muted/60 px-2",
@@ -459,8 +477,13 @@ function Comments({
                   <span className="font-semibold tabular-nums underline underline-offset-4">
                     {timeLabel(comment.timecodeMs)}
                   </span>{" "}
-                  · {comment.body}
-                  {comment.drawing && " · Drawing"}
+                  {comment.body && <span className="ml-2">{comment.body}</span>}
+                  {comment.drawing && (
+                    <span className="ml-2 inline-flex align-middle" title="Includes a drawing">
+                      <Pencil className="size-4" aria-hidden />
+                      <span className="sr-only">Includes a drawing</span>
+                    </span>
+                  )}
                 </button>
                 {editing === comment.id ? (
                   <form

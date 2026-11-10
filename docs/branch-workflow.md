@@ -11,7 +11,7 @@ Work happens on small branches. `development` combines the branches that should 
 | `integration/cutnotes-v1` | The earlier batch branch, up to ticket 25. `development` started from its last commit. No new work goes here. |
 | `ticket/<issue>-<slug>`, `refactor/<slug>`, `fix/<slug>` | One branch per piece of work, with its own worktree under `C:/Users/User/.t3/worktrees/cutnotes/`. |
 
-`main` does not yet contain the version-one work. The first promotion from `development` brings it in.
+`main` is the production release branch. `development` is the ongoing integration branch. Keep both synchronized after a release; remove merged task and research branches after preserving their commits.
 
 ## Everyday work
 
@@ -35,7 +35,7 @@ Work happens on small branches. `development` combines the branches that should 
 
 ## What runs when
 
-- `.github/workflows/check.yml` runs on pushes to `main` and `integration/**`, and on every pull request. A push to `development` does not start it. A pull request does.
+- `.github/workflows/check.yml` runs on pushes to `main` and `integration/**`, and on every pull request. Pushes to `development` also run the check job. A pull request runs it too.
 - No workflow deploys. Setup and deploy are manual steps in `docs/setup.md`.
 
 ## Cleanup

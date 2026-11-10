@@ -75,10 +75,6 @@ async function startUpload(page: Page, title: string) {
   await page.getByLabel("Video file").setInputFiles(file);
   await page.getByLabel("Video title").fill(title);
   await page.getByRole("button", { name: "Start upload" }).click();
-  const activeUploads = page.getByRole("region", { name: "Uploads" });
-  if ((await activeUploads.isVisible()) && (await activeUploads.getAttribute("open")) === null) {
-    await activeUploads.locator("summary").click();
-  }
 }
 
 test.beforeEach(async ({ page }) => {
@@ -136,12 +132,9 @@ test("an upload is followed from progress through processing to a signed poster"
   await expect(page.getByLabel("Video title")).toHaveValue("main-cut");
   await page.getByLabel("Video title").fill("Main cut");
   await page.getByRole("button", { name: "Start upload" }).click();
-  const activeUploads = page.getByRole("region", { name: "Uploads" });
-  if ((await activeUploads.isVisible()) && (await activeUploads.getAttribute("open")) === null) {
-    await activeUploads.locator("summary").click();
-  }
 
   const uploads = page.getByRole("region", { name: "Uploads" });
+  await uploads.locator("summary").click();
   await expect(uploads.getByRole("progressbar", { name: "Uploading Main cut" })).toBeVisible();
   await expect(page.getByText("Uploading…")).toBeVisible();
 
@@ -184,10 +177,6 @@ test("a file over 20 GB is refused before anything is sent", async ({ page }, te
   await expect(page.getByText(/over the 20 GB limit/)).toBeVisible();
   await page.getByLabel("Video title").fill("Huge");
   await page.getByRole("button", { name: "Start upload" }).click();
-  const activeUploads = page.getByRole("region", { name: "Uploads" });
-  if ((await activeUploads.isVisible()) && (await activeUploads.getAttribute("open")) === null) {
-    await activeUploads.locator("summary").click();
-  }
   await expect(page.getByRole("region", { name: "Uploads" })).toHaveCount(0);
   expect(revisions).toEqual([]);
 });
@@ -222,6 +211,7 @@ test("cancelling stops the upload and removes the Video", async ({ page }, testI
   await openNewProject(page, "Cancel", testInfo);
 
   await startUpload(page, "Doomed cut");
+  await page.getByRole("region", { name: "Uploads" }).locator("summary").click();
   await page.getByRole("button", { name: "Cancel upload of Doomed cut" }).click();
 
   await expect(page.getByRole("region", { name: "Uploads" })).toHaveCount(0);
@@ -244,6 +234,7 @@ test("cancelling while creation is deferred cancels the returned Revision", asyn
     await route.fulfill({ response: result });
   });
   await startUpload(page, "Deferred cut");
+  await page.getByRole("region", { name: "Uploads" }).locator("summary").click();
   await created.gate;
   await page.getByRole("button", { name: "Cancel upload of Deferred cut" }).click();
   await expect(page.getByRole("region", { name: "Uploads" })).toBeVisible();
@@ -268,6 +259,7 @@ test("a failed cancellation stays visible and can be retried", async ({ page }, 
   const cancelCall = callTo("cancelUpload");
   await page.route(cancelCall, (route) => route.abort());
   await startUpload(page, "Cancel retry");
+  await page.getByRole("region", { name: "Uploads" }).locator("summary").click();
   await created.gate;
   await page.getByRole("button", { name: "Cancel upload of Cancel retry" }).click();
   response.release();
@@ -290,6 +282,7 @@ test("an upload pauses while offline and continues on return", async ({
   });
   await openNewProject(page, "Offline", testInfo);
   await startUpload(page, "Offline cut");
+  await page.getByRole("region", { name: "Uploads" }).locator("summary").click();
   const uploads = page.getByRole("region", { name: "Uploads" });
   await expect.poll(() => revisions.length).toBeGreaterThan(0);
 
@@ -312,6 +305,7 @@ test("leaving the page warns while an upload runs", async ({ page }, testInfo) =
   });
   await openNewProject(page, "Leave", testInfo);
   await startUpload(page, "Leaving cut");
+  await page.getByRole("region", { name: "Uploads" }).locator("summary").click();
   await expect(page.getByRole("progressbar")).toBeVisible();
 
   const dialog = page.waitForEvent("dialog");
@@ -359,10 +353,6 @@ test("failed processing is explained and can be sent again", async ({ page }, te
   await page.getByRole("button", { name: "Retry Broken cut with a new upload" }).click();
   await page.getByLabel("Video file").setInputFiles(file);
   await page.getByRole("button", { name: "Start upload" }).click();
-  const activeUploads = page.getByRole("region", { name: "Uploads" });
-  if ((await activeUploads.isVisible()) && (await activeUploads.getAttribute("open")) === null) {
-    await activeUploads.locator("summary").click();
-  }
 
   await expect(page.getByText("Revision 2")).toBeVisible({ timeout: 15_000 });
 });

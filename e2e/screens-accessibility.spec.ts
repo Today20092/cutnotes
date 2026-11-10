@@ -121,10 +121,6 @@ async function startUpload(page: Page, title: string) {
     .setInputFiles({ name: "cut.mp4", mimeType: "video/mp4", buffer: Buffer.alloc(2048) });
   await page.getByLabel("Video title").fill(title);
   await page.getByRole("button", { name: "Start upload" }).click();
-  const uploads = page.getByRole("region", { name: "Uploads" });
-  if ((await uploads.isVisible()) && (await uploads.getAttribute("open")) === null) {
-    await uploads.locator("summary").click();
-  }
 }
 
 async function openAs(browser: Browser, person: Person, url: string) {

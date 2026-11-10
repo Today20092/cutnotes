@@ -223,6 +223,7 @@ test("a Video through upload, processing, and ready", async ({ page }, testInfo)
 
   await startUpload(page, "Main cut");
   const uploads = page.getByRole("region", { name: "Uploads" });
+  await uploads.locator("summary").click();
   await expect(uploads.getByRole("progressbar", { name: "Uploading Main cut" })).toBeVisible();
   await expectAccessible(page, "uploading");
 

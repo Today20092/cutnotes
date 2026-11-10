@@ -177,7 +177,6 @@ function VideoControls({ video, deletable }: { video: VideoSummary; deletable: b
         <NativeSelect
           id={selectId}
           className={statusTone[video.status]}
-          disabled={setVideoStatus.isPending}
           value={video.status}
           onChange={(event) => changeStatus(event.target.value as VideoStatus)}
         >

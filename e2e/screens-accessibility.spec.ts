@@ -121,6 +121,10 @@ async function startUpload(page: Page, title: string) {
     .setInputFiles({ name: "cut.mp4", mimeType: "video/mp4", buffer: Buffer.alloc(2048) });
   await page.getByLabel("Video title").fill(title);
   await page.getByRole("button", { name: "Start upload" }).click();
+  const uploads = page.getByRole("region", { name: "Uploads" });
+  if ((await uploads.isVisible()) && (await uploads.getAttribute("open")) === null) {
+    await uploads.locator("summary").click();
+  }
 }
 
 async function openAs(browser: Browser, person: Person, url: string) {
@@ -227,7 +231,9 @@ test("a Video through upload, processing, and ready", async ({ page }, testInfo)
   await expectAccessible(page, "uploading");
 
   release();
-  await expect(uploads.getByText(/being processed/)).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Notifications" }).getByText(/ready for review/),
+  ).toBeVisible();
   const revisionId = revisions[0] as string;
   await deliver(page, "created", revisionId);
   await expect(page.getByText(/Processing/).first()).toBeVisible({ timeout: 15_000 });
@@ -292,7 +298,9 @@ test("a Video whose send or processing failed", async ({ page }, testInfo) => {
 
   status = 200;
   await uploads.getByRole("button", { name: "Retry upload of Shaky cut" }).click();
-  await expect(uploads.getByText(/being processed/)).toBeVisible({ timeout: 15_000 });
+  await expect(
+    page.getByRole("region", { name: "Notifications" }).getByText(/ready for review/),
+  ).toBeVisible({ timeout: 15_000 });
   await deliver(page, "errored", revisions.at(-1) as string, {
     errors: { type: "invalid_input" },
   });

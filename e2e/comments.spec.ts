@@ -331,7 +331,7 @@ test("Comments seek, edit, Resolve and delete with sensible focus and accessible
   await page.locator("video").evaluate((video: HTMLVideoElement) => {
     video.currentTime = 3;
   });
-  await expect(page.getByText("At 0:03", { exact: true })).toBeVisible();
+  await expect(page.getByText("Add a Comment at 0:03", { exact: true })).toBeVisible();
   await page.getByLabel(/^Add a Comment/).fill("Change this frame");
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
   const row = page.getByRole("listitem").filter({ hasText: "Change this frame" });

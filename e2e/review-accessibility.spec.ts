@@ -227,7 +227,7 @@ test("destructive confirmations retain a contrasting keyboard focus indicator", 
   await page.goto(`/projects/${videoId}`);
   await page.getByRole("button", { name: "More actions for Playback cut" }).click();
   await page.getByRole("menuitem", { name: "Delete" }).click();
-  const dialog = page.getByRole("dialog");
+  const dialog = page.getByRole("dialog", { name: "Delete Video?" });
   const permanent = page.getByRole("button", { name: "Delete Playback cut permanently" });
   for (const colorScheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
@@ -320,7 +320,7 @@ test("selection is visible without colour and the Comment field has a clear boun
       selectedBorder: await contrast(page, "li button[aria-current=true]", "border-left-color"),
       playerText: await contrast(
         page,
-        '[aria-label="Video player"] button',
+        '[aria-label="Video player"] button[aria-label="Next frame"]',
         "color",
         '[aria-label="Video player"]',
       ),

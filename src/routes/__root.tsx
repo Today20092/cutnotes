@@ -25,7 +25,7 @@ function Root() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
-        <ToastProvider position="bottom-center">
+        <ToastProvider position="top-center">
           <Outlet />
         </ToastProvider>
       </QueryClientProvider>

@@ -121,7 +121,7 @@ export function InvitesManager() {
       </form>
 
       {link && (
-        <section className="space-y-3 rounded-lg bg-muted p-4">
+        <section className="space-y-3">
           <h2 ref={linkHeading} tabIndex={-1} className="font-semibold outline-none">
             Invite link
           </h2>

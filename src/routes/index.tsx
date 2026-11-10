@@ -89,7 +89,7 @@ function ProjectListView({ list }: { list: ProjectList }) {
       <PageHeading title="Projects">
         {writable && (
           <>
-            {newProjectSheet}
+            {list.projects.length > 0 && newProjectSheet}
             <UploadSheet
               destination={{
                 kind: "new",

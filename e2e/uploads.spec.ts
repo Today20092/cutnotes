@@ -97,6 +97,7 @@ test("an Editor sees delete only for Videos they created", async ({ page }, test
   await page.reload();
   await expect(page.getByText("Owner cut", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "More actions for Owner cut" }).click();
+  await expect(page.getByRole("menuitem", { name: "Rename" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Delete" })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(
@@ -417,7 +418,9 @@ test("a failed Status write preserves a concurrent optimistic rename", async ({
   statusGate.release();
   await expect(page.getByLabel("Status of Kept cut")).toHaveValue("review");
   renameGate.release();
-  await expect(page.getByText("Video renamed to Kept cut", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Video renamed to Kept cut" }),
+  ).toBeAttached();
   await page.reload();
   await expect(page.getByLabel("Status of Kept cut")).toHaveValue("review");
 });

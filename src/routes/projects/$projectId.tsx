@@ -132,7 +132,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
         current={project.name}
       />
       <PageHeading title={project.name}>
-        {writable && project.completedAt === null && uploadSheet}
+        {writable && project.completedAt === null && videos.length > 0 && uploadSheet}
       </PageHeading>
       <WriteFeedback status={status} failure={failure} />
       {project.deleteAfter !== null && (

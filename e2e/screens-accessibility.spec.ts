@@ -330,7 +330,7 @@ test("deleting a Project: confirmation, cancellation, failure and disappearance"
   const name = await openNewProject(page, testInfo);
   const trigger = page.getByRole("button", { name: `Delete ${name}`, exact: true });
   await trigger.click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Delete Project?" })).toBeVisible();
   await expectAccessible(page, "confirm Project deletion");
   await page.getByRole("button", { name: "Keep Project" }).click();
   await expect(trigger).toBeFocused();
@@ -359,9 +359,12 @@ test("completing and reopening a Project", async ({ page }, testInfo) => {
   await page.goto(`/projects/${id}`);
   const heading = page.getByRole("heading", { level: 1, name: "Playback project" });
   await page.getByRole("button", { name: "Complete Playback project" }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Complete Project?" })).toBeVisible();
   await expectAccessible(page, "confirm Complete");
-  await page.getByRole("dialog").getByRole("button", { name: "Complete Playback project" }).click();
+  await page
+    .getByRole("dialog", { name: "Complete Project?" })
+    .getByRole("button", { name: "Complete Playback project" })
+    .click();
   const countdown = page.getByText(/permanently deleted in 14 days/);
   await expect(countdown).toBeVisible();
   await expect(heading).toBeFocused();

@@ -22,14 +22,43 @@ export type RefusalCode =
   | "invalid-request"
   | "not-found"
   | "last-owner"
-  | "rate-limited";
+  | "rate-limited"
+  | "invalid-name"
+  | "invalid-title"
+  | "invalid-status"
+  | "already-sent"
+  | "upload-unavailable";
 
 type BatchResults<Reads extends readonly unknown[]> = {
   -readonly [Index in keyof Reads]: Awaited<Reads[Index]>;
 };
 
-export function refuse(status: 400 | 401 | 403 | 404 | 409 | 429, code: RefusalCode): never {
+export function refuse(status: 400 | 401 | 403 | 404 | 409 | 429 | 502, code: RefusalCode): never {
   throw Response.json({ code }, { status });
+}
+
+// Input is read in the handlers, not an input validator, so Access always runs first.
+const fieldOf = (data: unknown, field: string) =>
+  (data as Record<string, unknown> | undefined)?.[field];
+
+/** A trimmed, non-empty text field of at most `max` characters. */
+export function text(
+  data: unknown,
+  field: string,
+  max: number,
+  code: RefusalCode = "invalid-request",
+) {
+  const raw = fieldOf(data, field);
+  const value = typeof raw === "string" ? raw.trim() : "";
+  if (!value || value.length > max) refuse(400, code);
+  return value;
+}
+
+/** A non-empty identifier field, bounded so forged input cannot bloat a query. */
+export function id(data: unknown, field: string) {
+  const raw = fieldOf(data, field);
+  if (typeof raw !== "string" || !raw || raw.length > 128) refuse(400, "invalid-request");
+  return raw;
 }
 
 /** The Role check for a write. A screen's reads use `readAsMember`. Refuses by throwing a Response. */
@@ -42,6 +71,21 @@ export async function requireMember(minimumRole: Role): Promise<Member> {
 export const activeMember = (memberId: string, minimumRole: Role) =>
   sql`EXISTS (SELECT 1 FROM members AS acting WHERE acting.id = ${memberId}
     AND acting.removed_at IS NULL AND ${inArray(sql`acting.role`, roles.slice(roles.indexOf(minimumRole)))})`;
+
+/** The Project still takes writes: live and not Complete. */
+export const openProject = (projectId: string | SQL) =>
+  sql`EXISTS (SELECT 1 FROM projects AS open WHERE open.id = ${projectId}
+    AND open.deleted_at IS NULL AND open.completed_at IS NULL)`;
+
+/** The Video still takes writes: live, inside an open Project. */
+export const writableVideo = (videoId: string | SQL) =>
+  sql`EXISTS (SELECT 1 FROM videos AS live WHERE live.id = ${videoId}
+    AND live.deleted_at IS NULL AND ${openProject(sql`live.project_id`)})`;
+
+/** The Revision takes comments: ready, on a writable Video. */
+export const readyRevision = (revisionId: string, videoId: string) =>
+  sql`EXISTS (SELECT 1 FROM revisions AS cut WHERE cut.id = ${revisionId}
+    AND cut.video_id = ${videoId} AND cut.state = 'ready' AND ${writableVideo(videoId)})`;
 
 /** Selects only: a screen's reads run before the Role is checked, so they must change nothing. */
 export type ScreenDb = Pick<Db, "select">;

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { readAsMember, refuse, requireMember } from "@/server/access";
+import { activeMember, readAsMember, refuse, requireMember } from "@/server/access";
+import { commentColumns, toComment, type Comment } from "@/server/comment-rules";
 import { getDb } from "@/server/db";
 import { comments, projects, revisions, videos, videoReads } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
@@ -33,7 +34,7 @@ export const getReview = createServerFn({ method: "POST" })
         .where(and(eq(revisions.videoId, videoId), eq(revisions.state, "ready")))
         .orderBy(desc(revisions.number)),
       db
-        .select({ comment: comments })
+        .select({ ...commentColumns, revisionId: comments.revisionId })
         .from(comments)
         .innerJoin(revisions, eq(comments.revisionId, revisions.id))
         .where(eq(revisions.videoId, videoId))
@@ -50,7 +51,7 @@ export const getReview = createServerFn({ method: "POST" })
         revision: null,
         playback: null,
         history: [] as { id: string; number: number }[],
-        comments: [] as (typeof comments.$inferSelect)[],
+        comments: [] as Comment[],
       };
     // Renewal stays on the Revision being watched, even if a newer cut is ready.
     const revision = data?.revisionId ? ready.find((row) => row.id === data.revisionId) : ready[0];
@@ -77,8 +78,8 @@ export const getReview = createServerFn({ method: "POST" })
         : null,
       playback,
       comments: feedback
-        .filter(({ comment }) => comment.revisionId === revision?.id)
-        .map(({ comment }) => comment),
+        .filter((comment) => comment.revisionId === revision?.id)
+        .map((comment) => toComment(comment, member.id)),
     };
   });
 
@@ -100,7 +101,7 @@ export const markVideoRead = createServerFn({ method: "POST" })
       SELECT ${member.id}, videos.id, ${data.readAt} FROM videos
       JOIN projects ON projects.id = videos.project_id
       WHERE videos.id = ${data.videoId} AND videos.deleted_at IS NULL AND projects.deleted_at IS NULL
-      AND EXISTS (SELECT 1 FROM members WHERE id = ${member.id} AND removed_at IS NULL)
+      AND ${activeMember(member.id, "viewer")}
     `)
       .onConflictDoUpdate({
         target: [videoReads.memberId, videoReads.videoId],

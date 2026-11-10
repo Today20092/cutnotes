@@ -69,13 +69,11 @@ it("persists a drawing-only Comment and keeps its Drawing when editing text", as
   expect((await call(fn.createComment, "user_owner", { ...input, body: "", drawing })).status).toBe(
     200,
   );
-  expect((await review()).comments).toMatchObject([{ body: "", drawing: JSON.stringify(drawing) }]);
+  expect((await review()).comments).toMatchObject([{ body: "", drawing }]);
   expect((await call(fn.editComment, "user_owner", { ...input, body: "Text added" })).status).toBe(
     200,
   );
-  expect((await review()).comments).toMatchObject([
-    { body: "Text added", drawing: JSON.stringify(drawing) },
-  ]);
+  expect((await review()).comments).toMatchObject([{ body: "Text added", drawing }]);
   expect((await call(fn.editComment, "user_owner", { ...input, body: "" })).status).toBe(200);
 });
 
@@ -119,7 +117,7 @@ it("accepts exact shape and point caps and retries without replacing the Drawing
   expect((await call(fn.createComment, "user_owner", { ...input, drawing: [pen] })).status).toBe(
     200,
   );
-  expect((await review()).comments).toMatchObject([{ drawing: JSON.stringify(drawing) }]);
+  expect((await review()).comments).toMatchObject([{ drawing }]);
 });
 
 it("measures the serialized Drawing in UTF-8 bytes at the exact 64 KB boundary", async () => {

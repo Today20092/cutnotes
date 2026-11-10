@@ -1,29 +1,20 @@
 import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
-import { activeMember, readAsMember, requireMember, type ScreenDb } from "@/server/access";
+import {
+  activeMember,
+  id,
+  readAsMember,
+  refuse,
+  requireMember,
+  text,
+  type ScreenDb,
+} from "@/server/access";
 import { getDb } from "@/server/db";
 import { projects, videos, type RevisionState } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
 
 const MAX_NAME_LENGTH = 120;
 const COUNTDOWN_MS = 14 * 24 * 60 * 60 * 1000;
-
-function reject(status: 400 | 404, code: "invalid-name" | "not-found"): never {
-  throw Response.json({ code }, { status });
-}
-
-// Input is checked in the handlers, not an input validator, so Access always runs first.
-function parseName(data: unknown) {
-  const raw = (data as { name?: unknown } | undefined)?.name;
-  const name = typeof raw === "string" ? raw.trim() : "";
-  if (!name || name.length > MAX_NAME_LENGTH) reject(400, "invalid-name");
-  return name;
-}
-
-function parseProjectId(data: unknown) {
-  const raw = (data as { projectId?: unknown } | undefined)?.projectId;
-  return typeof raw === "string" ? raw : "";
-}
 
 const projectSummary = {
   id: projects.id,
@@ -114,18 +105,21 @@ export const listProjects = createServerFn({ method: "POST" }).handler(async () 
 export const getProject = createServerFn({ method: "POST" })
   .validator((data: { projectId: string }) => data)
   .handler(async ({ data }) => {
-    const projectId = parseProjectId(data);
-    const { member, results } = await readAsMember("viewer", (db, clerkUserId) => [
-      db
-        .select(projectSummary)
-        .from(projects)
-        .where(and(eq(projects.id, projectId), isNull(projects.deletedAt))),
-      selectVideos(db, clerkUserId)
-        .where(and(eq(videos.projectId, projectId), liveVideo))
-        .orderBy(desc(videos.updatedAt)),
-    ]);
+    const { member, results } = await readAsMember("viewer", (db, clerkUserId) => {
+      // Reads run before the Access check, so bad input must not refuse here.
+      const projectId = typeof data?.projectId === "string" ? data.projectId : "";
+      return [
+        db
+          .select(projectSummary)
+          .from(projects)
+          .where(and(eq(projects.id, projectId), isNull(projects.deletedAt))),
+        selectVideos(db, clerkUserId)
+          .where(and(eq(videos.projectId, projectId), liveVideo))
+          .orderBy(desc(videos.updatedAt)),
+      ] as const;
+    });
     const [project] = results[0];
-    if (!project) reject(404, "not-found");
+    if (!project) refuse(404, "not-found");
     return {
       member: { id: member.id, displayName: member.displayName, role: member.role },
       project,
@@ -140,10 +134,10 @@ export const createProject = createServerFn({ method: "POST" })
     const now = Date.now();
     const [project] = await getDb()
       .insert(projects)
-      .select(sql`SELECT ${crypto.randomUUID()}, ${parseName(data)}, ${member.id}, ${now}, ${now}, NULL, NULL, NULL
+      .select(sql`SELECT ${crypto.randomUUID()}, ${text(data, "name", MAX_NAME_LENGTH, "invalid-name")}, ${member.id}, ${now}, ${now}, NULL, NULL, NULL
         WHERE ${activeMember(member.id, "editor")}`)
       .returning(projectSummary);
-    if (!project) reject(404, "not-found");
+    if (!project) refuse(404, "not-found");
     return project;
   });
 
@@ -153,10 +147,10 @@ export const renameProject = createServerFn({ method: "POST" })
     const member = await requireMember("editor");
     const [project] = await getDb()
       .update(projects)
-      .set({ name: parseName(data), updatedAt: Date.now() })
+      .set({ name: text(data, "name", MAX_NAME_LENGTH, "invalid-name"), updatedAt: Date.now() })
       .where(
         and(
-          eq(projects.id, parseProjectId(data)),
+          eq(projects.id, id(data, "projectId")),
           isNull(projects.deletedAt),
           // A Complete Project is read-only until it is reopened.
           isNull(projects.completedAt),
@@ -164,7 +158,7 @@ export const renameProject = createServerFn({ method: "POST" })
         ),
       )
       .returning(projectSummary);
-    if (!project) reject(404, "not-found");
+    if (!project) refuse(404, "not-found");
     return project;
   });
 
@@ -177,18 +171,15 @@ export const deleteProject = createServerFn({ method: "POST" })
       .set({ deletedAt: Date.now() })
       .where(
         and(
-          eq(projects.id, parseProjectId(data)),
+          eq(projects.id, id(data, "projectId")),
           isNull(projects.deletedAt),
-          sql`EXISTS (SELECT 1 FROM members WHERE id = ${member.id} AND role = 'owner' AND removed_at IS NULL)`,
+          activeMember(member.id, "owner"),
         ),
       )
       .returning({ id: projects.id });
-    if (!project) reject(404, "not-found");
+    if (!project) refuse(404, "not-found");
     return project;
   });
-
-const stillOwner = (memberId: string) =>
-  sql`EXISTS (SELECT 1 FROM members WHERE id = ${memberId} AND role = 'owner' AND removed_at IS NULL)`;
 
 export const completeProject = createServerFn({ method: "POST" })
   .validator((data: { projectId: string }) => data)
@@ -201,14 +192,14 @@ export const completeProject = createServerFn({ method: "POST" })
       // Only an open Project: a repeat must not move the deadline.
       .where(
         and(
-          eq(projects.id, parseProjectId(data)),
+          eq(projects.id, id(data, "projectId")),
           isNull(projects.deletedAt),
           isNull(projects.completedAt),
-          stillOwner(member.id),
+          activeMember(member.id, "owner"),
         ),
       )
       .returning(projectSummary);
-    if (!project) reject(404, "not-found");
+    if (!project) refuse(404, "not-found");
     return project;
   });
 
@@ -223,14 +214,14 @@ export const reopenProject = createServerFn({ method: "POST" })
       // Past the deadline the Project belongs to the purge, even before the hourly run reaches it.
       .where(
         and(
-          eq(projects.id, parseProjectId(data)),
+          eq(projects.id, id(data, "projectId")),
           isNull(projects.deletedAt),
           isNotNull(projects.completedAt),
           gt(projects.deleteAfter, now),
-          stillOwner(member.id),
+          activeMember(member.id, "owner"),
         ),
       )
       .returning(projectSummary);
-    if (!project) reject(404, "not-found");
+    if (!project) refuse(404, "not-found");
     return project;
   });

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { asc, isNull } from "drizzle-orm";
 import {
+  id,
   readAsMember,
   refuse,
   removeActiveMember,
@@ -8,13 +9,6 @@ import {
   setMemberRole,
 } from "@/server/access";
 import { members, roles, type Role } from "@/server/db/schema";
-
-// Input is checked in the handlers, not an input validator, so Access always runs first.
-function parseMemberId(data: unknown) {
-  const id = (data as { id?: unknown } | undefined)?.id;
-  if (typeof id !== "string") refuse(400, "invalid-request");
-  return id;
-}
 
 export const listMembers = createServerFn({ method: "POST" }).handler(async () => {
   const { member, results } = await readAsMember("owner", (db) => [
@@ -36,11 +30,11 @@ export const changeMemberRole = createServerFn({ method: "POST" })
   .validator((data: { id: string; role: Role }) => data)
   .handler(async ({ data }) => {
     const owner = await requireMember("owner");
-    const id = parseMemberId(data);
+    const memberId = id(data, "id");
     const role = roles.find((known) => known === (data as { role?: unknown } | undefined)?.role);
     if (!role) refuse(400, "invalid-request");
 
-    await setMemberRole(owner, id, role);
+    await setMemberRole(owner, memberId, role);
     return null;
   });
 
@@ -48,6 +42,6 @@ export const removeMember = createServerFn({ method: "POST" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const owner = await requireMember("owner");
-    await removeActiveMember(owner, parseMemberId(data));
+    await removeActiveMember(owner, id(data, "id"));
     return null;
   });

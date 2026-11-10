@@ -1,9 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
-import { readAsMember, readShareLink, refuse, requireMember } from "@/server/access";
+import {
+  activeMember,
+  id,
+  readAsMember,
+  readShareLink,
+  refuse,
+  requireMember,
+  text,
+  writableVideo,
+} from "@/server/access";
 import { validDrawing, type Shape } from "@/lib/drawing";
-import { bodyOf } from "@/server/comment-rules";
+import { bodyOf, commentColumns, toComment } from "@/server/comment-rules";
 import { getDb } from "@/server/db";
 import { comments, shareLinks, sharePermissions, type SharePermission } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
@@ -21,16 +30,6 @@ function newShareToken() {
   return token;
 }
 
-const nameOf = (name: unknown) => {
-  const trimmed = typeof name === "string" ? name.trim() : "";
-  if (!trimmed || trimmed.length > 60) refuse(400, "invalid-request");
-  return trimmed;
-};
-const idOf = (id: unknown) => {
-  if (typeof id !== "string" || !id || id.length > 128) refuse(400, "invalid-request");
-  return id;
-};
-
 const linkFields = {
   id: shareLinks.id,
   name: shareLinks.name,
@@ -43,16 +42,14 @@ export const createShareLink = createServerFn({ method: "POST" })
   .validator((data: { videoId: string; name: string; permission: SharePermission }) => data)
   .handler(async ({ data }) => {
     const member = await requireMember("editor");
-    const name = nameOf(data?.name);
-    const videoId = idOf(data?.videoId);
+    const name = text(data, "name", 60);
+    const videoId = id(data, "videoId");
     if (!sharePermissions.includes(data?.permission)) refuse(400, "invalid-request");
     const [created] = await getDb()
       .insert(shareLinks)
       .select(sql`
-      SELECT ${crypto.randomUUID()}, v.id, ${name}, ${newShareToken()}, ${data.permission}, m.id, ${Date.now()}, NULL
-      FROM videos v JOIN projects p ON p.id = v.project_id JOIN members m ON m.id = ${member.id}
-      WHERE v.id = ${videoId} AND v.deleted_at IS NULL AND p.deleted_at IS NULL AND p.completed_at IS NULL
-        AND m.removed_at IS NULL AND m.role IN ('owner', 'editor')
+      SELECT ${crypto.randomUUID()}, ${videoId}, ${name}, ${newShareToken()}, ${data.permission}, ${member.id}, ${Date.now()}, NULL
+      WHERE ${writableVideo(videoId)} AND ${activeMember(member.id, "editor")}
     `)
       .returning(linkFields);
     if (!created) refuse(404, "not-found");
@@ -84,9 +81,9 @@ export const revokeShareLink = createServerFn({ method: "POST" })
       .set({ revokedAt: Date.now() })
       .where(
         and(
-          eq(shareLinks.id, idOf(data?.id)),
+          eq(shareLinks.id, id(data, "id")),
           isNull(shareLinks.revokedAt),
-          sql`EXISTS (SELECT 1 FROM members WHERE id = ${member.id} AND role IN ('owner', 'editor') AND removed_at IS NULL)`,
+          activeMember(member.id, "editor"),
         ),
       )
       .returning({ id: shareLinks.id });
@@ -94,23 +91,14 @@ export const revokeShareLink = createServerFn({ method: "POST" })
     return written;
   });
 
-/** Columns are listed by hand: a Guest must never receive a Clerk or Member ID. */
+/** toComment drops IDs: a Guest must never receive a Clerk or Member ID. */
 export const getGuestReview = createServerFn({ method: "POST" })
   .validator((data: { token: string }) => data)
   .handler(async ({ data }) => {
     const link = await readShareLink(data?.token);
     const [rows, playback] = await Promise.all([
       getDb()
-        .select({
-          id: comments.id,
-          authorName: comments.authorName,
-          timecodeMs: comments.timecodeMs,
-          body: comments.body,
-          drawing: comments.drawing,
-          resolvedAt: comments.resolvedAt,
-          createdAt: comments.createdAt,
-          isGuest: sql<boolean>`${comments.shareLinkId} IS NOT NULL`.mapWith(Boolean),
-        })
+        .select(commentColumns)
         .from(comments)
         .where(eq(comments.revisionId, link.revisionId))
         .orderBy(asc(comments.timecodeMs), asc(comments.createdAt), asc(comments.id)),
@@ -129,7 +117,7 @@ export const getGuestReview = createServerFn({ method: "POST" })
         durationMs: link.durationMs,
       },
       playback,
-      comments: rows,
+      comments: rows.map((row) => toComment(row)),
     };
   });
 
@@ -149,8 +137,8 @@ export const createGuestComment = createServerFn({ method: "POST" })
     if (link.permission !== "comment") refuse(403, "insufficient-role");
     if (!(await env.SHARE_LINK_COMMENT_LIMIT.limit({ key: link.id })).success)
       refuse(429, "rate-limited");
-    const id = idOf(data.id);
-    const name = nameOf(data.name);
+    const commentId = id(data, "id");
+    const name = text(data, "name", 60);
     const drawing = data.drawing ?? null;
     if (drawing !== null && !validDrawing(drawing)) refuse(400, "invalid-request");
     const body = bodyOf(data.body, drawing !== null);
@@ -165,14 +153,17 @@ export const createGuestComment = createServerFn({ method: "POST" })
     const [inserted, existing] = await db.batch([
       db
         .insert(comments)
-        .select(sql`SELECT ${id}, ${link.revisionId}, NULL, s.id, ${name}, ${data.timecodeMs}, ${body}, ${drawing && JSON.stringify(drawing)}, NULL, NULL, ${Date.now()}, NULL
-        FROM share_links s JOIN videos v ON v.id = s.video_id JOIN projects p ON p.id = v.project_id
+        .select(sql`SELECT ${commentId}, ${link.revisionId}, NULL, s.id, ${name}, ${data.timecodeMs}, ${body}, ${drawing && JSON.stringify(drawing)}, NULL, NULL, ${Date.now()}, NULL
+        FROM share_links s
         WHERE s.id = ${link.id} AND s.revoked_at IS NULL AND s.permission = 'comment'
-          AND v.deleted_at IS NULL AND p.deleted_at IS NULL AND p.completed_at IS NULL`)
+          AND ${writableVideo(sql`s.video_id`)}`)
         .onConflictDoNothing()
         .returning({ id: comments.id }),
-      db.select({ shareLinkId: comments.shareLinkId }).from(comments).where(eq(comments.id, id)),
+      db
+        .select({ shareLinkId: comments.shareLinkId })
+        .from(comments)
+        .where(eq(comments.id, commentId)),
     ]);
     if (!inserted.length && existing[0]?.shareLinkId !== link.id) refuse(404, "not-found");
-    return { id };
+    return { id: commentId };
   });

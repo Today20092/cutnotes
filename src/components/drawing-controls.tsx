@@ -1,7 +1,7 @@
 import { Eraser, MoveUpRight, Pencil, Square, Undo2, Pen } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { drawingColors, readDrawing, validDrawing, type Shape, type Tool } from "@/lib/drawing";
+import { drawingColors, validDrawing, type Shape, type Tool } from "@/lib/drawing";
 
 /** The Drawing state and controls shared by the Member and Guest review screens. */
 export function useDrawingControls({
@@ -46,8 +46,8 @@ export function useDrawingControls({
       setDrawingTime(null);
     },
     /** Pass the selected Comment to replay its Drawing instead of the one being made. */
-    overlay: (selected?: { drawing: string | null }) => ({
-      shapes: active || !selected ? drawing : readDrawing(selected.drawing),
+    overlay: (selected?: { drawing: Shape[] | null }) => ({
+      shapes: active || !selected ? drawing : (selected.drawing ?? []),
       active,
       tool,
       color,

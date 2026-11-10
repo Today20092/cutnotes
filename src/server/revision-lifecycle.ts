@@ -1,23 +1,23 @@
-import { and, eq, inArray, or, sql } from "drizzle-orm";
-import { getDb } from "@/server/db";
+import { and, eq, inArray, notExists, or, sql } from "drizzle-orm";
+import { activeMember } from "@/server/access";
+import { getDb, type Db } from "@/server/db";
 import { revisions, videos } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
+import type { MuxAsset } from "@/server/mux/gateway";
 
 const MAX_DURATION_SECONDS = 12 * 60 * 60;
 
+/** Direct-upload statuses after which Mux will never create an asset. */
+export const TERMINAL_UPLOAD_STATUSES = ["cancelled", "errored", "timed_out"];
+
+/** Upload events carry upload fields; asset events carry the asset itself. */
 type MuxEvent = {
   type?: string;
-  data?: {
-    id?: string;
+  data?: Partial<MuxAsset> & {
     asset_id?: string;
     upload_id?: string;
     passthrough?: string;
     new_asset_settings?: { passthrough?: string };
-    duration?: number;
-    aspect_ratio?: string;
-    playback_ids?: { id: string; policy: string }[];
-    tracks?: { type: string; max_frame_rate?: number }[];
-    errors?: { type?: string };
   };
 };
 
@@ -87,8 +87,7 @@ function markErrored(revisionId: string, errorCode: string, assetId: string | un
     .where(and(eq(revisions.id, revisionId), isUnfinished));
 }
 
-async function markReady(revisionId: string, event: MuxEvent) {
-  const data = event.data ?? {};
+async function markReady(revisionId: string, data: Partial<MuxAsset>) {
   const assetId = data.id;
   const duration = data.duration ?? 0;
   if (duration > MAX_DURATION_SECONDS) {
@@ -126,7 +125,7 @@ export async function reconcileRevision(revision: typeof revisions.$inferSelect,
     const upload = await mux.getDirectUpload(revision.muxUploadId);
     assetId = upload?.asset_id ?? null;
     if (assetId) await markProcessing(revision.id, assetId);
-    else if (!upload || ["cancelled", "errored", "timed_out"].includes(upload.status)) {
+    else if (!upload || TERMINAL_UPLOAD_STATUSES.includes(upload.status)) {
       await markUploadFailed(revision.id, "upload-failed");
       return;
     }
@@ -134,7 +133,7 @@ export async function reconcileRevision(revision: typeof revisions.$inferSelect,
   if (assetId) {
     const asset = await mux.getAsset(assetId);
     if (asset?.status === "ready") {
-      await markReady(revision.id, { data: asset });
+      await markReady(revision.id, asset);
       return;
     }
     if (!asset || asset.status === "errored") {
@@ -180,7 +179,7 @@ async function applyEvent(event: MuxEvent) {
       await markUploadFailed(revisionId, "upload-errored");
       break;
     case "video.asset.ready":
-      await markReady(revisionId, event);
+      await markReady(revisionId, event.data ?? {});
       break;
     case "video.asset.errored":
       await markErrored(
@@ -198,6 +197,55 @@ function markUploadFailed(revisionId: string, errorCode: string) {
     .update(revisions)
     .set({ state: "errored", errorCode })
     .where(and(eq(revisions.id, revisionId), eq(revisions.state, "uploading")));
+}
+
+/** Removes a Revision that never reached Mux, and a Video that held nothing else. */
+export function discardRevision(db: Db, revisionId: string, videoId: string, memberId?: string) {
+  const allowed = memberId ? activeMember(memberId, "editor") : undefined;
+  return db.batch([
+    db
+      .delete(revisions)
+      .where(and(eq(revisions.id, revisionId), eq(revisions.state, "uploading"), allowed)),
+    db.delete(videos).where(
+      and(
+        eq(videos.id, videoId),
+        allowed,
+        notExists(
+          db
+            .select({ one: sql`1` })
+            .from(revisions)
+            .where(eq(revisions.videoId, videoId)),
+        ),
+      ),
+    ),
+  ]);
+}
+
+/**
+ * Finishes remote cleanup before a Revision's row may disappear. False keeps the row for
+ * the next run. A kept row (`keepRow`) has its Mux IDs cleared once the media is gone.
+ */
+export async function releaseMedia(
+  revision: Pick<typeof revisions.$inferSelect, "id" | "muxAssetId" | "muxUploadId">,
+  keepRow: boolean,
+) {
+  const mux = getMuxGateway();
+  let assetId = revision.muxAssetId;
+  if (!assetId && revision.muxUploadId) {
+    const upload = await mux.getDirectUpload(revision.muxUploadId);
+    assetId = upload?.asset_id ?? null;
+    if (!assetId && upload && !TERMINAL_UPLOAD_STATUSES.includes(upload.status)) {
+      // Cancellation can race asset creation. Keep the row and discover it next run.
+      if (!(await mux.cancelDirectUpload(revision.muxUploadId))) return false;
+    }
+  }
+  if (assetId) await mux.deleteAsset(assetId);
+  if (keepRow)
+    await getDb()
+      .update(revisions)
+      .set({ muxAssetId: null, muxUploadId: null })
+      .where(and(eq(revisions.id, revision.id), eq(revisions.state, "errored")));
+  return true;
 }
 
 /** Verifies against the raw body before anything parses it. */

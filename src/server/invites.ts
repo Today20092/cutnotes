@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers";
 import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import {
   activeMember,
+  id,
   readAsMember,
   refuse,
   requireMember,
@@ -27,10 +28,6 @@ async function sha256(token: string) {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-/** Reads a field from untrusted input, which is only inspected after Access has passed. */
-const field = (data: unknown, key: string) =>
-  typeof data === "object" && data !== null ? (data as Record<string, unknown>)[key] : undefined;
-
 const isPending = (now: number) =>
   and(isNull(invites.usedAt), isNull(invites.revokedAt), gt(invites.expiresAt, now));
 
@@ -53,7 +50,7 @@ export const createInvite = createServerFn({ method: "POST" })
   .validator((data: { role: Role }) => data)
   .handler(async ({ data }): Promise<{ url: string; invite: PendingInvite }> => {
     const owner = await requireMember("owner");
-    const role = roles.find((known) => known === field(data, "role"));
+    const role = roles.find((known) => known === (data as { role?: unknown } | undefined)?.role);
     if (!role) refuse(400, "invalid-request");
 
     const token = newToken();
@@ -90,15 +87,14 @@ export const revokeInvite = createServerFn({ method: "POST" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const owner = await requireMember("owner");
-    const id = field(data, "id");
-    if (typeof id !== "string") refuse(400, "invalid-request");
+    const inviteId = id(data, "id");
 
     const [revoked] = await getDb()
       .update(invites)
       .set({ revokedAt: Date.now() })
       .where(
         and(
-          eq(invites.id, id),
+          eq(invites.id, inviteId),
           isNull(invites.usedAt),
           isNull(invites.revokedAt),
           activeMember(owner.id, "owner"),
@@ -183,7 +179,5 @@ export const redeemInvite = createServerFn({ method: "POST" })
   .validator((data: { token: string }) => data)
   .handler(async ({ data }): Promise<RedeemResult> => {
     const person = await requireSignedIn();
-    const token = field(data, "token");
-    if (typeof token !== "string") refuse(400, "invalid-request");
-    return redeem(person, await sha256(token));
+    return redeem(person, await sha256(id(data, "token")));
   });

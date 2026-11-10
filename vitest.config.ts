@@ -1,9 +1,6 @@
 import path from "node:path";
 import { generateKeyPairSync } from "node:crypto";
-import {
-  cloudflareTest,
-  readD1Migrations,
-} from "@cloudflare/vitest-plugin";
+import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { defineConfig } from "vitest/config";
 
@@ -19,21 +16,13 @@ export default defineConfig(async () => ({
       miniflare: {
         bindings: {
           TEST_MIGRATIONS: await readD1Migrations("./migrations"),
-          TEST_CLERK_PRIVATE_JWK: JSON.stringify(
-            clerkKeys.privateKey.export({ format: "jwk" }),
-          ),
-          TEST_MUX_PUBLIC_KEY: muxKeys.publicKey
-            .export({ type: "spki", format: "pem" })
-            .toString(),
+          TEST_CLERK_PRIVATE_JWK: JSON.stringify(clerkKeys.privateKey.export({ format: "jwk" })),
+          TEST_MUX_PUBLIC_KEY: muxKeys.publicKey.export({ type: "spki", format: "pem" }).toString(),
           // Mux issues PKCS#1 keys, base64-encoded.
           TEST_MUX_PRIVATE_KEY: btoa(
-            muxKeys.privateKey
-              .export({ type: "pkcs1", format: "pem" })
-              .toString(),
+            muxKeys.privateKey.export({ type: "pkcs1", format: "pem" }).toString(),
           ),
-          CLERK_JWT_KEY: clerkKeys.publicKey
-            .export({ type: "spki", format: "pem" })
-            .toString(),
+          CLERK_JWT_KEY: clerkKeys.publicKey.export({ type: "spki", format: "pem" }).toString(),
           CLERK_SECRET_KEY: "sk_test_seam1",
           CLERK_PUBLISHABLE_KEY: `pk_test_${btoa("clerk.example.test$")}`,
           // A build-time define the Vitest transform does not apply to Start's server core.

@@ -8,15 +8,20 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import { Fragment } from "react";
+import { toastManager } from "@/components/ui/toast";
+import { Badge } from "@/components/ui/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { VideoSummary } from "@/lib/projects";
@@ -33,13 +38,44 @@ export const selectClass =
 let hasShownAView = false;
 
 /** The view's one h1. On a new view it takes focus and sets the document title. */
-export function PageHeading({
-  title,
-  children,
+/** Where this view sits. On phones the current page is left to the h1 directly below. */
+export function PageBreadcrumb({
+  trail,
+  current,
 }: {
-  title: string;
-  children?: ReactNode;
+  trail: { label: string; link: ReactElement }[];
+  current: string;
 }) {
+  return (
+    <Breadcrumb className="flex min-h-11 items-center pr-12">
+      <BreadcrumbList>
+        {trail.map(({ label, link }, index) => (
+          <Fragment key={label}>
+            <BreadcrumbItem>
+              <BreadcrumbLink
+                className="inline-flex min-h-11 items-center wrap-anywhere sm:min-h-0"
+                render={link}
+              >
+                {label}
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator
+              className={index === trail.length - 1 ? "hidden sm:list-item" : undefined}
+            />
+          </Fragment>
+        ))}
+        <BreadcrumbItem className="hidden sm:inline-flex">
+          <BreadcrumbPage className="wrap-anywhere">{current}</BreadcrumbPage>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
+}
+
+export const backLinkClass =
+  "inline-flex min-h-11 w-fit items-center gap-1 text-sm underline-offset-4 hover:underline";
+
+export function PageHeading({ title, children }: { title: string; children?: ReactNode }) {
   const heading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -52,11 +88,7 @@ export function PageHeading({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h1
-        ref={heading}
-        tabIndex={-1}
-        className="min-w-0 text-xl font-semibold wrap-anywhere"
-      >
+      <h1 ref={heading} tabIndex={-1} className="min-w-0 text-xl font-semibold wrap-anywhere">
         {title}
       </h1>
       {children && <div className="flex max-w-full flex-wrap gap-2">{children}</div>}
@@ -72,8 +104,12 @@ export function ProjectNameSheet({
   fieldLabel = "Project name",
   emptyMessage = "Enter a name for the Project.",
   onSubmit,
+  startOpen = false,
+  onClosed,
 }: {
-  trigger: ReactElement;
+  trigger?: ReactElement;
+  startOpen?: boolean;
+  onClosed?: () => void;
   title: string;
   submitLabel: string;
   initialName?: string;
@@ -82,7 +118,7 @@ export function ProjectNameSheet({
   onSubmit: (name: string) => void;
 }) {
   const isMobile = useIsMobile();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const [name, setName] = useState(initialName);
   const [error, setError] = useState("");
   const input = useRef<HTMLInputElement>(null);
@@ -94,28 +130,25 @@ export function ProjectNameSheet({
     if (next) {
       setName(initialName);
       setError("");
-    }
+    } else onClosed?.();
   }
 
   function submit(event: FormEvent) {
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed || trimmed.length > MAX_NAME_LENGTH) {
-      setError(
-        trimmed
-          ? `Keep the name to ${MAX_NAME_LENGTH} characters.`
-          : emptyMessage,
-      );
+      setError(trimmed ? `Keep the name to ${MAX_NAME_LENGTH} characters.` : emptyMessage);
       input.current?.focus();
       return;
     }
     setOpen(false);
+    onClosed?.();
     onSubmit(trimmed);
   }
 
   return (
     <Sheet open={open} onOpenChange={changeOpen}>
-      <SheetTrigger render={trigger} />
+      {trigger && <SheetTrigger render={trigger} />}
       <SheetContent side={isMobile ? "bottom" : "right"}>
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
@@ -149,9 +182,11 @@ export function ProjectNameSheet({
 export function RenameProjectButton({
   name,
   onRename,
+  labeled = false,
 }: {
   name: string;
   onRename: (name: string) => void;
+  labeled?: boolean;
 }) {
   return (
     <ProjectNameSheet
@@ -160,32 +195,93 @@ export function RenameProjectButton({
       initialName={name}
       onSubmit={onRename}
       trigger={
-        <Button variant="outline" size="icon" aria-label={`Rename ${name}`}>
+        <Button
+          variant={labeled ? "secondary" : "ghost"}
+          size={labeled ? "default" : "icon"}
+          aria-label={`Rename ${name}`}
+        >
           <Pencil aria-hidden />
+          {labeled && " Rename"}
         </Button>
       }
     />
   );
 }
 
-/** Spoken confirmation of a write, and a visible message when one fails. */
-export function WriteFeedback({
-  status,
-  failure,
+/** Shows a confirmation that everyone can see; the status region still speaks it. */
+export function useStatusToast(status: string) {
+  useEffect(() => {
+    if (status) toastManager.add({ title: status });
+  }, [status]);
+}
+
+export const unreadFirst = <Row extends { unread: boolean }>(videos: Row[]) =>
+  [...videos].sort((a, b) => Number(b.unread) - Number(a.unread));
+
+/** A two-step control for an action that cannot be undone. */
+export function ConfirmButton({
+  label,
+  text,
+  disabled,
+  onConfirm,
 }: {
-  status: string;
-  failure: string;
+  label: string;
+  text: string;
+  disabled?: boolean;
+  onConfirm: () => void;
 }) {
+  const [confirming, setConfirming] = useState(false);
+  const first = useRef<HTMLButtonElement>(null);
+  const confirm = useRef<HTMLButtonElement>(null);
+  const was = useRef(false);
+  // The control that had focus is replaced, so focus moves with the swap.
+  useEffect(() => {
+    if (confirming) confirm.current?.focus();
+    else if (was.current) first.current?.focus();
+    was.current = confirming;
+  }, [confirming]);
+  if (!confirming)
+    return (
+      <Button
+        ref={first}
+        type="button"
+        variant="ghost"
+        aria-label={label}
+        disabled={disabled}
+        onClick={() => setConfirming(true)}
+      >
+        {text}
+      </Button>
+    );
+  return (
+    <span className="flex flex-wrap gap-2">
+      <Button
+        ref={confirm}
+        type="button"
+        variant="destructive"
+        aria-label={`${label} now`}
+        disabled={disabled}
+        onClick={onConfirm}
+      >
+        {text}?
+      </Button>
+      <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>
+        Keep
+      </Button>
+    </span>
+  );
+}
+
+/** Spoken confirmation of a write, and a visible message when one fails. */
+export function WriteFeedback({ status, failure }: { status: string; failure: string }) {
+  useStatusToast(status);
   return (
     <>
       <p role="status" className="sr-only">
         {status}
       </p>
       {failure && (
-        <p
-          role="alert"
-          className="rounded-md border border-destructive p-3 text-sm wrap-anywhere"
-        >
+        <p role="alert" className="text-sm text-destructive wrap-anywhere">
           {failure}
         </p>
       )}
@@ -236,12 +332,12 @@ function Poster({ url }: { url: string | null }) {
         alt=""
         loading="lazy"
         onError={() => setBroken(true)}
-        className="aspect-video w-full rounded-md border bg-muted object-cover"
+        className="aspect-video w-full rounded-lg bg-muted object-cover"
       />
     );
   }
   return (
-    <div className="flex aspect-video w-full items-center justify-center rounded-md border bg-muted">
+    <div className="flex aspect-video w-full items-center justify-center rounded-lg bg-muted">
       <Clapperboard className="size-8 text-muted-foreground" aria-hidden />
     </div>
   );
@@ -256,49 +352,45 @@ export function VideoCard({
 }) {
   const progress = revisionProgress(video);
   const revision =
-    video.latestRevision === null
-      ? "No Revision yet"
-      : `Revision ${video.latestRevision}`;
+    video.latestRevision === null ? "No Revision yet" : `Revision ${video.latestRevision}`;
   return (
     <>
-      <Poster key={video.posterUrl} url={video.posterUrl} />
-      <div className="mt-2 flex items-start justify-between gap-2">
+      <div className="w-28 shrink-0 sm:w-full">
+        <Poster key={video.posterUrl} url={video.posterUrl} />
+      </div>
+      <div className="flex min-w-0 flex-1 items-start justify-between gap-2 sm:mt-2">
         <div className="min-w-0 wrap-anywhere">
           <div className="font-medium">{video.title}</div>
-          {video.unread && <span className="text-sm font-semibold">Unread activity</span>}
+          {video.unread && (
+            <span className="flex items-center gap-1.5 text-sm font-semibold">
+              <span aria-hidden className="size-2 rounded-full bg-primary" />
+              Unread activity
+            </span>
+          )}
           <div className="text-sm text-muted-foreground">
             {video.projectName} · {revision} · {formatUpdated(video.updatedAt)}
           </div>
           {progress && (
-            <div
-              className={
-                progress.failed ? "text-sm text-destructive" : "text-sm"
-              }
-            >
+            <div className={progress.failed ? "text-sm text-destructive" : "text-sm"}>
               {progress.text}
             </div>
           )}
         </div>
         {showStatus && (
-          <span className="shrink-0 rounded-md border border-foreground px-2 py-0.5 text-xs font-medium">
+          <Badge variant="secondary" className="shrink-0">
             {statusLabels[video.status]}
-          </span>
+          </Badge>
         )}
       </div>
     </>
   );
 }
 
-export const videoGridClass =
-  "grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 xl:grid-cols-3";
+export const videoGridClass = "grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 xl:grid-cols-3";
 
 export function VideoGridSkeleton() {
   return (
-    <div
-      role="status"
-      aria-label="Loading"
-      className="flex flex-col gap-4"
-    >
+    <div role="status" aria-label="Loading" className="flex flex-col gap-4">
       <Skeleton className="h-7 w-40" />
       <div className={videoGridClass}>
         {[0, 1, 2].map((key) => (

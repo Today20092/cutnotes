@@ -3,8 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sessionToken } from "./support/clerk";
 import { callServerFn, resultOf, serverFunctionIds } from "./support/worker";
 
-const { createProject, getProject, listProjects, renameProject } =
-  serverFunctionIds;
+const { createProject, getProject, listProjects, renameProject } = serverFunctionIds;
 
 type ProjectRow = { id: string; name: string };
 type VideoRow = {
@@ -41,20 +40,11 @@ async function seedProject(
   await env.DB.prepare(
     "INSERT INTO projects (id, name, created_by, created_at, updated_at, completed_at, deleted_at) VALUES (?, ?, 'member_owner', 1, 1, ?, ?)",
   )
-    .bind(
-      id,
-      `Project ${id}`,
-      overrides.completedAt ?? null,
-      overrides.deletedAt ?? null,
-    )
+    .bind(id, `Project ${id}`, overrides.completedAt ?? null, overrides.deletedAt ?? null)
     .run();
 }
 
-async function seedVideo(
-  id: string,
-  projectId: string,
-  deletedAt: number | null = null,
-) {
+async function seedVideo(id: string, projectId: string, deletedAt: number | null = null) {
   await env.DB.prepare(
     "INSERT INTO videos (id, project_id, title, status, created_by, created_at, updated_at, deleted_at) VALUES (?, ?, ?, 'rework', 'member_owner', 1, 5, ?)",
   )
@@ -114,37 +104,26 @@ afterEach(() => {
 });
 
 describe("permission matrix", () => {
-  it.each(["owner", "editor", "viewer"])(
-    "lets a %s list and open Projects",
-    async (role) => {
-      const owner = await seedMember("owner");
-      const caller = role === "owner" ? owner : await seedMember(role);
-      await seedProject("p1");
+  it.each(["owner", "editor", "viewer"])("lets a %s list and open Projects", async (role) => {
+    const owner = await seedMember("owner");
+    const caller = role === "owner" ? owner : await seedMember(role);
+    await seedProject("p1");
 
-      expect((await call(listProjects, caller)).status).toBe(200);
-      expect((await call(getProject, caller, { projectId: "p1" })).status).toBe(
-        200,
-      );
-    },
-  );
+    expect((await call(listProjects, caller)).status).toBe(200);
+    expect((await call(getProject, caller, { projectId: "p1" })).status).toBe(200);
+  });
 
-  it.each(["owner", "editor"])(
-    "lets a %s create and rename a Project",
-    async (role) => {
-      const owner = await seedMember("owner");
-      const caller = role === "owner" ? owner : await seedMember(role);
-      await seedProject("p1");
+  it.each(["owner", "editor"])("lets a %s create and rename a Project", async (role) => {
+    const owner = await seedMember("owner");
+    const caller = role === "owner" ? owner : await seedMember(role);
+    await seedProject("p1");
 
-      expect((await call(createProject, caller, { name: "New" })).status).toBe(
-        200,
-      );
-      expect(
-        (await call(renameProject, caller, { projectId: "p1", name: "Renamed" }))
-          .status,
-      ).toBe(200);
-      expect(await names()).toEqual(["New", "Renamed"]);
-    },
-  );
+    expect((await call(createProject, caller, { name: "New" })).status).toBe(200);
+    expect((await call(renameProject, caller, { projectId: "p1", name: "Renamed" })).status).toBe(
+      200,
+    );
+    expect(await names()).toEqual(["New", "Renamed"]);
+  });
 
   it("refuses a Viewer who forges a create or rename", async () => {
     await seedMember("owner");
@@ -167,11 +146,7 @@ describe("permission matrix", () => {
   it("refuses a removed Editor who forges a write", async () => {
     const editor = await seedMember("editor", 1000);
 
-    await expectRefused(
-      await call(createProject, editor, { name: "Nope" }),
-      403,
-      "not-a-member",
-    );
+    await expectRefused(await call(createProject, editor, { name: "Nope" }), 403, "not-a-member");
     expect(await names()).toEqual([]);
   });
 });
@@ -194,11 +169,7 @@ describe("Project names", () => {
     const owner = await seedMember("owner");
     await seedProject("p1");
 
-    await expectRefused(
-      await call(createProject, owner, { name }),
-      400,
-      "invalid-name",
-    );
+    await expectRefused(await call(createProject, owner, { name }), 400, "invalid-name");
     await expectRefused(
       await call(renameProject, owner, { projectId: "p1", name }),
       400,
@@ -240,15 +211,11 @@ describe("the project list", () => {
   it("lists a Project an Owner created", async () => {
     const owner = await seedMember("owner");
 
-    expect(
-      (await call(createProject, owner, { name: "Episode 42" })).status,
-    ).toBe(200);
+    expect((await call(createProject, owner, { name: "Episode 42" })).status).toBe(200);
 
     const list = await resultOf<ProjectList>(await call(listProjects, owner));
     expect(list.member.role).toBe("owner");
-    expect(list.projects.map((project) => project.name)).toEqual([
-      "Episode 42",
-    ]);
+    expect(list.projects.map((project) => project.name)).toEqual(["Episode 42"]);
   });
 
   it("shows every live Video with its Project and latest Revision", async () => {
@@ -259,9 +226,7 @@ describe("the project list", () => {
     await seedRevision("v1", 3);
     await seedVideo("v2", "p1");
 
-    const { videos } = await resultOf<ProjectList>(
-      await call(listProjects, owner),
-    );
+    const { videos } = await resultOf<ProjectList>(await call(listProjects, owner));
 
     expect(videos).toHaveLength(2);
     expect(videos.find((video) => video.id === "v1")).toMatchObject({
@@ -309,9 +274,7 @@ describe("the Project page", () => {
     await seedVideo("deleted", "p1", 5);
     await seedVideo("other", "p2");
 
-    const page = await resultOf<ProjectPage>(
-      await call(getProject, owner, { projectId: "p1" }),
-    );
+    const page = await resultOf<ProjectPage>(await call(getProject, owner, { projectId: "p1" }));
 
     expect(page.project.name).toBe("Project p1");
     expect(page.member.role).toBe("owner");
@@ -325,11 +288,7 @@ describe("the Project page", () => {
     const owner = await seedMember("owner");
     await seedProject("gone", { deletedAt: 5 });
 
-    await expectRefused(
-      await call(getProject, owner, { projectId }),
-      404,
-      "not-found",
-    );
+    await expectRefused(await call(getProject, owner, { projectId }), 404, "not-found");
   });
 
   it("reads everything, including the Member row, in one trip", async () => {

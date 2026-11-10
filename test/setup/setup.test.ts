@@ -20,18 +20,25 @@ const config = `{
 }
 `;
 const args = [
-  "--team-name", "Haithem Studio",
-  "--team-logo-url", "https://studio.example/logo.png",
-  "--first-owner-email", "owner@studio.example",
-  "--origin", "https://review.studio.example",
-  "--location", "weur",
+  "--team-name",
+  "Haithem Studio",
+  "--team-logo-url",
+  "https://studio.example/logo.png",
+  "--first-owner-email",
+  "owner@studio.example",
+  "--origin",
+  "https://review.studio.example",
+  "--location",
+  "weur",
 ];
 
 function harness(start = config) {
   const state = { config: start, calls: [] as string[][], configAtSecret: "" };
   const deps = {
     readConfig: () => state.config,
-    writeConfig: (text: string) => { state.config = text; },
+    writeConfig: (text: string) => {
+      state.config = text;
+    },
     createDatabase: (wranglerArgs: string[]) => {
       state.calls.push(wranglerArgs);
       return `Created.\n"database_id": "${realId}"\n`;
@@ -122,11 +129,15 @@ test("stops when Wrangler reports no database ID", () => {
   expect(state.config).toBe(config);
 });
 
-test.each(["database_id", "database_name", "TEAM_NAME", "TEAM_LOGO_URL", "APP_ORIGIN", "FIRST_OWNER_EMAIL"])(
-  "refuses a config missing %s before provisioning anything",
-  (key) => {
-    const { state, deps } = harness(config.replace(`"${key}"`, `"missing_${key}"`));
-    expect(() => runSetup(args, deps)).toThrow(new RegExp(key));
-    expect(state.calls).toEqual([]);
-  },
-);
+test.each([
+  "database_id",
+  "database_name",
+  "TEAM_NAME",
+  "TEAM_LOGO_URL",
+  "APP_ORIGIN",
+  "FIRST_OWNER_EMAIL",
+])("refuses a config missing %s before provisioning anything", (key) => {
+  const { state, deps } = harness(config.replace(`"${key}"`, `"missing_${key}"`));
+  expect(() => runSetup(args, deps)).toThrow(new RegExp(key));
+  expect(state.calls).toEqual([]);
+});

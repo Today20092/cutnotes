@@ -6,8 +6,7 @@ export type Person = {
   emailVerified?: boolean;
 };
 
-const encode = (value: unknown) =>
-  base64Url(new TextEncoder().encode(JSON.stringify(value)));
+const encode = (value: unknown) => base64Url(new TextEncoder().encode(JSON.stringify(value)));
 
 const base64Url = (bytes: Uint8Array) =>
   btoa(String.fromCharCode(...bytes))

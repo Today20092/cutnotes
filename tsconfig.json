@@ -11,7 +11,6 @@
     "noEmit": true,
     "isolatedModules": true,
     "types": ["@cloudflare/workers-types", "@cloudflare/vitest-plugin/types", "vite/client", "node"],
-    "baseUrl": ".",
     "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src", "test", "e2e", "scripts", "*.config.ts"],

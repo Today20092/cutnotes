@@ -24,9 +24,7 @@ test.beforeEach(async ({ page }) => {
   await signInAs(page, owner);
 });
 
-test("a created Project appears before the server answers", async ({
-  page,
-}, testInfo) => {
+test("a created Project appears before the server answers", async ({ page }, testInfo) => {
   const name = `Instant ${testInfo.project.name} ${Date.now()}`;
   let release = () => {};
   const held = new Promise<void>((resolve) => (release = resolve));
@@ -66,9 +64,7 @@ test("an empty name is explained and nothing is sent", async ({ page }) => {
   await expect(page.getByLabel("Project name")).toBeFocused();
 });
 
-test("a Project opens, shows the next step, and can be renamed", async ({
-  page,
-}, testInfo) => {
+test("a Project opens, shows the next step, and can be renamed", async ({ page }, testInfo) => {
   const name = `Open ${testInfo.project.name} ${Date.now()}`;
   const renamed = `${name} renamed`;
   await page.goto("/");
@@ -86,10 +82,11 @@ test("a Project opens, shows the next step, and can be renamed", async ({
   await page.getByLabel("Project name").fill(renamed);
   await page.getByRole("button", { name: "Save name" }).click();
 
-  await expect(
-    page.getByRole("heading", { level: 1, name: renamed }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: "Back to Projects" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: renamed })).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "breadcrumb" })
+    .getByRole("link", { name: "Projects" })
+    .click();
   await expect(page.getByRole("link", { name: renamed })).toBeVisible();
 });
 
@@ -112,14 +109,10 @@ test("a failed rename rolls back and says so", async ({ page }, testInfo) => {
 test("an unknown Project shows not found", async ({ page }) => {
   await page.goto("/projects/does-not-exist");
 
-  await expect(
-    page.getByRole("heading", { name: "Project not found" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Project not found" })).toBeVisible();
 });
 
-test("a Viewer can browse but gets no create or rename controls", async ({
-  page,
-}, testInfo) => {
+test("a Viewer can browse but gets no create or rename controls", async ({ page }, testInfo) => {
   const name = `Browse ${testInfo.project.name} ${Date.now()}`;
   await page.goto("/");
   await createProjectInUi(page, name);

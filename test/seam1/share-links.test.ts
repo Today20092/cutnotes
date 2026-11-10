@@ -1,11 +1,20 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, expect, it } from "vitest";
-import { call, clearDatabase, expectRefused, seedMember, seedProject, seedRevision, seedVideo } from "./support/seed";
+import {
+  call,
+  clearDatabase,
+  expectRefused,
+  seedMember,
+  seedProject,
+  seedRevision,
+  seedVideo,
+} from "./support/seed";
 import { callServerFn, fetchPath, resultOf, serverFunctionIds as fn } from "./support/worker";
 
 type Link = { id: string; token: string; name: string; permission: "view" | "comment" };
 type GuestPage = {
-  title: string; permission: string;
+  title: string;
+  permission: string;
   revision: { id: string; number: number; durationMs: number };
   playback: { videoUrl: string };
   comments: { id: string; body: string; authorName: string; isGuest: boolean }[];
@@ -21,9 +30,13 @@ beforeEach(async () => {
 });
 
 const createLink = async (permission: "view" | "comment" = "comment", caller = "user_owner") =>
-  resultOf<Link>(await call(fn.createShareLink, caller, { videoId: "v", name: "Client", permission }));
-const guest = (token: string, extra: object = {}) => callServerFn(fn.getGuestReview, { data: { token, ...extra } });
-const page = async (token: string, extra: object = {}) => resultOf<GuestPage>(await guest(token, extra));
+  resultOf<Link>(
+    await call(fn.createShareLink, caller, { videoId: "v", name: "Client", permission }),
+  );
+const guest = (token: string, extra: object = {}) =>
+  callServerFn(fn.getGuestReview, { data: { token, ...extra } });
+const page = async (token: string, extra: object = {}) =>
+  resultOf<GuestPage>(await guest(token, extra));
 
 it("an Owner creates a link with a 32-character base62 token and a Guest watches the latest ready Revision", async () => {
   await seedRevision({ id: "r2", videoId: "v", number: 2, state: "ready", playbackId: "sample" });
@@ -32,27 +45,49 @@ it("an Owner creates a link with a 32-character base62 token and a Guest watches
   const link = await createLink();
   expect(link.token).toMatch(/^[0-9A-Za-z]{32}$/);
   const result = await page(link.token);
-  expect(result).toMatchObject({ title: "Video v", permission: "comment", revision: { id: "r2", number: 2 } });
+  expect(result).toMatchObject({
+    title: "Video v",
+    permission: "comment",
+    revision: { id: "r2", number: 2 },
+  });
   expect(result.playback.videoUrl).toContain("stream.mux.com/sample.m3u8");
 });
 
-const comment = (token: string, extra: object = {}, address?: string) => callServerFn(fn.createGuestComment, {
-  address, data: { token, id: crypto.randomUUID(), name: "Dana", body: "Too dark", timecodeMs: 1000, ...extra },
-});
+const comment = (token: string, extra: object = {}, address?: string) =>
+  callServerFn(fn.createGuestComment, {
+    address,
+    data: {
+      token,
+      id: crypto.randomUUID(),
+      name: "Dana",
+      body: "Too dark",
+      timecodeMs: 1000,
+      ...extra,
+    },
+  });
 const expectDead = async (response: Response) => {
   expect(response.status).toBe(404);
   expect(await response.json()).toEqual({ code: "not-found" });
 };
 
-it.each(["owner", "editor"])("a %s lists and revokes links; revoked links stop reads and Comments but stay out of the list", async (role) => {
-  const caller = role === "owner" ? "user_owner" : await seedMember(role);
-  const link = await createLink("comment", caller);
-  expect((await resultOf<{ links: Link[] }>(await call(fn.listShareLinks, caller, { videoId: "v" }))).links).toMatchObject([{ id: link.id, token: link.token, name: "Client" }]);
-  expect((await call(fn.revokeShareLink, caller, { id: link.id })).status).toBe(200);
-  expect((await resultOf<{ links: Link[] }>(await call(fn.listShareLinks, caller, { videoId: "v" }))).links).toEqual([]);
-  await expectDead(await guest(link.token));
-  await expectDead(await comment(link.token));
-});
+it.each(["owner", "editor"])(
+  "a %s lists and revokes links; revoked links stop reads and Comments but stay out of the list",
+  async (role) => {
+    const caller = role === "owner" ? "user_owner" : await seedMember(role);
+    const link = await createLink("comment", caller);
+    expect(
+      (await resultOf<{ links: Link[] }>(await call(fn.listShareLinks, caller, { videoId: "v" })))
+        .links,
+    ).toMatchObject([{ id: link.id, token: link.token, name: "Client" }]);
+    expect((await call(fn.revokeShareLink, caller, { id: link.id })).status).toBe(200);
+    expect(
+      (await resultOf<{ links: Link[] }>(await call(fn.listShareLinks, caller, { videoId: "v" })))
+        .links,
+    ).toEqual([]);
+    await expectDead(await guest(link.token));
+    await expectDead(await comment(link.token));
+  },
+);
 
 it("Viewers, non-Members, removed Members and Guests cannot manage links", async () => {
   const link = await createLink();
@@ -63,14 +98,31 @@ it("Viewers, non-Members, removed Members and Guests cannot manage links", async
     await expectRefused(await call(action, viewer, data), 403, "insufficient-role");
     await expectRefused(await call(action, removed, data), 403, "not-a-member");
     await expectRefused(await call(action, "user_stranger", data), 403, "not-a-member");
-    await expectRefused(await callServerFn(action, { data: { ...data, token: link.token } }), 401, "signed-out");
+    await expectRefused(
+      await callServerFn(action, { data: { ...data, token: link.token } }),
+      401,
+      "signed-out",
+    );
   }
 });
 
 it("a Guest cannot reach any Member function with only a token", async () => {
   const link = await createLink();
-  for (const action of [fn.getReview, fn.listProjects, fn.createComment, fn.resolveComment, fn.editComment, fn.deleteComment]) {
-    await expectRefused(await callServerFn(action, { data: { token: link.token, videoId: "v", revisionId: "r1", id: "x" } }), 401, "signed-out");
+  for (const action of [
+    fn.getReview,
+    fn.listProjects,
+    fn.createComment,
+    fn.resolveComment,
+    fn.editComment,
+    fn.deleteComment,
+  ]) {
+    await expectRefused(
+      await callServerFn(action, {
+        data: { token: link.token, videoId: "v", revisionId: "r1", id: "x" },
+      }),
+      401,
+      "signed-out",
+    );
   }
 });
 
@@ -79,7 +131,9 @@ it("a comment link accepts a Comment with a Guest badge, and a retry does not du
   const id = "guest-comment";
   expect((await comment(link.token, { id, name: "  Dana  " })).status).toBe(200);
   expect((await comment(link.token, { id, body: "Retry" })).status).toBe(200);
-  expect((await page(link.token)).comments).toMatchObject([{ id, body: "Too dark", authorName: "Dana", isGuest: true }]);
+  expect((await page(link.token)).comments).toMatchObject([
+    { id, body: "Too dark", authorName: "Dana", isGuest: true },
+  ]);
 });
 
 it("a view link plays and shows existing Comments, while every write is refused", async () => {
@@ -101,7 +155,9 @@ it("a Revision or Video ID in the request is ignored", async () => {
   const forged = { videoId: "v2", revisionId: "r1" };
   expect((await page(link.token, forged)).revision.id).toBe("r2");
   expect((await comment(link.token, { ...forged, id: "c" })).status).toBe(200);
-  expect(await env.DB.prepare("SELECT revision_id FROM comments WHERE id = 'c'").first("revision_id")).toBe("r2");
+  expect(
+    await env.DB.prepare("SELECT revision_id FROM comments WHERE id = 'c'").first("revision_id"),
+  ).toBe("r2");
 });
 
 it("the link moves to a new Revision once it is ready", async () => {
@@ -150,7 +206,10 @@ it("the 31st Comment in a minute on one link is refused with a retry response", 
 
 it("one client address over its limit is refused", async () => {
   const { token } = await createLink();
-  let last = await callServerFn(fn.getGuestReview, { address: "203.0.113.9", data: { token: "x" } });
+  let last = await callServerFn(fn.getGuestReview, {
+    address: "203.0.113.9",
+    data: { token: "x" },
+  });
   for (let index = 0; index < 300 && last.status !== 429; index++) {
     last = await callServerFn(fn.getGuestReview, { address: "203.0.113.9", data: { token: "x" } });
   }
@@ -160,7 +219,13 @@ it("one client address over its limit is refused", async () => {
 });
 
 it("Guest responses carry no Clerk or Member IDs", async () => {
-  await call(fn.createComment, "user_owner", { videoId: "v", revisionId: "r1", id: "m", body: "Member note", timecodeMs: 1 });
+  await call(fn.createComment, "user_owner", {
+    videoId: "v",
+    revisionId: "r1",
+    id: "m",
+    body: "Member note",
+    timecodeMs: 1,
+  });
   const { token } = await createLink();
   await comment(token);
   const text = await (await guest(token)).text();
@@ -175,7 +240,13 @@ it("share pages send no-referrer and noindex", async () => {
 });
 
 it("a link cannot be created with a bad name or permission, or for a Complete Project", async () => {
-  const send = (extra: object) => call(fn.createShareLink, "user_owner", { videoId: "v", name: "Client", permission: "view", ...extra });
+  const send = (extra: object) =>
+    call(fn.createShareLink, "user_owner", {
+      videoId: "v",
+      name: "Client",
+      permission: "view",
+      ...extra,
+    });
   await expectRefused(await send({ name: " " }), 400, "invalid-request");
   await expectRefused(await send({ name: "n".repeat(61) }), 400, "invalid-request");
   await expectRefused(await send({ permission: "admin" }), 400, "invalid-request");
@@ -185,8 +256,19 @@ it("a link cannot be created with a bad name or permission, or for a Complete Pr
 
 it("a Guest Comment carries a Drawing and is refused over the Drawing caps", async () => {
   const { token } = await createLink();
-  const pts = [[0.1, 0.1], [0.5, 0.5]];
-  expect((await comment(token, { id: "drawn", body: "", drawing: [{ tool: "arrow", color: "#ffffff", pts }] })).status).toBe(200);
+  const pts = [
+    [0.1, 0.1],
+    [0.5, 0.5],
+  ];
+  expect(
+    (
+      await comment(token, {
+        id: "drawn",
+        body: "",
+        drawing: [{ tool: "arrow", color: "#ffffff", pts }],
+      })
+    ).status,
+  ).toBe(200);
   expect((await page(token)).comments).toMatchObject([{ id: "drawn" }]);
   const tooMany = Array.from({ length: 51 }, () => ({ tool: "arrow", color: "#ffffff", pts }));
   await expectRefused(await comment(token, { drawing: tooMany }), 400, "invalid-request");
@@ -196,8 +278,19 @@ it("a Guest name is trimmed, may be 60 characters, and is never an identity", as
   const longest = "n".repeat(60);
   expect((await comment(token, { id: "longest", name: `  ${longest}  ` })).status).toBe(200);
   expect((await comment(token, { id: "first", name: "owner", timecodeMs: 2000 })).status).toBe(200);
-  expect((await comment(token, { id: "second", name: "owner", timecodeMs: 3000 })).status).toBe(200);
-  expect((await comment(token, { id: "first", name: "Someone else", body: "Taken over", timecodeMs: 2000 })).status).toBe(200);
+  expect((await comment(token, { id: "second", name: "owner", timecodeMs: 3000 })).status).toBe(
+    200,
+  );
+  expect(
+    (
+      await comment(token, {
+        id: "first",
+        name: "Someone else",
+        body: "Taken over",
+        timecodeMs: 2000,
+      })
+    ).status,
+  ).toBe(200);
   expect((await page(token)).comments).toMatchObject([
     { id: "longest", authorName: longest, isGuest: true },
     { id: "first", authorName: "owner", body: "Too dark", isGuest: true },
@@ -208,7 +301,11 @@ it("a Member who shares a Guest's name cannot edit the Guest's Comment, and an O
   const { token } = await createLink();
   await comment(token, { id: "guest", name: "owner" });
   const target = { videoId: "v", revisionId: "r1", id: "guest", timecodeMs: 1000 };
-  await expectRefused(await call(fn.editComment, "user_owner", { ...target, body: "Forged" }), 404, "not-found");
+  await expectRefused(
+    await call(fn.editComment, "user_owner", { ...target, body: "Forged" }),
+    404,
+    "not-found",
+  );
   expect((await call(fn.deleteComment, "user_owner", target)).status).toBe(200);
   expect((await page(token)).comments).toEqual([]);
 });

@@ -5,9 +5,8 @@ import { createMuxGateway } from "@/server/mux/gateway";
 import { fakeMux } from "./support/fake-mux";
 
 const decode = (segment: string) =>
-  Uint8Array.from(
-    atob(segment.replace(/-/g, "+").replace(/_/g, "/")),
-    (char) => char.charCodeAt(0),
+  Uint8Array.from(atob(segment.replace(/-/g, "+").replace(/_/g, "/")), (char) =>
+    char.charCodeAt(0),
   );
 
 const decodeJson = (segment: string): unknown =>
@@ -16,9 +15,7 @@ const decodeJson = (segment: string): unknown =>
 const publicKey = () =>
   crypto.subtle.importKey(
     "spki",
-    decode(
-      env.TEST_MUX_PUBLIC_KEY.replace(/-----[^-]+-----/g, "").replace(/\s/g, ""),
-    ),
+    decode(env.TEST_MUX_PUBLIC_KEY.replace(/-----[^-]+-----/g, "").replace(/\s/g, "")),
     { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
     false,
     ["verify"],
@@ -40,11 +37,7 @@ it("signs a playback token Mux can verify, using a generated key", async () => {
     claims: { time: 12 },
   });
 
-  const [header, payload, signature] = token.split(".") as [
-    string,
-    string,
-    string,
-  ];
+  const [header, payload, signature] = token.split(".") as [string, string, string];
   const verified = await crypto.subtle.verify(
     "RSASSA-PKCS1-v1_5",
     await publicKey(),
@@ -86,7 +79,10 @@ describe("asset cleanup and reconciliation", () => {
       .mockResolvedValueOnce(Response.json({ data: { id: "a", status: "ready", duration: 30 } }))
       .mockResolvedValueOnce(new Response(null, { status: 404 }))
       .mockResolvedValueOnce(new Response(null, { status: 401 }));
-    expect(await realGateway().getDirectUpload("u")).toEqual({ status: "asset_created", asset_id: "a" });
+    expect(await realGateway().getDirectUpload("u")).toEqual({
+      status: "asset_created",
+      asset_id: "a",
+    });
     expect(await realGateway().getAsset("a")).toMatchObject({ id: "a", status: "ready" });
     expect(await realGateway().getAsset("gone")).toBeNull();
     await expect(realGateway().getDirectUpload("u")).rejects.toThrow("401");
@@ -97,12 +93,14 @@ describe("direct uploads", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("asks Mux for a signed-only upload with the spec's settings", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      Response.json(
-        { data: { id: "upload-1", url: "https://storage.example/put" } },
-        { status: 201 },
-      ),
-    );
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        Response.json(
+          { data: { id: "upload-1", url: "https://storage.example/put" } },
+          { status: 201 },
+        ),
+      );
 
     const upload = await realGateway().createDirectUpload({
       corsOrigin: "https://cutnotes.test",
@@ -132,9 +130,7 @@ describe("direct uploads", () => {
   });
 
   it("raises when Mux refuses to create an upload", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response("nope", { status: 500 }),
-    );
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("nope", { status: 500 }));
 
     await expect(
       realGateway().createDirectUpload({
@@ -145,9 +141,7 @@ describe("direct uploads", () => {
   });
 
   it("cancels a waiting upload", async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(Response.json({ data: {} }));
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ data: {} }));
 
     expect(await realGateway().cancelDirectUpload("upload-1")).toBe(true);
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
@@ -156,9 +150,7 @@ describe("direct uploads", () => {
   });
 
   it("reports an upload that is no longer waiting as not cancelled", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response("{}", { status: 400 }),
-    );
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 400 }));
 
     expect(await realGateway().cancelDirectUpload("upload-1")).toBe(false);
   });
@@ -180,9 +172,9 @@ describe("webhook signatures", () => {
       key,
       new TextEncoder().encode(`${timestamp}.${body}`),
     );
-    return Array.from(new Uint8Array(signature), (byte) =>
-      byte.toString(16).padStart(2, "0"),
-    ).join("");
+    return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, "0")).join(
+      "",
+    );
   }
 
   const nowSeconds = () => Math.floor(Date.now() / 1000);
@@ -205,17 +197,13 @@ describe("webhook signatures", () => {
   it("refuses a body changed by one character", async () => {
     const t = String(nowSeconds());
 
-    expect(
-      await verify(`t=${t},v1=${await sign(t, rawBody)}`, `${rawBody} `),
-    ).toBe(false);
+    expect(await verify(`t=${t},v1=${await sign(t, rawBody)}`, `${rawBody} `)).toBe(false);
   });
 
   it("refuses a signature made with another secret", async () => {
     const t = String(nowSeconds());
 
-    expect(await verify(`t=${t},v1=${await sign(t, rawBody, "other")}`)).toBe(
-      false,
-    );
+    expect(await verify(`t=${t},v1=${await sign(t, rawBody, "other")}`)).toBe(false);
   });
 
   it.each([

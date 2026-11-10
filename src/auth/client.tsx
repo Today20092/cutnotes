@@ -1,13 +1,29 @@
-import { ClerkProvider, SignIn, useAuth, useClerk } from "@clerk/tanstack-react-start";
+import { ClerkProvider, SignIn, useAuth, useClerk, useUser } from "@clerk/tanstack-react-start";
 import type { ReactNode } from "react";
 
+// These tokens already change with the device's light or dark setting.
+const clerkTheme = {
+  colorPrimary: "var(--primary)",
+  colorPrimaryForeground: "var(--primary-foreground)",
+  colorBackground: "var(--background)",
+  colorForeground: "var(--foreground)",
+  colorMutedForeground: "var(--muted-foreground)",
+  colorInput: "var(--background)",
+  colorInputForeground: "var(--foreground)",
+  borderRadius: "var(--radius)",
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  return <ClerkProvider>{children}</ClerkProvider>;
+  return <ClerkProvider appearance={{ variables: clerkTheme }}>{children}</ClerkProvider>;
 }
 
 export function useAuthStatus() {
   const { isLoaded, isSignedIn } = useAuth();
   return { isLoaded, isSignedIn: Boolean(isSignedIn) };
+}
+
+export function useAccountEmail() {
+  return useUser().user?.primaryEmailAddress?.emailAddress;
 }
 
 export function useSignOut() {

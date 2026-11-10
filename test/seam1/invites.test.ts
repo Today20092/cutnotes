@@ -3,8 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sessionToken, type Person } from "./support/clerk";
 import { callServerFn, resultOf, serverFunctionIds } from "./support/worker";
 
-const { createInvite, getAppShell, listInvites, redeemInvite, revokeInvite } =
-  serverFunctionIds;
+const { createInvite, getAppShell, listInvites, redeemInvite, revokeInvite } = serverFunctionIds;
 
 const owner: Person = { clerkUserId: "user_owner", email: "owner@example.com" };
 const newcomer: Person = { clerkUserId: "user_new", email: "new@example.com" };
@@ -33,9 +32,7 @@ async function invite(role = "editor") {
 const tokenOf = (url: string) => url.split("/").pop() as string;
 
 const redeem = async (token: string, person: Person = newcomer) =>
-  resultOf<{ outcome: string; reason?: string }>(
-    await call(redeemInvite, person, { token }),
-  );
+  resultOf<{ outcome: string; reason?: string }>(await call(redeemInvite, person, { token }));
 
 const roleOf = async (person: Person) => {
   const response = await call(getAppShell, person);
@@ -45,9 +42,7 @@ const roleOf = async (person: Person) => {
 };
 
 const pending = async () =>
-  resultOf<{ invites: Pending[] }>(await call(listInvites, owner)).then(
-    (result) => result.invites,
-  );
+  resultOf<{ invites: Pending[] }>(await call(listInvites, owner)).then((result) => result.invites);
 
 beforeEach(async () => {
   await env.DB.batch([
@@ -76,10 +71,7 @@ describe("creating an Invite", () => {
   it("stores only the SHA-256 hash of the token", async () => {
     const { url } = await invite();
     const token = url.split("/").pop() as string;
-    const digest = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(token),
-    );
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
     const expected = [...new Uint8Array(digest)]
       .map((byte) => byte.toString(16).padStart(2, "0"))
       .join("");
@@ -90,15 +82,12 @@ describe("creating an Invite", () => {
     expect(JSON.stringify(row)).not.toContain(token);
   });
 
-  it.each([{ role: "admin" }, { role: 7 }, {}])(
-    "refuses the forged input %j",
-    async (data) => {
-      const response = await call(createInvite, owner, data);
+  it.each([{ role: "admin" }, { role: 7 }, {}])("refuses the forged input %j", async (data) => {
+    const response = await call(createInvite, owner, data);
 
-      expect(response.status).toBe(400);
-      expect(await pending()).toEqual([]);
-    },
-  );
+    expect(response.status).toBe(400);
+    expect(await pending()).toEqual([]);
+  });
 });
 
 describe("listing pending Invites", () => {
@@ -150,9 +139,7 @@ describe("redeeming an Invite", () => {
       email: `${suffix}@example.com`,
     }));
 
-    const outcomes = await Promise.all(
-      people.map((person) => redeem(tokenOf(url), person)),
-    );
+    const outcomes = await Promise.all(people.map((person) => redeem(tokenOf(url), person)));
 
     expect(outcomes.filter((result) => result.outcome === "joined")).toHaveLength(1);
     const memberCount = await env.DB.prepare(

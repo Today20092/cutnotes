@@ -1,13 +1,9 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { QueryClientProvider } from "@tanstack/react-query";
-import {
-  createRootRouteWithContext,
-  HeadContent,
-  Outlet,
-  Scripts,
-} from "@tanstack/react-router";
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { AuthProvider } from "@/auth/client";
+import { ToastProvider } from "@/components/ui/toast";
 import stylesUrl from "@/styles.css?url";
 
 function RootShell({ children }: { children: ReactNode }) {
@@ -29,7 +25,9 @@ function Root() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
-        <Outlet />
+        <ToastProvider position="top-center">
+          <Outlet />
+        </ToastProvider>
       </QueryClientProvider>
     </AuthProvider>
   );

@@ -18,17 +18,11 @@ export default defineConfig(({ mode }) => {
           ? [
               {
                 find: /^@\/server\/mux$/,
-                replacement: path.resolve(
-                  import.meta.dirname,
-                  "e2e/support/fake-mux-module.ts",
-                ),
+                replacement: path.resolve(import.meta.dirname, "e2e/support/fake-mux-module.ts"),
               },
               {
                 find: "@/auth/client",
-                replacement: path.resolve(
-                  import.meta.dirname,
-                  "e2e/support/fake-auth-client.tsx",
-                ),
+                replacement: path.resolve(import.meta.dirname, "e2e/support/fake-auth-client.tsx"),
               },
             ]
           : []),

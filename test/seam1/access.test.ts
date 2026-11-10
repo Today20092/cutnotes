@@ -12,7 +12,9 @@ import {
 
 const { getAppShell } = serverFunctionIds;
 const guestIds: string[] = Object.values(guestServerFunctionIds);
-const everyServerFunction = Object.entries(serverFunctionIds).filter(([, id]) => !guestIds.includes(id));
+const everyServerFunction = Object.entries(serverFunctionIds).filter(
+  ([, id]) => !guestIds.includes(id),
+);
 const memberServerFunctions = Object.entries(memberServerFunctionIds);
 const ownerServerFunctions = Object.entries(ownerServerFunctionIds);
 
@@ -32,16 +34,12 @@ const callAs = async (person: Person) =>
 
 const owners = async () =>
   (
-    await env.DB.prepare(
-      "SELECT clerk_user_id FROM members WHERE role = 'owner'",
-    ).all<{ clerk_user_id: string }>()
+    await env.DB.prepare("SELECT clerk_user_id FROM members WHERE role = 'owner'").all<{
+      clerk_user_id: string;
+    }>()
   ).results.map((row) => row.clerk_user_id);
 
-async function seedMember(
-  clerkUserId: string,
-  removedAt: number | null = null,
-  role = "viewer",
-) {
+async function seedMember(clerkUserId: string, removedAt: number | null = null, role = "viewer") {
   await env.DB.prepare(
     "INSERT INTO members (id, clerk_user_id, display_name, role, created_at, removed_at) VALUES (?, ?, 'Seeded', ?, 1, ?)",
   )
@@ -78,11 +76,7 @@ describe("first Owner", () => {
   });
 
   it("is not created from an unverified email", async () => {
-    await expectRefused(
-      await callAs({ ...firstOwner, emailVerified: false }),
-      403,
-      "not-a-member",
-    );
+    await expectRefused(await callAs({ ...firstOwner, emailVerified: false }), 403, "not-a-member");
     expect(await owners()).toEqual([]);
   });
 
@@ -118,36 +112,27 @@ describe("first Owner", () => {
 
 describe("refusals", () => {
   // Every server function must appear in serverFunctionIds, so each one is refused here.
-  it.each(memberServerFunctions)(
-    "%s refuses a signed-in non-Member",
-    async (_name, id) => {
-      await expectRefused(
-        await callServerFn(id, { bearer: await sessionToken(stranger) }),
-        403,
-        "not-a-member",
-      );
-    },
-  );
+  it.each(memberServerFunctions)("%s refuses a signed-in non-Member", async (_name, id) => {
+    await expectRefused(
+      await callServerFn(id, { bearer: await sessionToken(stranger) }),
+      403,
+      "not-a-member",
+    );
+  });
 
-  it.each(everyServerFunction)(
-    "%s refuses a signed-out caller",
-    async (_name, id) => {
-      await expectRefused(await callServerFn(id), 401, "signed-out");
-    },
-  );
+  it.each(everyServerFunction)("%s refuses a signed-out caller", async (_name, id) => {
+    await expectRefused(await callServerFn(id), 401, "signed-out");
+  });
 
-  it.each(memberServerFunctions)(
-    "%s refuses a removed Member",
-    async (_name, id) => {
-      await seedMember(stranger.clerkUserId, 1000);
+  it.each(memberServerFunctions)("%s refuses a removed Member", async (_name, id) => {
+    await seedMember(stranger.clerkUserId, 1000);
 
-      await expectRefused(
-        await callServerFn(id, { bearer: await sessionToken(stranger) }),
-        403,
-        "not-a-member",
-      );
-    },
-  );
+    await expectRefused(
+      await callServerFn(id, { bearer: await sessionToken(stranger) }),
+      403,
+      "not-a-member",
+    );
+  });
 
   describe.each(["editor", "viewer"])("a %s", (role) => {
     it.each(ownerServerFunctions)("is refused by %s", async (_name, id) => {

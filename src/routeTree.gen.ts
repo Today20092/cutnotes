@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as InvitesRouteImport } from './routes/invites'
 import { Route as MembersRouteImport } from './routes/members'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ApiTeamRouteImport } from './routes/api/team'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
@@ -31,6 +32,11 @@ const InvitesRoute = InvitesRouteImport.update({
 const MembersRoute = MembersRouteImport.update({
   id: '/members',
   path: '/members',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTeamRoute = ApiTeamRouteImport.update({
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/invites': typeof InvitesRoute
   '/members': typeof MembersRoute
+  '/settings': typeof SettingsRoute
   '/api/team': typeof ApiTeamRoute
   '/invite/$token': typeof InviteTokenRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/invites': typeof InvitesRoute
   '/members': typeof MembersRoute
+  '/settings': typeof SettingsRoute
   '/api/team': typeof ApiTeamRoute
   '/invite/$token': typeof InviteTokenRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/invites': typeof InvitesRoute
   '/members': typeof MembersRoute
+  '/settings': typeof SettingsRoute
   '/api/team': typeof ApiTeamRoute
   '/invite/$token': typeof InviteTokenRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/invites'
     | '/members'
+    | '/settings'
     | '/api/team'
     | '/invite/$token'
     | '/projects/$projectId'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/invites'
     | '/members'
+    | '/settings'
     | '/api/team'
     | '/invite/$token'
     | '/projects/$projectId'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/invites'
     | '/members'
+    | '/settings'
     | '/api/team'
     | '/invite/$token'
     | '/projects/$projectId'
@@ -127,6 +139,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   InvitesRoute: typeof InvitesRoute
   MembersRoute: typeof MembersRoute
+  SettingsRoute: typeof SettingsRoute
   ApiTeamRoute: typeof ApiTeamRoute
   InviteTokenRoute: typeof InviteTokenRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
@@ -155,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/members'
       fullPath: '/members'
       preLoaderRoute: typeof MembersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/team': {
@@ -199,6 +219,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   InvitesRoute: InvitesRoute,
   MembersRoute: MembersRoute,
+  SettingsRoute: SettingsRoute,
   ApiTeamRoute: ApiTeamRoute,
   InviteTokenRoute: InviteTokenRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,

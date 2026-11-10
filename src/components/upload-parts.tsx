@@ -1,12 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
-import {
-  useId,
-  useRef,
-  useState,
-  type FormEvent,
-  type ReactElement,
-} from "react";
+import { useId, useRef, useState, type FormEvent, type ReactElement } from "react";
 import { selectClass } from "@/components/project-parts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -136,16 +130,28 @@ export function UploadSheet({
       >
         <SheetHeader>
           <SheetTitle>
-            {destination.kind === "new"
-              ? "Upload a Video"
-              : `Upload ${destination.title} again`}
+            {destination.kind === "new" ? "Upload a Video" : `Upload ${destination.title} again`}
           </SheetTitle>
           <SheetDescription>
             1080p H.264 MP4 processes fastest. Up to 20 GB and 12 hours.
           </SheetDescription>
         </SheetHeader>
         <form onSubmit={submit} noValidate className="flex flex-col gap-3 p-4 pt-0">
-          <div className="flex flex-col gap-1">
+          <div
+            className="flex flex-col gap-1 sm:rounded-lg sm:border sm:border-dashed sm:p-3"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              const dropped = event.dataTransfer.files[0];
+              if (!dropped) return;
+              if (!dropped.type.startsWith("video/")) {
+                setError("Choose a video file.");
+                return;
+              }
+              if (fileInput.current) fileInput.current.files = event.dataTransfer.files;
+              pickFile(dropped);
+            }}
+          >
             <label htmlFor={fileId} className="text-sm font-medium">
               Video file
             </label>
@@ -159,6 +165,7 @@ export function UploadSheet({
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? errorId : undefined}
             />
+            <p className="hidden text-sm text-muted-foreground sm:block">Or drop a video here.</p>
           </div>
           {destination.kind === "new" && projects.length > 1 && (
             <div className="flex flex-col gap-1">
@@ -223,14 +230,14 @@ function UploadRow({ item }: { item: UploadItem }) {
   const cancellable = active || item.phase === "waiting" || item.phase === "cancel-failed";
   const finished = item.phase === "sent" || item.phase === "too-late";
   return (
-    <li className="flex flex-col gap-1 rounded-md border p-2">
+    <li className="flex flex-col gap-1 py-2">
       <div className="flex items-center justify-between gap-2">
         <span className="min-w-0 font-medium wrap-anywhere">{item.label}</span>
         <span className="flex shrink-0 gap-1">
           {item.phase === "failed" && (
             <Button
               size="sm"
-              variant="outline"
+              variant="secondary"
               aria-label={`Retry upload of ${item.label}`}
               onClick={() => retryUpload(item.id)}
             >
@@ -240,7 +247,7 @@ function UploadRow({ item }: { item: UploadItem }) {
           {cancellable && (
             <Button
               size="sm"
-              variant="outline"
+              variant="ghost"
               aria-label={`Cancel upload of ${item.label}`}
               onClick={() => void stopUpload(item.id)}
             >
@@ -280,7 +287,7 @@ export function UploadList() {
   return (
     <section aria-label="Uploads" className="mb-4">
       <h2 className="mb-2 font-medium">Uploads</h2>
-      <ul className="flex flex-col gap-2">
+      <ul className="divide-y">
         {uploads.map((item) => (
           <UploadRow key={item.id} item={item} />
         ))}

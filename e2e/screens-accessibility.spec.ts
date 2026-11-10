@@ -30,16 +30,21 @@ async function expectAccessible(page: Page, state: string) {
     );
     // An inherited colour transition restarts and cancels the one awaited above, so check none remain.
     await page.waitForFunction(() =>
-      document.getAnimations().every((motion) => motion.effect?.getComputedTiming().iterations === Infinity),
+      document
+        .getAnimations()
+        .every((motion) => motion.effect?.getComputedTiming().iterations === Infinity),
     );
     const { violations, incomplete } = await new AxeBuilder({ page }).withTags(wcag22AA).analyze();
     await test.info().attach(`${state} (${colorScheme}) axe`, {
-      body: JSON.stringify({ violations, incomplete }), contentType: "application/json",
+      body: JSON.stringify({ violations, incomplete }),
+      contentType: "application/json",
     });
     expect
       .soft(
         violations.flatMap((violation) =>
-          violation.nodes.map((node) => `${violation.id}: ${node.target.join(" ")} — ${node.failureSummary}`),
+          violation.nodes.map(
+            (node) => `${violation.id}: ${node.target.join(" ")} — ${node.failureSummary}`,
+          ),
         ),
         `${state} (${colorScheme})`,
       )
@@ -78,10 +83,7 @@ const cors = {
   "access-control-allow-methods": "PUT, OPTIONS",
   "access-control-allow-headers": "*",
 };
-const pixel = Buffer.from(
-  "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
-  "base64",
-);
+const pixel = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
 
 /** Answers Mux's hosts. Each uploaded chunk gets the status from `chunk`. */
 async function routeMux(page: Page, chunk: () => Promise<number> = async () => 200) {
@@ -187,7 +189,10 @@ test("the Project screen", async ({ page }, testInfo) => {
   await expect(page.getByText(/No Videos yet/)).toBeVisible();
   await expectAccessible(page, "empty Project");
 
-  await page.getByRole("button", { name: /^Rename/ }).first().click();
+  await page
+    .getByRole("button", { name: /^Rename/ })
+    .first()
+    .click();
   await expectAccessible(page, "renaming a Project");
   await page.reload();
 
@@ -244,12 +249,14 @@ test("a Video through upload, processing, and ready", async ({ page }, testInfo)
   await expect(page.getByRole("region", { name: "Video player" })).toBeVisible();
   await expectAccessible(page, "ready review");
   await page.goBack();
-  await page.getByRole("button", { name: "Delete Main cut", exact: true }).click();
+  await page.getByRole("button", { name: "More actions for Main cut" }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
   await expectAccessible(page, "confirm Video deletion");
   await page.getByRole("button", { name: "Keep Video" }).click();
   const failDelete = callTo("deleteVideo");
   await page.route(failDelete, (route) => route.abort());
-  await page.getByRole("button", { name: "Delete Main cut", exact: true }).click();
+  await page.getByRole("button", { name: "More actions for Main cut" }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
   await page.getByRole("button", { name: "Delete Main cut permanently" }).click();
   await expect(page.getByRole("alert")).toContainText("Could not delete");
   await expectAccessible(page, "failed Video deletion");
@@ -261,10 +268,11 @@ test("a Video through upload, processing, and ready", async ({ page }, testInfo)
   await expect(page.getByText("Main cut")).toBeVisible();
   await expect(page.getByRole("button", { name: "Upload" })).toHaveCount(0);
   await expectAccessible(page, "Project as a Viewer");
-  await expect(page.getByRole("button", { name: "Delete Main cut", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "More actions for Main cut" })).toHaveCount(0);
   await signInAs(page, owner);
   await page.reload();
-  await page.getByRole("button", { name: "Delete Main cut", exact: true }).click();
+  await page.getByRole("button", { name: "More actions for Main cut" }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
   await page.getByRole("button", { name: "Delete Main cut permanently" }).click();
   await expect(page.getByText(/No Videos yet/)).toBeVisible();
   await expectAccessible(page, "Video deleted");
@@ -315,12 +323,14 @@ test("the Members screen", async ({ page }, testInfo) => {
   await expectAccessible(page, "Members as a Viewer");
 });
 
-test("deleting a Project: confirmation, cancellation, failure and disappearance", async ({ page }, testInfo) => {
+test("deleting a Project: confirmation, cancellation, failure and disappearance", async ({
+  page,
+}, testInfo) => {
   await signInAs(page, owner);
   const name = await openNewProject(page, testInfo);
   const trigger = page.getByRole("button", { name: `Delete ${name}`, exact: true });
   await trigger.click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Delete Project?" })).toBeVisible();
   await expectAccessible(page, "confirm Project deletion");
   await page.getByRole("button", { name: "Keep Project" }).click();
   await expect(trigger).toBeFocused();
@@ -333,7 +343,9 @@ test("deleting a Project: confirmation, cancellation, failure and disappearance"
   await expectAccessible(page, "failed Project deletion");
   await page.unrouteAll();
   await page.getByRole("button", { name: `Delete ${name} permanently` }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Projects", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Projects", exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("link", { name, exact: true })).toHaveCount(0);
   await expectAccessible(page, "Project deleted");
 });
@@ -347,9 +359,12 @@ test("completing and reopening a Project", async ({ page }, testInfo) => {
   await page.goto(`/projects/${id}`);
   const heading = page.getByRole("heading", { level: 1, name: "Playback project" });
   await page.getByRole("button", { name: "Complete Playback project" }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Complete Project?" })).toBeVisible();
   await expectAccessible(page, "confirm Complete");
-  await page.getByRole("dialog").getByRole("button", { name: "Complete Playback project" }).click();
+  await page
+    .getByRole("dialog", { name: "Complete Project?" })
+    .getByRole("button", { name: "Complete Playback project" })
+    .click();
   const countdown = page.getByText(/permanently deleted in 14 days/);
   await expect(countdown).toBeVisible();
   await expect(heading).toBeFocused();
@@ -384,15 +399,16 @@ test("the Invites and accept-Invite screens", async ({ page, browser }, testInfo
   await expectAccessible(page, "pending Invites");
 
   const member = await openAs(browser, owner, url);
-  await expect(
-    member.getByRole("heading", { name: "You are already on this Team" }),
-  ).toBeVisible();
+  await expect(member.getByRole("heading", { name: "You are already on this Team" })).toBeVisible();
   await expectAccessible(member, "invite, already a Member");
   await member.context().close();
 
   const joining = await openAs(
     browser,
-    { clerkUserId: `user_axe_join_${testInfo.project.name}_${Date.now()}`, email: "join@example.com" },
+    {
+      clerkUserId: `user_axe_join_${testInfo.project.name}_${Date.now()}`,
+      email: "join@example.com",
+    },
     url,
   );
   await expect(joining.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
@@ -403,7 +419,10 @@ test("the Invites and accept-Invite screens", async ({ page, browser }, testInfo
 
   const late = await openAs(
     browser,
-    { clerkUserId: `user_axe_late_${testInfo.project.name}_${Date.now()}`, email: "late@example.com" },
+    {
+      clerkUserId: `user_axe_late_${testInfo.project.name}_${Date.now()}`,
+      email: "late@example.com",
+    },
     url,
   );
   await expect(
@@ -414,11 +433,18 @@ test("the Invites and accept-Invite screens", async ({ page, browser }, testInfo
 
   const second = await createInviteLink(page);
   await page.reload();
-  await page.getByRole("button", { name: /^Revoke/ }).first().click();
+  await page
+    .getByRole("button", { name: /^Revoke/ })
+    .first()
+    .click();
+  await page.getByRole("button", { name: / now$/ }).click();
   await expect(page.getByRole("heading", { name: "Pending Invites" })).toBeFocused();
   const revoked = await openAs(
     browser,
-    { clerkUserId: `user_axe_revoked_${testInfo.project.name}_${Date.now()}`, email: "revoked@example.com" },
+    {
+      clerkUserId: `user_axe_revoked_${testInfo.project.name}_${Date.now()}`,
+      email: "revoked@example.com",
+    },
     second,
   );
   await expect(revoked.getByRole("heading", { name: "This Invite was cancelled" })).toBeVisible();
@@ -427,7 +453,10 @@ test("the Invites and accept-Invite screens", async ({ page, browser }, testInfo
 });
 
 test("Share Links sheet and Guest pages", async ({ page, browser }, testInfo) => {
-  const person = { clerkUserId: `user_share_${testInfo.project.name}_${Date.now()}`, email: "share@example.com" };
+  const person = {
+    clerkUserId: `user_share_${testInfo.project.name}_${Date.now()}`,
+    email: "share@example.com",
+  };
   seedMember(person.clerkUserId, "editor");
   const videoId = seedReview(person.clerkUserId);
   await signInAs(page, person);
@@ -452,7 +481,7 @@ test("Share Links sheet and Guest pages", async ({ page, browser }, testInfo) =>
   await guest.getByRole("button", { name: "Continue" }).click();
   await expect(guest.getByRole("heading", { name: "Playback cut" })).toBeVisible();
   await expect(guest.getByText(/Resolve Comment/)).toHaveCount(0);
-  await guest.getByLabel("Comment text").fill("Too dark here");
+  await guest.getByLabel(/^Add a Comment/).fill("Too dark here");
   await guest.getByRole("button", { name: "Send Comment" }).click();
   await expect(guest.getByText("Dana · Guest")).toBeVisible();
   await expectAccessible(guest, "Guest review");

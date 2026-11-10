@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { DeleteWork } from "@/components/delete-work";
-import { Pencil, RotateCcw } from "lucide-react";
-import { useId, useState } from "react";
+import { Ellipsis, RotateCcw } from "lucide-react";
+import { useId, useRef, useState } from "react";
 import {
   ProjectNameSheet,
   selectClass,
@@ -11,14 +11,18 @@ import {
 } from "@/components/project-parts";
 import { UploadSheet } from "@/components/upload-parts";
 import { Button } from "@/components/ui/button";
-import {
-  useRenameVideo,
-  useSetVideoStatus,
-  type VideoSummary,
-} from "@/lib/projects";
+import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
+import { useRenameVideo, useSetVideoStatus, type VideoSummary } from "@/lib/projects";
 import { videoStatuses, type VideoStatus } from "@/server/db/schema";
 
-function VideoControls({ video }: { video: VideoSummary }) {
+function VideoControls({ video, deletable }: { video: VideoSummary; deletable: boolean }) {
+  const [sheet, setSheet] = useState<"rename" | "delete" | null>(null);
+  const more = useRef<HTMLButtonElement>(null);
+  function closeSheet() {
+    setSheet(null);
+    // The sheet unmounts with focus inside it.
+    requestAnimationFrame(() => more.current?.focus());
+  }
   const renameVideo = useRenameVideo(video.id);
   const setVideoStatus = useSetVideoStatus(video.id);
   const [status, setStatus] = useState("");
@@ -30,10 +34,8 @@ function VideoControls({ video }: { video: VideoSummary }) {
     setVideoStatus.mutate(
       { videoId: video.id, status: next },
       {
-        onSuccess: () =>
-          setStatus(`${video.title} is now ${statusLabels[next]}`),
-        onError: () =>
-          setFailure(`Could not change the Status of ${video.title}. Try again.`),
+        onSuccess: () => setStatus(`${video.title} is now ${statusLabels[next]}`),
+        onError: () => setFailure(`Could not change the Status of ${video.title}. Try again.`),
       },
     );
   }
@@ -51,7 +53,7 @@ function VideoControls({ video }: { video: VideoSummary }) {
   }
 
   return (
-    <div className="mt-2 flex flex-col gap-2">
+    <div className="mt-2 ml-31 flex flex-col gap-2 sm:ml-0">
       <div className="flex items-center gap-2">
         <label htmlFor={selectId} className="sr-only">
           Status of {video.title}
@@ -68,6 +70,40 @@ function VideoControls({ video }: { video: VideoSummary }) {
             </option>
           ))}
         </select>
+        {video.latestRevisionState === "errored" && (
+          <UploadSheet
+            destination={{ kind: "existing", videoId: video.id, title: video.title }}
+            trigger={
+              <Button variant="secondary" aria-label={`Retry ${video.title} with a new upload`}>
+                <RotateCcw aria-hidden /> Retry
+              </Button>
+            }
+          />
+        )}
+        <Menu>
+          <MenuTrigger
+            render={
+              <Button
+                ref={more}
+                variant="ghost"
+                size="icon"
+                aria-label={`More actions for ${video.title}`}
+              />
+            }
+          >
+            <Ellipsis aria-hidden />
+          </MenuTrigger>
+          <MenuPopup>
+            <MenuItem onClick={() => setSheet("rename")}>Rename</MenuItem>
+            {deletable && (
+              <MenuItem variant="destructive" onClick={() => setSheet("delete")}>
+                Delete
+              </MenuItem>
+            )}
+          </MenuPopup>
+        </Menu>
+      </div>
+      {sheet === "rename" && (
         <ProjectNameSheet
           title="Rename Video"
           submitLabel="Save title"
@@ -75,23 +111,13 @@ function VideoControls({ video }: { video: VideoSummary }) {
           emptyMessage="Enter a title for the Video."
           initialName={video.title}
           onSubmit={rename}
-          trigger={
-            <Button variant="outline" size="icon" aria-label={`Rename ${video.title}`}>
-              <Pencil aria-hidden />
-            </Button>
-          }
+          startOpen
+          onClosed={closeSheet}
         />
-        {video.latestRevisionState === "errored" && (
-          <UploadSheet
-            destination={{ kind: "existing", videoId: video.id, title: video.title }}
-            trigger={
-              <Button variant="outline" aria-label={`Retry ${video.title} with a new upload`}>
-                <RotateCcw aria-hidden /> Retry
-              </Button>
-            }
-          />
-        )}
-      </div>
+      )}
+      {sheet === "delete" && (
+        <DeleteWork kind="Video" id={video.id} name={video.title} startOpen onClosed={closeSheet} />
+      )}
       <WriteFeedback status={status} failure={failure} />
     </div>
   );
@@ -110,15 +136,15 @@ export function VideoTile({
   const card = <VideoCard video={video} showStatus={!manageable} />;
   return (
     <>
-      <Link
-        to="/videos/$videoId"
-        params={{ videoId: video.id }}
-        className="block"
-      >
+      <Link to="/videos/$videoId" params={{ videoId: video.id }} className="flex gap-3 sm:block">
         {card}
       </Link>
-      {manageable && <VideoControls video={video} />}
-      {deletable && <div className="mt-2"><DeleteWork kind="Video" id={video.id} name={video.title} /></div>}
+      {manageable && <VideoControls video={video} deletable={deletable} />}
+      {!manageable && deletable && (
+        <div className="mt-2">
+          <DeleteWork kind="Video" id={video.id} name={video.title} />
+        </div>
+      )}
     </>
   );
 }

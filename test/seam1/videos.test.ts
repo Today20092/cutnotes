@@ -12,8 +12,7 @@ import {
 } from "./support/seed";
 import { resultOf, serverFunctionIds } from "./support/worker";
 
-const { listProjects, getProject, renameVideo, setVideoStatus } =
-  serverFunctionIds;
+const { listProjects, getProject, renameVideo, setVideoStatus } = serverFunctionIds;
 
 type VideoRow = {
   id: string;
@@ -26,9 +25,11 @@ type VideoRow = {
 type Page = { videos: VideoRow[] };
 
 const video = async () =>
-  (await env.DB.prepare(
-    "SELECT title, status, updated_at FROM videos WHERE id = 'v1'",
-  ).first<{ title: string; status: string; updated_at: number }>()) as {
+  (await env.DB.prepare("SELECT title, status, updated_at FROM videos WHERE id = 'v1'").first<{
+    title: string;
+    status: string;
+    updated_at: number;
+  }>()) as {
     title: string;
     status: string;
     updated_at: number;
@@ -63,9 +64,7 @@ describe("grid thumbnails", () => {
 
     const row = await firstVideo(owner);
 
-    expect(row.posterUrl).toBe(
-      "https://image.mux.com/newest/thumbnail.webp?token=fake.t.newest",
-    );
+    expect(row.posterUrl).toBe("https://image.mux.com/newest/thumbnail.webp?token=fake.t.newest");
     expect(sign).toHaveBeenCalledOnce();
     expect(sign.mock.calls[0]?.[0]).toMatchObject({
       playbackId: "newest",
@@ -85,9 +84,7 @@ describe("grid thumbnails", () => {
     const owner = await seedVideoInProject();
     await seedRevision({ id: "r1", videoId: "v1", state: "ready", playbackId: "pb" });
 
-    const page = await resultOf<Page>(
-      await call(getProject, owner, { projectId: "p1" }),
-    );
+    const page = await resultOf<Page>(await call(getProject, owner, { projectId: "p1" }));
 
     expect(page.videos[0]?.posterUrl).toContain("token=fake.t.pb");
   });
@@ -126,8 +123,8 @@ describe("grid thumbnails", () => {
   it("neither stores nor logs a signed URL", async () => {
     const owner = await seedVideoInProject();
     await seedRevision({ id: "r1", videoId: "v1", state: "ready", playbackId: "pb" });
-    const logs = (["log", "info", "warn", "error", "debug"] as const).map(
-      (level) => vi.spyOn(console, level),
+    const logs = (["log", "info", "warn", "error", "debug"] as const).map((level) =>
+      vi.spyOn(console, level),
     );
 
     await firstVideo(owner);
@@ -181,14 +178,12 @@ describe("permission matrix: rename a Video, change Status", () => {
     const owner = await seedVideoInProject();
     const caller = role === "owner" ? owner : await seedMember(role);
 
-    expect(
-      (await call(renameVideo, caller, { videoId: "v1", title: "New title" }))
-        .status,
-    ).toBe(200);
-    expect(
-      (await call(setVideoStatus, caller, { videoId: "v1", status: "done" }))
-        .status,
-    ).toBe(200);
+    expect((await call(renameVideo, caller, { videoId: "v1", title: "New title" })).status).toBe(
+      200,
+    );
+    expect((await call(setVideoStatus, caller, { videoId: "v1", status: "done" })).status).toBe(
+      200,
+    );
 
     expect(await video()).toMatchObject({ title: "New title", status: "done" });
   });

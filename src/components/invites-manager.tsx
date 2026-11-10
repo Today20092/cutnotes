@@ -3,13 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Radio, RadioGroup } from "@/components/ui/radio-group";
+import { ConfirmButton, useStatusToast } from "@/components/project-parts";
 import type { Role } from "@/server/db/schema";
-import {
-  createInvite,
-  listInvites,
-  revokeInvite,
-  type PendingInvite,
-} from "@/server/invites";
+import { createInvite, listInvites, revokeInvite, type PendingInvite } from "@/server/invites";
 
 const roleChoices: { role: Role; label: string; description: string }[] = [
   { role: "viewer", label: "Viewer", description: "Watches and leaves Comments." },
@@ -17,8 +14,7 @@ const roleChoices: { role: Role; label: string; description: string }[] = [
   { role: "owner", label: "Owner", description: "Also manages the Team." },
 ];
 
-const roleLabel = (role: Role) =>
-  roleChoices.find((choice) => choice.role === role)?.label ?? role;
+const roleLabel = (role: Role) => roleChoices.find((choice) => choice.role === role)?.label ?? role;
 
 const expiryDate = (expiresAt: number) =>
   new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(expiresAt);
@@ -31,6 +27,7 @@ export function InvitesManager() {
   const [link, setLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [status, setStatus] = useState("");
+  useStatusToast(status);
   const linkHeading = useRef<HTMLHeadingElement>(null);
   const pendingHeading = useRef<HTMLHeadingElement>(null);
 
@@ -83,7 +80,7 @@ export function InvitesManager() {
   const invites = pending.data?.invites;
 
   return (
-    <div className="mx-auto max-w-xl space-y-8">
+    <div className="w-full max-w-xl space-y-8">
       <p role="status" className="sr-only">
         {status}
       </p>
@@ -95,39 +92,36 @@ export function InvitesManager() {
           create.mutate();
         }}
       >
-        <fieldset className="space-y-2">
+        <fieldset>
           <legend className="mb-2 font-medium">Invite someone as</legend>
-          {roleChoices.map((choice) => (
-            <label
-              key={choice.role}
-              className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-input p-3 has-checked:border-2 has-checked:border-foreground"
-            >
-              <input
-                type="radio"
-                name="role"
-                className="size-4 accent-foreground"
-                checked={role === choice.role}
-                onChange={() => setRole(choice.role)}
-              />
-              <span>
-                <span className="block font-medium">{choice.label}</span>
-                <span className="block text-sm text-muted-foreground">
-                  {choice.description}
+          <RadioGroup value={role} onValueChange={(next) => setRole(next as Role)}>
+            {roleChoices.map((choice) => (
+              <label
+                key={choice.role}
+                htmlFor={`invite-role-${choice.role}`}
+                className="flex min-h-11 cursor-pointer items-center gap-3 py-2"
+              >
+                <Radio
+                  id={`invite-role-${choice.role}`}
+                  value={choice.role}
+                  aria-labelledby={`role-${choice.role}`}
+                />
+                <span id={`role-${choice.role}`}>
+                  <span className="block font-medium">{choice.label}</span>
+                  <span className="block text-sm text-muted-foreground">{choice.description}</span>
                 </span>
-              </span>
-            </label>
-          ))}
+              </label>
+            ))}
+          </RadioGroup>
         </fieldset>
         <Button type="submit" disabled={create.isPending}>
           Create Invite
         </Button>
-        {create.isError && (
-          <p role="alert">Could not create the Invite. Please try again.</p>
-        )}
+        {create.isError && <p role="alert">Could not create the Invite. Please try again.</p>}
       </form>
 
       {link && (
-        <section className="space-y-3 rounded-lg border border-input p-4">
+        <section className="space-y-3">
           <h2 ref={linkHeading} tabIndex={-1} className="font-semibold outline-none">
             Invite link
           </h2>
@@ -150,7 +144,7 @@ export function InvitesManager() {
               {copied ? "Copied" : "Copy link"}
             </Button>
             <a
-              className={buttonVariants({ variant: "outline" })}
+              className={buttonVariants({ variant: "secondary" })}
               href={`https://wa.me/?text=${encodeURIComponent(link)}`}
               target="_blank"
               rel="noreferrer"
@@ -162,25 +156,21 @@ export function InvitesManager() {
       )}
 
       <section className="space-y-3">
-        <h2 ref={pendingHeading} tabIndex={-1} className="font-semibold outline-none">
+        <h2 ref={pendingHeading} tabIndex={-1} className="text-lg font-semibold outline-none">
           Pending Invites
         </h2>
         {pending.isError && (
           <p role="alert">Could not load pending Invites. Please reload the page.</p>
         )}
-        {revoke.isError && (
-          <p role="alert">Could not revoke the Invite. Please try again.</p>
-        )}
+        {revoke.isError && <p role="alert">Could not revoke the Invite. Please try again.</p>}
         {pending.isPending && <Skeleton className="h-16" />}
-        {invites?.length === 0 && (
-          <p className="text-muted-foreground">No pending Invites.</p>
-        )}
+        {invites?.length === 0 && <p className="text-muted-foreground">No pending Invites.</p>}
         {invites && invites.length > 0 && (
-          <ul className="divide-y rounded-lg border border-input">
+          <ul className="divide-y">
             {invites.map((invite) => (
               <li
                 key={invite.id}
-                className="flex flex-wrap items-center justify-between gap-2 p-3"
+                className="flex flex-wrap items-center justify-between gap-2 py-3"
               >
                 <span>
                   <span className="block font-medium">{roleLabel(invite.role)}</span>
@@ -188,14 +178,11 @@ export function InvitesManager() {
                     Expires {expiryDate(invite.expiresAt)}
                   </span>
                 </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  aria-label={`Revoke ${roleLabel(invite.role)} Invite, expires ${expiryDate(invite.expiresAt)}`}
-                  onClick={() => revoke.mutate(invite.id)}
-                >
-                  Revoke
-                </Button>
+                <ConfirmButton
+                  label={`Revoke ${roleLabel(invite.role)} Invite, expires ${expiryDate(invite.expiresAt)}`}
+                  text="Revoke"
+                  onConfirm={() => revoke.mutate(invite.id)}
+                />
               </li>
             ))}
           </ul>

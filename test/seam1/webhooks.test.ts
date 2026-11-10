@@ -29,14 +29,14 @@ type Row = {
 };
 
 const revision = async (id = "r1") =>
-  (await env.DB.prepare("SELECT * FROM revisions WHERE id = ?")
-    .bind(id)
-    .first<Row>()) as Row;
+  (await env.DB.prepare("SELECT * FROM revisions WHERE id = ?").bind(id).first<Row>()) as Row;
 
 const videoUpdatedAt = async () =>
-  (await env.DB.prepare("SELECT updated_at FROM videos WHERE id = 'v1'").first<{
-    updated_at: number;
-  }>())?.updated_at;
+  (
+    await env.DB.prepare("SELECT updated_at FROM videos WHERE id = 'v1'").first<{
+      updated_at: number;
+    }>()
+  )?.updated_at;
 
 async function seed(overrides: Partial<RevisionSeed> = {}) {
   await seedMember("owner");
@@ -68,10 +68,7 @@ const assetReady = assetEvent("ready", {
     { id: "public-never", policy: "public" },
     { id: "pb1", policy: "signed" },
   ],
-  tracks: [
-    { type: "audio" },
-    { type: "video", max_frame_rate: 23.976 },
-  ],
+  tracks: [{ type: "audio" }, { type: "video", max_frame_rate: 23.976 }],
 });
 const assetErrored = assetEvent("errored", {
   errors: { type: "invalid_input", messages: ["bad file"] },
@@ -83,10 +80,7 @@ describe("signature", () => {
   it("refuses a bad signature without changing anything", async () => {
     await seed();
 
-    const response = await postWebhook(
-      JSON.stringify(uploadAssetCreated),
-      "fake-wrong",
-    );
+    const response = await postWebhook(JSON.stringify(uploadAssetCreated), "fake-wrong");
 
     expect(response.status).toBe(401);
     expect((await revision()).state).toBe("uploading");
@@ -344,9 +338,7 @@ describe("finding the Revision", () => {
     await seed();
     await anotherRevision();
 
-    await deliver(
-      assetEvent("created", { id: "a2", upload_id: "u1", passthrough: "r2" }),
-    );
+    await deliver(assetEvent("created", { id: "a2", upload_id: "u1", passthrough: "r2" }));
 
     expect((await revision("r1")).state).toBe("processing");
     expect((await revision("r2")).state).toBe("uploading");
@@ -356,9 +348,7 @@ describe("finding the Revision", () => {
     await seed({ assetId: "a1" });
     await anotherRevision();
 
-    await deliver(
-      assetEvent("created", { upload_id: undefined, passthrough: "r2" }),
-    );
+    await deliver(assetEvent("created", { upload_id: undefined, passthrough: "r2" }));
 
     expect((await revision("r1")).state).toBe("processing");
     expect((await revision("r2")).state).toBe("uploading");

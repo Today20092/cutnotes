@@ -135,4 +135,3 @@ test("reports at most once until a new source state is created", () => {
   assert.equal(result.state.issueReported, true);
   assert.equal(createVideoPlaybackHealthState().issueReported, false);
 });
-

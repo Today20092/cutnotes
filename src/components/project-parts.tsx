@@ -49,7 +49,7 @@ export function PageBreadcrumb({
   current: string;
 }) {
   return (
-    <Breadcrumb className="flex min-h-11 items-center pr-12">
+    <Breadcrumb className="flex min-h-11 items-center pr-24">
       <BreadcrumbList>
         {trail.map(({ label, link }, index) => (
           <Fragment key={label}>

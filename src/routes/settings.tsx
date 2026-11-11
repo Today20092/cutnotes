@@ -1,6 +1,6 @@
 import { SettingsLayout } from "@/components/settings-layout";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronRight, LogOut, UserPlus, Users } from "lucide-react";
+import { ChevronRight, LogOut, MessageSquareWarning, UserPlus, Users } from "lucide-react";
 import { useAccountEmail, useSignOut } from "@/auth/client";
 import { appShellQuery, MemberScreen } from "@/components/member-screen";
 import { PageBreadcrumb, PageHeading } from "@/components/project-parts";
@@ -15,6 +15,12 @@ export const Route = createFileRoute("/settings")({
 const teamLinks = [
   { to: "/members", label: "Members", detail: "Change Roles or remove people", icon: Users },
   { to: "/invites", label: "Invites", detail: "Invite someone to the Team", icon: UserPlus },
+  {
+    to: "/feedback",
+    label: "Site feedback",
+    detail: "Problems and ideas people reported",
+    icon: MessageSquareWarning,
+  },
 ] as const;
 
 function SettingsPage() {

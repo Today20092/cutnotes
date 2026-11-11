@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { SignInForm, useSignOut } from "@/auth/client";
+import { SiteFeedback } from "@/components/site-feedback";
 import { Button } from "@/components/ui/button";
 import { TeamLogo, type Team } from "@/lib/team";
 
@@ -11,6 +12,7 @@ function GateLayout({ team, children }: { team: Team; children: ReactNode }) {
         <span>{team.name}</span>
       </div>
       {children}
+      <SiteFeedback />
     </main>
   );
 }

@@ -1,0 +1,52 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cutnotes-staging",
+  "account_id": "fb14df399f96dc019b8a82cb48788654",
+  "main": "src/server.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": true,
+  "preview_urls": false,
+  "triggers": {
+    "crons": [
+      "0 * * * *"
+    ]
+  },
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cutnotes-staging",
+      "database_id": "756faebd-10e9-4e02-afa9-da3c337c1baa",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "SHARE_LINK_COMMENT_LIMIT",
+      "namespace_id": "2101",
+      "simple": {
+        "limit": 30,
+        "period": 60
+      }
+    },
+    {
+      "name": "SHARE_ADDRESS_LIMIT",
+      "namespace_id": "2102",
+      "simple": {
+        "limit": 300,
+        "period": 60
+      }
+    }
+  ],
+  "vars": {
+    "TEAM_NAME": "Cutnotes Staging",
+    "TEAM_LOGO_URL": "",
+    "APP_ORIGIN": "https://cutnotes-staging.haithum-alqahaf.workers.dev",
+    "FIRST_OWNER_EMAIL": "ayoub.abedrabbo@gmail.com"
+  }
+}

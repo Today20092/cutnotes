@@ -313,12 +313,17 @@ test("the Members screen", async ({ page }, testInfo) => {
   await expect(page.getByRole("button", { name: `Remove ${name}` })).toBeVisible();
   await expectAccessible(page, "Members");
 
-  await page.getByRole("button", { name: `Remove ${name}` }).click();
-  await expect(page.getByRole("button", { name: `Remove ${name} now` })).toBeFocused();
-  await expectAccessible(page, "confirming a removal");
-  await page.getByRole("button", { name: "Keep" }).click();
+  await page.getByRole("combobox", { name: `Role for ${name}` }).click();
+  await expectAccessible(page, "choosing a Member role");
+  await page.keyboard.press("Escape");
 
-  await page.getByRole("combobox", { name: `Role for ${owner.email}` }).selectOption("viewer");
+  await page.getByRole("button", { name: `Remove ${name}` }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expectAccessible(page, "confirming a removal");
+  await page.getByRole("button", { name: "Keep Member" }).click();
+
+  await page.getByRole("combobox", { name: `Role for ${owner.email}` }).click();
+  await page.getByRole("option", { name: /Viewer/ }).click();
   await expect(page.getByRole("alert")).toContainText("at least one Owner");
   await expectAccessible(page, "last Owner refused");
 

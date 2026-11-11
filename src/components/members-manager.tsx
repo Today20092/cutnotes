@@ -1,22 +1,38 @@
-import { NativeSelect } from "@/components/ui/native-select";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useId, useRef, useState } from "react";
+import { Trash2 } from "lucide-react";
+import { Fragment, useRef, useState, type RefObject } from "react";
+import { roleChoices } from "@/components/invites-manager";
 import { PageHeading, WriteFeedback } from "@/components/project-parts";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
+import {
+  Select,
+  SelectItem,
+  SelectPopup,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Role } from "@/server/db/schema";
 import { changeMemberRole, listMembers, removeMember } from "@/server/members";
 
 type TeamMember = Awaited<ReturnType<typeof listMembers>>["members"][number];
 type MembersData = Awaited<ReturnType<typeof listMembers>>;
 
-const roleLabels: Record<Role, string> = {
-  viewer: "Viewer",
-  editor: "Editor",
-  owner: "Owner",
-};
-const roleOptions: Role[] = ["viewer", "editor", "owner"];
+const roleLabels = Object.fromEntries(
+  roleChoices.map((choice) => [choice.role, choice.label]),
+) as Record<Role, string>;
 
 const queryKey = ["members"];
 
@@ -94,7 +110,7 @@ export function MembersManager() {
   });
 
   return (
-    <div className="flex w-full flex-col gap-6">
+    <div className="w-full max-w-xl space-y-6">
       <PageHeading title="Members">
         <Link to="/invites" className={buttonVariants({ variant: "secondary" })}>
           Invite someone
@@ -102,7 +118,7 @@ export function MembersManager() {
       </PageHeading>
       <WriteFeedback status={status} failure={failure} />
 
-      <section className="flex flex-col gap-3">
+      <section className="space-y-3">
         <h2 ref={listHeading} tabIndex={-1} className="text-lg font-semibold outline-none">
           People on the Team
         </h2>
@@ -120,6 +136,7 @@ export function MembersManager() {
                 isYou={member.id === youId}
                 onChangeRole={(role) => changeRole.mutate({ member, role })}
                 onRemove={() => remove.mutate(member)}
+                afterRemove={listHeading}
               />
             ))}
           </ul>
@@ -134,82 +151,105 @@ function MemberRow({
   isYou,
   onChangeRole,
   onRemove,
+  afterRemove,
 }: {
   member: TeamMember;
   isYou: boolean;
   onChangeRole: (role: Role) => void;
   onRemove: () => void;
+  afterRemove: RefObject<HTMLElement | null>;
 }) {
-  const roleId = useId();
   const [confirming, setConfirming] = useState(false);
-  const removeButton = useRef<HTMLButtonElement>(null);
-  const confirmButton = useRef<HTMLButtonElement>(null);
-  const wasConfirming = useRef(false);
-
-  // The control that had focus is replaced, so focus moves with the swap.
-  useEffect(() => {
-    if (confirming) confirmButton.current?.focus();
-    else if (wasConfirming.current) removeButton.current?.focus();
-    wasConfirming.current = confirming;
-  }, [confirming]);
+  const removed = useRef(false);
+  const mobile = useIsMobile();
+  const name = member.displayName;
 
   return (
-    <li className="flex flex-col gap-3 py-3">
-      <div className="font-medium wrap-anywhere">
-        {member.displayName}
-        {isYou && <span className="font-normal text-muted-foreground"> (you)</span>}
-      </div>
-      {confirming ? (
-        <div className="flex flex-col gap-2">
-          <p className="text-sm">
-            {isYou
-              ? "Remove yourself from the Team? You will lose access straight away."
-              : "Remove them from the Team? They will lose access straight away. Their Comments stay."}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              ref={confirmButton}
-              type="button"
-              variant="destructive"
-              aria-label={`Remove ${member.displayName} now`}
-              onClick={onRemove}
-            >
-              Remove
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>
-              Keep
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1">
-            <label htmlFor={roleId} className="text-sm font-medium">
-              Role<span className="sr-only"> for {member.displayName}</span>
-            </label>
-            <NativeSelect
-              id={roleId}
-              value={member.role}
-              onChange={(event) => onChangeRole(event.target.value as Role)}
-            >
-              {roleOptions.map((role) => (
-                <option key={role} value={role}>
-                  {roleLabels[role]}
-                </option>
-              ))}
-            </NativeSelect>
-          </div>
-          <Button
-            ref={removeButton}
-            type="button"
-            variant="ghost"
-            aria-label={`Remove ${member.displayName}`}
-            onClick={() => setConfirming(true)}
+    <Item render={<li />} className="rounded-none px-0 py-3">
+      <ItemMedia>
+        <Avatar aria-hidden className="size-10 text-sm uppercase">
+          <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+        </Avatar>
+      </ItemMedia>
+      <ItemContent className="min-w-0">
+        <ItemTitle className="line-clamp-none block w-auto text-base wrap-break-word">
+          {/* Lets a long email wrap after the @ instead of mid-word. */}
+          {name.split("@").map((part, index) => (
+            <Fragment key={index}>
+              {index > 0 && (
+                <>
+                  @<wbr />
+                </>
+              )}
+              {part}
+            </Fragment>
+          ))}
+          {isYou && <span className="font-normal text-muted-foreground"> (you)</span>}
+        </ItemTitle>
+      </ItemContent>
+      {/* Phone: actions go on their own line, under the name. */}
+      <ItemActions className="w-full justify-between ps-12.5 sm:w-auto sm:ps-0">
+        <Select<Role>
+          value={member.role}
+          items={roleLabels}
+          onValueChange={(role) => role && role !== member.role && onChangeRole(role)}
+        >
+          <SelectTrigger aria-label={`Role for ${name}`} className="w-auto min-w-28">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectPopup align="end" alignItemWithTrigger={false}>
+            {roleChoices.map((choice) => (
+              <SelectItem key={choice.role} value={choice.role} label={choice.label}>
+                <span className="block">{choice.label}</span>
+                <span className="block text-xs text-muted-foreground in-data-highlighted:text-accent-foreground">
+                  {choice.description}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectPopup>
+        </Select>
+        <Sheet open={confirming} onOpenChange={setConfirming}>
+          <SheetTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-lg"
+                className="pointer-coarse:size-11"
+                aria-label={`Remove ${name}`}
+              />
+            }
           >
-            Remove
-          </Button>
-        </div>
-      )}
-    </li>
+            <Trash2 aria-hidden />
+          </SheetTrigger>
+          <SheetContent
+            side={mobile ? "bottom" : "right"}
+            // After a removal this row is gone, so focus goes to the list heading.
+            finalFocus={() => (removed.current ? afterRemove.current : true)}
+          >
+            <SheetHeader>
+              <SheetTitle>{isYou ? "Remove yourself?" : `Remove ${name}?`}</SheetTitle>
+            </SheetHeader>
+            <div className="flex flex-col gap-3 p-4 pt-0">
+              <p>
+                {isYou
+                  ? "You will lose access to the Team straight away."
+                  : "They will lose access to the Team straight away. Their Comments stay."}
+              </p>
+              <SheetClose render={<Button variant="outline" />}>Keep Member</SheetClose>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  removed.current = true;
+                  setConfirming(false);
+                  onRemove();
+                }}
+              >
+                Remove from Team
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </ItemActions>
+    </Item>
   );
 }

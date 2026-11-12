@@ -1,7 +1,10 @@
+import { shareMeta, type SharePreview } from "@/lib/share-preview";
+import { getSharePreview } from "@/server/sharing";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Review, type CommentActor, type Draft } from "@/components/comments";
+import { SiteFeedback } from "@/components/site-feedback";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,14 +13,9 @@ import { draftComment, sortComments } from "@/lib/review";
 import { createGuestComment, getGuestReview } from "@/server/sharing";
 
 export const Route = createFileRoute("/share/$token")({
-  head: () => ({
-    meta: [
-      { title: "Shared Video · Cutnotes" },
-      // The address is a credential.
-      { name: "referrer", content: "no-referrer" },
-      { name: "robots", content: "noindex" },
-    ],
-  }),
+  ssr: "data-only",
+  loader: ({ params }) => getSharePreview({ data: { token: params.token } }),
+  head: ({ loaderData }) => ({ meta: shareMeta(loaderData, "Shared video unavailable") }),
   component: GuestPage,
 });
 
@@ -43,11 +41,13 @@ const guestQuery = (token: string) =>
 
 function GuestPage() {
   const { token } = Route.useParams();
+  const preview = Route.useLoaderData();
   const [name, setName] = useState(storedName);
   const entered = useRef(false);
   if (!name)
     return (
       <Welcome
+        preview={preview}
         onDone={(value) => {
           entered.current = true;
           setName(value);
@@ -57,9 +57,23 @@ function GuestPage() {
   return <GuestReviewScreen token={token} name={name} focusHeading={entered.current} />;
 }
 
-function Welcome({ onDone }: { onDone: (name: string) => void }) {
+function Welcome({
+  onDone,
+  preview,
+}: {
+  onDone: (name: string) => void;
+  preview: SharePreview | null;
+}) {
   const [value, setValue] = useState("");
   const [error, setError] = useState(false);
+  if (!preview)
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-2 p-6 text-center">
+        <h1 className="text-xl font-semibold">This link is unavailable</h1>
+        <p>Ask the person who sent it for a new one.</p>
+        <SiteFeedback />
+      </main>
+    );
   function submit() {
     const name = value.trim();
     if (!name) {
@@ -74,7 +88,7 @@ function Welcome({ onDone }: { onDone: (name: string) => void }) {
     onDone(name);
   }
   return (
-    <main className="flex min-h-dvh items-center justify-center p-6">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6">
       <form
         noValidate
         className="flex w-full max-w-sm flex-col gap-3"
@@ -83,9 +97,11 @@ function Welcome({ onDone }: { onDone: (name: string) => void }) {
           submit();
         }}
       >
-        <h1 className="text-xl font-semibold">Welcome</h1>
+        <h1 className="text-xl font-semibold">{preview?.title ?? "Welcome"}</h1>
         <p className="text-muted-foreground">
-          No account needed. Your name appears on the Comments you leave.
+          {preview?.description ??
+            "This link is unavailable. Ask the person who sent it for a new one."}
+          {preview && " Your name appears on the comments you leave."}
         </p>
         <label htmlFor="guest-name" className="text-sm font-medium">
           Your name
@@ -109,6 +125,7 @@ function Welcome({ onDone }: { onDone: (name: string) => void }) {
         )}
         <Button type="submit">Continue</Button>
       </form>
+      <SiteFeedback />
     </main>
   );
 }
@@ -141,6 +158,7 @@ function GuestReviewScreen({
             ? "Wait a minute, then reload this page."
             : "Ask the person who sent it for a new one."}
         </p>
+        <SiteFeedback error={review.error} />
       </main>
     );
   return (
@@ -193,6 +211,9 @@ function Loaded({
         renewPlayback={() => getGuestReview({ data: { token } })}
         actor={actor}
       />
+      <footer className="mt-4 border-t pt-2">
+        <SiteFeedback />
+      </footer>
     </main>
   );
 }

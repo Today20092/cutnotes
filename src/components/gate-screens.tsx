@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { SignInForm, useSignOut } from "@/auth/client";
+import { SiteFeedback } from "@/components/site-feedback";
 import { Button } from "@/components/ui/button";
 import { TeamLogo, type Team } from "@/lib/team";
 
@@ -11,6 +12,7 @@ function GateLayout({ team, children }: { team: Team; children: ReactNode }) {
         <span>{team.name}</span>
       </div>
       {children}
+      <SiteFeedback />
     </main>
   );
 }
@@ -24,12 +26,22 @@ export function SignInScreen({ team }: { team: Team }) {
   );
 }
 
-export function InviteSignInScreen({ team, returnTo }: { team: Team; returnTo: string }) {
+export function InviteSignInScreen({
+  team,
+  returnTo,
+  description,
+}: {
+  team: Team;
+  returnTo: string;
+  description?: string;
+}) {
   return (
     <GateLayout team={team}>
       <div className="max-w-sm space-y-2">
         <h1 className="text-xl font-semibold">You have been invited</h1>
-        <p className="text-muted-foreground">Sign in to join {team.name}. No password is needed.</p>
+        <p className="text-muted-foreground">
+          {description ?? `Sign in to join ${team.name}. No password is needed.`}
+        </p>
       </div>
       <SignInForm returnTo={returnTo} />
     </GateLayout>

@@ -1,6 +1,7 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { Settings } from "lucide-react";
 import type { ReactNode } from "react";
+import { SiteFeedback } from "@/components/site-feedback";
 import { buttonVariants } from "@/components/ui/button";
 import { UploadAnnouncer, UploadList } from "@/components/upload-parts";
 import { TeamLogo, type Team } from "@/lib/team";
@@ -8,7 +9,7 @@ import type { Role } from "@/server/db/schema";
 
 export type ShellMember = { displayName: string; role: Role };
 
-/** One row that scrolls away: the Team on the home page, the view's breadcrumb elsewhere, Settings always top right. */
+/** One row that scrolls away: the Team on the home page, the view's breadcrumb elsewhere, Settings and Site feedback always top right. */
 export function AppShell({ team, children }: { team: Team; children: ReactNode }) {
   const isHome = useLocation({ select: (location) => location.pathname === "/" });
   return (
@@ -19,7 +20,8 @@ export function AppShell({ team, children }: { team: Team; children: ReactNode }
       >
         Skip to content
       </a>
-      <nav aria-label="Main" className="absolute top-4 right-2 z-20">
+      <nav aria-label="Main" className="absolute top-4 right-2 z-20 flex gap-1">
+        <SiteFeedback look="icon" />
         <Link
           to="/settings"
           aria-label="Settings"
@@ -34,7 +36,7 @@ export function AppShell({ team, children }: { team: Team; children: ReactNode }
       </nav>
       <main id="main-content" tabIndex={-1} className="p-4 outline-none sm:p-6 lg:p-8">
         {isHome && (
-          <div className="mb-2 flex min-h-11 items-center gap-2 pr-12 font-semibold">
+          <div className="mb-2 flex min-h-11 items-center gap-2 pr-24 font-semibold">
             <TeamLogo team={team} />
             <span className="wrap-anywhere">{team.name}</span>
           </div>

@@ -5,12 +5,16 @@ import type { ReactNode } from "react";
 const token = () => localStorage.getItem("seam2-session-token");
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  window.Clerk = { session: { getToken: async () => token() } };
+  if (!localStorage.getItem("seam2-clerk-unavailable"))
+    window.Clerk = { session: { getToken: async () => token() } };
   return <>{children}</>;
 }
 
 export function useAuthStatus() {
-  return { isLoaded: true, isSignedIn: token() !== null };
+  return {
+    isLoaded: !localStorage.getItem("seam2-clerk-unavailable"),
+    isSignedIn: token() !== null,
+  };
 }
 
 export function useAccountEmail() {

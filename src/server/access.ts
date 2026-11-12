@@ -1,6 +1,7 @@
 import { auth } from "@clerk/tanstack-react-start/server";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
+import * as v from "valibot";
 import { and, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { getDb, type Db } from "@/server/db";
@@ -35,6 +36,22 @@ type BatchResults<Reads extends readonly unknown[]> = {
 
 export function refuse(status: 400 | 401 | 403 | 404 | 409 | 429 | 502, code: RefusalCode): never {
   throw Response.json({ code }, { status });
+}
+
+export function parse<Schema extends v.GenericSchema>(
+  schema: Schema,
+  data: unknown,
+): v.InferOutput<Schema> {
+  const result = v.safeParse(schema, data);
+  if (!result.success) refuse(400, "invalid-request");
+  return result.output;
+}
+
+/** Public feedback needs no identity, including when Clerk cannot load. */
+export async function allowPublicFeedback() {
+  const address = getRequestHeader("cf-connecting-ip");
+  if (address && !(await env.FEEDBACK_LIMIT.limit({ key: address })).success)
+    refuse(429, "rate-limited");
 }
 
 // Input is read in the handlers, not an input validator, so Access always runs first.
@@ -127,6 +144,7 @@ export async function readShareLink(token: unknown) {
       id: shareLinks.id,
       permission: shareLinks.permission,
       title: videos.title,
+      projectName: projects.name,
       revisionId: revisions.id,
       number: revisions.number,
       frameRate: revisions.frameRate,

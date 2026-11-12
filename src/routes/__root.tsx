@@ -1,8 +1,17 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import {
+  createRootRouteWithContext,
+  HeadContent,
+  Outlet,
+  Scripts,
+  type ErrorComponentProps,
+} from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { AuthProvider } from "@/auth/client";
+import { SiteFeedback } from "@/components/site-feedback";
+import { Button } from "@/components/ui/button";
+import { describeError, recordProblem, watchProblems } from "@/lib/diagnostics";
 import stylesUrl from "@/styles.css?url";
 
 function RootShell({ children }: { children: ReactNode }) {
@@ -37,6 +46,7 @@ function Toaster() {
 
 function Root() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(watchProblems, []);
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
@@ -47,9 +57,30 @@ function Root() {
   );
 }
 
+/** Any screen that throws lands here, with a way to report it. Needs no sign-in. */
+function RootError({ error }: ErrorComponentProps) {
+  const { queryClient } = Route.useRouteContext();
+  useEffect(() => recordProblem("screen", describeError(error)), [error]);
+  return (
+    <QueryClientProvider client={queryClient}>
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
+        <h1 className="text-xl font-semibold">Something went wrong</h1>
+        <p className="text-muted-foreground">Reload the page to try again.</p>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button onClick={() => location.reload()}>Reload</Button>
+          <SiteFeedback error={error} />
+        </div>
+      </main>
+      <Toaster />
+    </QueryClientProvider>
+  );
+}
+
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
 }>()({
+  // Public link routes load preview metadata on the server; UI stays client-rendered.
+  ssr: "data-only",
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -61,4 +92,5 @@ export const Route = createRootRouteWithContext<{
   }),
   shellComponent: RootShell,
   component: Root,
+  errorComponent: RootError,
 });

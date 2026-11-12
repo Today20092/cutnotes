@@ -19,6 +19,22 @@ import { getMuxGateway } from "@/server/mux";
 
 const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
+export const getSharePreview = createServerFn({ method: "POST" })
+  .validator((data: { token: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const link = await readShareLink(data?.token);
+      return {
+        title: `${link.permission === "view" ? "View" : "Review"} ${link.title}`,
+        description: `${env.TEAM_NAME} invited you to ${link.permission === "view" ? "view" : "review"} ${link.title} in ${link.projectName}. ${link.permission === "view" ? "View only." : "Leave timestamped comments and drawings."} No account needed.`,
+        image: env.TEAM_LOGO_URL,
+      };
+    } catch (error) {
+      if (error instanceof Response && error.status === 404) return null;
+      throw error;
+    }
+  });
+
 /** Bytes of 248 and above are rejected, because 248 is the largest multiple of 62 in a byte. */
 function newShareToken() {
   let token = "";

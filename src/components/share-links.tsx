@@ -1,3 +1,4 @@
+import { useTeam } from "@/lib/team";
 import { PendingButton } from "@/components/pending-button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -17,7 +18,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { SharePermission } from "@/server/db/schema";
 import { createShareLink, listShareLinks, revokeShareLink } from "@/server/sharing";
 
-export function ShareLinksSheet({ videoId }: { videoId: string }) {
+export function ShareLinksSheet({
+  videoId,
+  title,
+  projectName,
+}: {
+  videoId: string;
+  title: string;
+  projectName: string;
+}) {
   return (
     <Sheet>
       <SheetTrigger render={<Button variant="secondary" />}>Share</SheetTrigger>
@@ -28,13 +37,22 @@ export function ShareLinksSheet({ videoId }: { videoId: string }) {
             Anyone with a link can open the latest Revision without an account.
           </SheetDescription>
         </SheetHeader>
-        <ShareLinks videoId={videoId} />
+        <ShareLinks videoId={videoId} title={title} projectName={projectName} />
       </SheetContent>
     </Sheet>
   );
 }
 
-function ShareLinks({ videoId }: { videoId: string }) {
+function ShareLinks({
+  videoId,
+  title,
+  projectName,
+}: {
+  videoId: string;
+  title: string;
+  projectName: string;
+}) {
+  const team = useTeam().data;
   const client = useQueryClient();
   const queryKey = ["share-links", videoId];
   const [name, setName] = useState("");
@@ -150,7 +168,7 @@ function ShareLinks({ videoId }: { videoId: string }) {
               <div className="flex flex-wrap gap-2">
                 <a
                   className={buttonVariants({ variant: "secondary" })}
-                  href={`https://wa.me/?text=${encodeURIComponent(urlOf(link.token))}`}
+                  href={`https://wa.me/?text=${encodeURIComponent(`${team?.name ?? "The team"} invited you to ${link.permission === "view" ? "view" : "review"} "${title}" in "${projectName}". ${link.permission === "view" ? "View only." : "Leave comments and drawings."} No account needed.\n\n${urlOf(link.token)}`)}`}
                   target="_blank"
                   rel="noreferrer"
                   aria-label={`Send on WhatsApp for ${link.name}`}

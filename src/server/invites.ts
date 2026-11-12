@@ -254,7 +254,7 @@ async function redeemProject(
   const isCaller = eq(members.clerkUserId, person.clerkUserId);
   const [, marked, , , callerRows, inviteRows, assignmentRows] = await db.batch([
     db.insert(members)
-      .select(sql`SELECT ${newMemberId}, ${person.clerkUserId}, ${person.displayName}, 'viewer', ${now}, NULL
+      .select(sql`SELECT ${newMemberId}, ${person.clerkUserId}, ${person.displayName}, 'viewer', ${now}, NULL, NULL
       FROM invites WHERE ${redeemable} AND NOT EXISTS (SELECT 1 FROM members WHERE ${isCaller})`),
     db
       .update(invites)

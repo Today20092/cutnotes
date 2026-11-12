@@ -1,3 +1,5 @@
+import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
+import { Fieldset, FieldsetLegend } from "@/components/ui/fieldset";
 import { useId, useState } from "react";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -83,49 +85,53 @@ export function ExportMarkers({
             }
           }}
         >
-          <label htmlFor={`${id}-filter`} className="flex flex-col gap-1 text-sm font-medium">
-            Comments
-            <NativeSelect
-              id={`${id}-filter`}
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-            >
-              <option value="all">All comments</option>
-              <option value="unresolved">Unresolved only</option>
-            </NativeSelect>
-          </label>
-          <label htmlFor={`${id}-rate`} className="flex flex-col gap-1 text-sm font-medium">
-            Edit frame rate
-            <NativeSelect
-              id={`${id}-rate`}
-              value={rateLabel}
-              onChange={(e) => setRateLabel(e.target.value)}
-            >
-              <option value="" disabled>
-                Choose frame rate
-              </option>
-              {markerRates.map((r) => (
-                <option key={r.label} value={r.label}>
-                  {r.label} fps
+          <Fieldset className="max-w-none gap-4">
+            <FieldsetLegend>Marker settings</FieldsetLegend>
+            <Field className="items-stretch">
+              <FieldLabel htmlFor={`${id}-filter`}>Comments</FieldLabel>
+              <NativeSelect
+                id={`${id}-filter`}
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              >
+                <option value="all">All comments</option>
+                <option value="unresolved">Unresolved only</option>
+              </NativeSelect>
+            </Field>
+            <Field className="items-stretch">
+              <FieldLabel htmlFor={`${id}-rate`}>Edit frame rate</FieldLabel>
+              <NativeSelect
+                id={`${id}-rate`}
+                value={rateLabel}
+                onChange={(e) => setRateLabel(e.target.value)}
+              >
+                <option value="" disabled>
+                  Choose frame rate
                 </option>
-              ))}
-            </NativeSelect>
-          </label>
-          <label htmlFor={`${id}-start`} className="flex flex-col gap-1 text-sm font-medium">
-            Sequence start timecode (non-drop)
-            <Input
-              id={`${id}-start`}
-              value={start}
-              onChange={(e) => setStart(e.target.value)}
-              placeholder="00:00:00:00"
-              aria-describedby={`${id}-help`}
-            />
-          </label>
-          <p id={`${id}-help`} className="text-sm text-muted-foreground">
-            Match your edit’s frame rate and start timecode. This export uses non-drop timecode.
-            Import the XML into Premiere with File → Import. It creates a separate marker sequence;
-            it does not modify your existing edit. Drawings are noted as text, not embedded.
-          </p>
+                {markerRates.map((r) => (
+                  <option key={r.label} value={r.label}>
+                    {r.label} fps
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+            <Field className="items-stretch">
+              <FieldLabel htmlFor={`${id}-start`}>Sequence start timecode (non-drop)</FieldLabel>
+              <Input
+                id={`${id}-start`}
+                value={start}
+                onChange={(e) => setStart(e.target.value)}
+                placeholder="00:00:00:00"
+                aria-describedby={`${id}-help`}
+              />
+              <FieldDescription id={`${id}-help`}>
+                Match your edit’s frame rate and start timecode. This export uses non-drop timecode.
+                Import the XML into Premiere with File → Import. It creates a separate marker
+                sequence; it does not modify your existing edit. Drawings are noted as text, not
+                embedded.
+              </FieldDescription>
+            </Field>
+          </Fieldset>
           {error && (
             <p role="alert" className="text-sm text-destructive">
               {error}

@@ -1,3 +1,14 @@
+import { ChevronRight, MessageSquare } from "lucide-react";
+import { Collapsible, CollapsibleTrigger, CollapsiblePanel } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -70,7 +81,19 @@ function FeedbackList() {
         Show handled reports
       </label>
       {mark.isError && <p role="alert">Could not update the report. Try again.</p>}
-      {reports.length === 0 && <p className="text-muted-foreground">No reports.</p>}
+      {reports.length === 0 && (
+        <Empty className="rounded-xl border border-dashed">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <MessageSquare aria-hidden />
+            </EmptyMedia>
+            <EmptyTitle>No reports.</EmptyTitle>
+            <EmptyDescription>
+              Problems and ideas submitted through Site feedback appear here.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
       <ul className="flex flex-col gap-4">
         {reports.map((report) => (
           <li
@@ -78,8 +101,10 @@ function FeedbackList() {
             className="flex flex-col gap-2 rounded-xl border bg-card p-4 wrap-anywhere"
           >
             <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{kindLabel[report.kind]}</span> ·{" "}
-              {new Date(report.createdAt).toLocaleString()} ·{" "}
+              <Badge variant={report.kind === "broken" ? "warning" : "secondary"}>
+                {kindLabel[report.kind]}
+              </Badge>{" "}
+              · {new Date(report.createdAt).toLocaleString()} ·{" "}
               {report.memberName ?? report.contact ?? "No name given"}
               {report.handledAt !== null && " · Handled"}
             </p>
@@ -87,14 +112,20 @@ function FeedbackList() {
             {report.memberName && report.contact && (
               <p className="text-sm">Contact: {report.contact}</p>
             )}
-            <details>
-              <summary className="min-h-11 cursor-pointer content-center text-sm">
+            <Collapsible>
+              <CollapsibleTrigger render={<Button variant="ghost" className="min-h-11 px-0" />}>
+                <ChevronRight
+                  aria-hidden
+                  className="transition-transform in-data-[slot=collapsible-trigger]:in-data-[panel-open]:rotate-90"
+                />
                 Technical details
-              </summary>
-              <pre className="max-h-80 overflow-auto rounded-md bg-muted p-2 text-xs whitespace-pre-wrap">
-                {pretty(report.diagnostics)}
-              </pre>
-            </details>
+              </CollapsibleTrigger>
+              <CollapsiblePanel>
+                <pre className="max-h-80 overflow-auto rounded-md bg-muted p-2 text-xs whitespace-pre-wrap">
+                  {pretty(report.diagnostics)}
+                </pre>
+              </CollapsiblePanel>
+            </Collapsible>
             {report.handledAt === null ? (
               <label className="text-sm">
                 Handled note (optional)

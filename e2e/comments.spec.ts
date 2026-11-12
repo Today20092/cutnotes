@@ -395,6 +395,30 @@ test("Comments seek, edit, Resolve and delete with sensible focus and accessible
   await expect(page.getByRole("button", { name: "To do", exact: true })).toBeFocused();
 });
 
+test("Undo and a failed delayed delete restore only the selected Comment", async ({ page }) => {
+  const { id, clerkUserId } = await openReview(page);
+  seedComment(id, clerkUserId, "Keep this Comment");
+  seedComment(id, clerkUserId, "Other Comment");
+  await page.reload();
+  await expect(page.getByRole("region", { name: "Notifications" }).first()).toBeAttached();
+  const row = page.getByRole("listitem").filter({ hasText: "Keep this Comment" });
+  const other = page.getByRole("listitem").filter({ hasText: "Other Comment" });
+  await row.getByRole("button", { name: /^Delete Comment/ }).click();
+  await expect(row).toHaveCount(0);
+  await page.getByText("Undo", { exact: true }).click({ timeout: 3000 });
+  await expect(row).toBeVisible();
+  await expect(other).toBeVisible();
+
+  await page.route(callTo("deleteComment"), (route) => route.abort());
+  await row.getByRole("button", { name: /^Delete Comment/ }).click();
+  await expect(row).toHaveCount(0);
+  await expect(page.getByRole("alert")).toContainText("Could not delete Comment", {
+    timeout: 10_000,
+  });
+  await expect(row).toBeVisible();
+  await expect(other).toBeVisible();
+});
+
 test("Viewers can write and manage their own Comments without Resolve controls", async ({
   page,
 }) => {
@@ -562,4 +586,6 @@ test("a Guest goes from the welcome screen to a saved Comment, then sees a plain
     guest.getByText("Too many Comments right now. Your text is kept; wait a minute and try again."),
   ).toBeVisible();
   await expect(text).toHaveValue("One too many");
+  await expect(guest.getByRole("listitem").filter({ hasText: "One too many" })).toHaveCount(0);
+  await expect(guest.getByRole("listitem").filter({ hasText: "Too dark here" })).toBeVisible();
 });

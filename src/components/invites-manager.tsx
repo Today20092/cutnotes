@@ -1,3 +1,13 @@
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Fieldset, FieldsetLegend } from "@/components/ui/fieldset";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyMedia,
+} from "@/components/ui/empty";
+import { Mail } from "lucide-react";
 import { useTeam } from "@/lib/team";
 import { PendingButton } from "@/components/pending-button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -122,14 +132,14 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
           create.mutate();
         }}
       >
-        <fieldset>
-          <legend className="mb-2 font-medium">Invite someone as</legend>
+        <Fieldset className="max-w-none gap-3">
+          <FieldsetLegend>Invite someone as</FieldsetLegend>
           <RadioGroup value={role} onValueChange={(next) => setRole(next as Role)}>
             {choices.map((choice) => (
               <label
                 key={choice.role}
                 htmlFor={`invite-role-${projectId ?? "team"}-${choice.role}`}
-                className="flex min-h-11 cursor-pointer items-center gap-3 py-2"
+                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3 has-[[data-checked]]:border-primary has-[[data-checked]]:bg-accent/40"
               >
                 <Radio
                   id={`invite-role-${projectId ?? "team"}-${choice.role}`}
@@ -142,16 +152,16 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
               </label>
             ))}
           </RadioGroup>
-        </fieldset>
-        <label className="flex flex-col gap-2">
-          Optional note
+        </Fieldset>
+        <Field className="items-stretch">
+          <FieldLabel>Optional note</FieldLabel>
           <Input
             value={note}
             onChange={(event) => setNote(event.target.value)}
             maxLength={240}
             placeholder="For Alex — episode 12"
           />
-        </label>
+        </Field>
         <p className="text-sm text-muted-foreground">
           The note is for Owners. Anyone with this link can accept it once; it is not tied to an
           email address.
@@ -169,10 +179,10 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
           <p className="text-sm text-muted-foreground">
             Copy it now. It is shown only once and works for one person for 7 days.
           </p>
-          <label className="flex flex-col gap-2">
-            Link to send
+          <Field className="items-stretch">
+            <FieldLabel>Link to send</FieldLabel>
             <Input readOnly value={link} onFocus={(event) => event.currentTarget.select()} />
-          </label>
+          </Field>
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={() => void copyLink()}>
               {copied ? "Copied" : "Copy link"}
@@ -196,7 +206,17 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
         {revoke.isError && <p role="alert">Could not revoke the Invite. Please try again.</p>}
         {history.isPending && <Skeleton className="h-16" />}
         {history.data?.invites.length === 0 && (
-          <p className="text-muted-foreground">No Invites yet.</p>
+          <Empty className="rounded-xl border border-dashed py-8 md:py-8">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Mail aria-hidden />
+              </EmptyMedia>
+              <EmptyTitle className="text-base">No Invites yet.</EmptyTitle>
+              <EmptyDescription>
+                Create an Invite above to bring someone into the Team.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
         <ul className="divide-y">
           {history.data?.invites.map((invite) => {

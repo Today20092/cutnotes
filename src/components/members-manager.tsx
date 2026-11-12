@@ -184,6 +184,13 @@ function MemberRow({
           ))}
           {isYou && <span className="font-normal text-muted-foreground"> (you)</span>}
         </ItemTitle>
+        <p className="text-sm text-muted-foreground">
+          Joined {new Date(member.createdAt).toLocaleDateString()}
+          {member.invitedBy ? ` · Invited by ${member.invitedBy}` : ""}
+        </p>
+        {member.invitationNote && (
+          <p className="text-sm text-muted-foreground">Invitation note: {member.invitationNote}</p>
+        )}
       </ItemContent>
       {/* Phone: actions go on their own line, under the name. */}
       <ItemActions className="w-full justify-between ps-12.5 sm:w-auto sm:ps-0">
@@ -231,7 +238,7 @@ function MemberRow({
               <p>
                 {isYou
                   ? "You will lose access to the Team straight away."
-                  : "They will lose access to the Team straight away. Their Comments stay."}
+                  : "They will lose access to every project. Their uploads and Comments stay. Rejoining requires fresh project assignments."}
               </p>
               <SheetClose render={<Button variant="outline" />}>Keep Member</SheetClose>
               <Button

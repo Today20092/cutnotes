@@ -3,6 +3,8 @@ import { env } from "cloudflare:workers";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
 import {
   activeMember,
+  projectAccess,
+  videoAccess,
   id,
   openProject,
   refuse,
@@ -39,7 +41,7 @@ async function insertRevision(
       sql`SELECT ${revisionId}, ${videoId},
             COALESCE((SELECT MAX(number) FROM revisions WHERE video_id = ${videoId}), 0) + 1,
             'uploading', ${memberId}, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ${now}, NULL
-          WHERE ${writableVideo(videoId)} AND ${activeMember(memberId, "editor")}`,
+          WHERE ${writableVideo(videoId)} AND ${videoAccess(memberId, videoId, "editor")}`,
     )
     .returning({ id: revisions.id });
 
@@ -47,7 +49,7 @@ async function insertRevision(
     const [, inserted] = await db.batch([
       db.insert(videos).select(
         sql`SELECT ${videoId}, ${newVideo.projectId}, ${newVideo.title}, 'review', ${memberId}, ${now}, ${now}, NULL
-              WHERE ${openProject(newVideo.projectId)} AND ${activeMember(memberId, "editor")}`,
+              WHERE ${openProject(newVideo.projectId)} AND ${projectAccess(memberId, newVideo.projectId, "editor")}`,
       ),
       insertRow,
     ]);
@@ -63,7 +65,7 @@ async function insertRevision(
         and(
           eq(videos.id, videoId),
           writableVideo(videoId),
-          activeMember(memberId, "editor"),
+          videoAccess(memberId, videoId, "editor"),
           sql`EXISTS (SELECT 1 FROM revisions WHERE id = ${revisionId})`,
         ),
       ),
@@ -74,7 +76,7 @@ async function insertRevision(
 export const startUpload = createServerFn({ method: "POST" })
   .validator((data: { projectId: string; title: string } | { videoId: string }) => data)
   .handler(async ({ data }) => {
-    const member = await requireMember("editor");
+    const member = await requireMember("viewer");
     const existingVideoId = "videoId" in Object(data) ? id(data, "videoId") : undefined;
     const newVideo = existingVideoId
       ? undefined
@@ -121,7 +123,7 @@ export const startUpload = createServerFn({ method: "POST" })
             eq(revisions.state, "uploading"),
             eq(revisions.videoId, videoId),
             writableVideo(videoId),
-            activeMember(member.id, "editor"),
+            videoAccess(member.id, videoId, "editor"),
           ),
         ),
     ]);
@@ -136,8 +138,10 @@ export const startUpload = createServerFn({ method: "POST" })
 export const cancelUpload = createServerFn({ method: "POST" })
   .validator((data: { revisionId: string }) => data)
   .handler(async ({ data }) => {
-    const member = await requireMember("editor");
+    const member = await requireMember("viewer");
     const db = getDb();
+    const revisionId = id(data, "revisionId");
+    const videoId = sql`(SELECT video_id FROM revisions WHERE id = ${revisionId})`;
     const [rows, acting] = await db.batch([
       db
         .select({
@@ -146,11 +150,20 @@ export const cancelUpload = createServerFn({ method: "POST" })
           muxUploadId: revisions.muxUploadId,
         })
         .from(revisions)
-        .where(eq(revisions.id, id(data, "revisionId"))),
+        .where(and(eq(revisions.id, revisionId), videoAccess(member.id, videoId, "editor"))),
       db
         .select({ id: members.id })
         .from(members)
-        .where(and(eq(members.id, member.id), activeMember(member.id, "editor"))),
+        .where(
+          and(
+            eq(members.id, member.id),
+            activeMember(member.id, "viewer"),
+            or(
+              videoAccess(member.id, videoId, "editor"),
+              sql`NOT EXISTS (SELECT 1 FROM revisions WHERE id = ${revisionId})`,
+            ),
+          ),
+        ),
     ]);
     if (!acting.length) refuse(404, "not-found");
     const [revision] = rows;
@@ -183,7 +196,9 @@ async function updateVideo(
   const [video] = await db
     .update(videos)
     .set({ ...changes, updatedAt: Date.now() })
-    .where(and(eq(videos.id, videoId), writableVideo(videoId), activeMember(memberId, "editor")))
+    .where(
+      and(eq(videos.id, videoId), writableVideo(videoId), videoAccess(memberId, videoId, "editor")),
+    )
     .returning({
       id: videos.id,
       title: videos.title,
@@ -196,7 +211,7 @@ async function updateVideo(
 export const renameVideo = createServerFn({ method: "POST" })
   .validator((data: { videoId: string; title: string }) => data)
   .handler(async ({ data }) => {
-    const member = await requireMember("editor");
+    const member = await requireMember("viewer");
     return updateVideo(member.id, id(data, "videoId"), {
       title: text(data, "title", MAX_TITLE_LENGTH, "invalid-title"),
     });
@@ -205,7 +220,7 @@ export const renameVideo = createServerFn({ method: "POST" })
 export const setVideoStatus = createServerFn({ method: "POST" })
   .validator((data: { videoId: string; status: VideoStatus }) => data)
   .handler(async ({ data }) => {
-    const member = await requireMember("editor");
+    const member = await requireMember("viewer");
     const status = (data as { status?: unknown } | undefined)?.status as VideoStatus;
     if (!videoStatuses.includes(status)) refuse(400, "invalid-status");
     return updateVideo(member.id, id(data, "videoId"), { status });
@@ -214,7 +229,7 @@ export const setVideoStatus = createServerFn({ method: "POST" })
 export const deleteVideo = createServerFn({ method: "POST" })
   .validator((data: { videoId: string }) => data)
   .handler(async ({ data }) => {
-    const member = await requireMember("editor");
+    const member = await requireMember("viewer");
     const db = getDb();
     const [video] = await db
       .update(videos)
@@ -226,7 +241,7 @@ export const deleteVideo = createServerFn({ method: "POST" })
           sql`EXISTS (SELECT 1 FROM projects WHERE id = ${videos.projectId} AND deleted_at IS NULL)`,
           or(
             activeMember(member.id, "owner"),
-            and(activeMember(member.id, "editor"), eq(videos.createdBy, member.id)),
+            and(videoAccess(member.id, videos.id, "editor"), eq(videos.createdBy, member.id)),
           ),
         ),
       )

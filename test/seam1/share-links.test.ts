@@ -98,7 +98,7 @@ const expectDead = async (response: Response) => {
   expect(await response.json()).toEqual({ code: "not-found" });
 };
 
-it.each(["owner", "editor"])(
+it.each(["owner"])(
   "a %s lists and revokes links; revoked links stop reads and Comments but stay out of the list",
   async (role) => {
     const caller = role === "owner" ? "user_owner" : await seedMember(role);

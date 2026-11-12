@@ -1,7 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { and, eq, or, sql } from "drizzle-orm";
 import * as v from "valibot";
-import { activeMember, parse, readyRevision, refuse, requireMember } from "@/server/access";
+import {
+  activeMember,
+  videoAccess,
+  parse,
+  readyRevision,
+  refuse,
+  requireMember,
+} from "@/server/access";
 import { bodyOf } from "@/server/comment-rules";
 import { getDb } from "@/server/db";
 import { comments, type Member } from "@/server/db/schema";
@@ -29,7 +36,7 @@ const targetComment = (data: CommentTarget, member: Member) =>
     eq(comments.id, data.id),
     eq(comments.revisionId, data.revisionId),
     readyRevision(data.revisionId, data.videoId),
-    activeMember(member.id, "viewer"),
+    videoAccess(member.id, data.videoId),
   );
 
 export const createComment = createServerFn({ method: "POST" })
@@ -48,7 +55,7 @@ export const createComment = createServerFn({ method: "POST" })
           ${data.timecodeMs}, ${body}, ${drawing}, NULL, NULL, ${now}, NULL
         FROM revisions r JOIN members m ON m.id = ${member.id}
         WHERE r.id = ${data.revisionId} AND ${data.timecodeMs} <= r.duration_ms
-          AND ${readyRevision(data.revisionId, data.videoId)} AND ${activeMember(member.id, "viewer")}`)
+          AND ${readyRevision(data.revisionId, data.videoId)} AND ${videoAccess(member.id, data.videoId)}`)
         .onConflictDoNothing()
         .returning({ id: comments.id }),
       db
@@ -114,7 +121,7 @@ export const deleteComment = createServerFn({ method: "POST" })
 export const resolveComment = createServerFn({ method: "POST" })
   .validator((data: v.InferInput<typeof resolveCommentSchema>) => data)
   .handler(async ({ data: raw }) => {
-    const member = await requireMember("editor");
+    const member = await requireMember("viewer");
     const data = parse(resolveCommentSchema, raw);
     const [written] = await getDb()
       .update(comments)
@@ -122,7 +129,7 @@ export const resolveComment = createServerFn({ method: "POST" })
         resolvedAt: data.resolved ? Date.now() : null,
         resolvedBy: data.resolved ? member.id : null,
       })
-      .where(and(targetComment(data, member), activeMember(member.id, "editor")))
+      .where(and(targetComment(data, member), videoAccess(member.id, data.videoId, "editor")))
       .returning({ id: comments.id });
     if (!written) refuse(404, "not-found");
     return written;

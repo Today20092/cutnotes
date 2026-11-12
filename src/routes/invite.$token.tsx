@@ -59,8 +59,12 @@ function Redeem({ team, token }: { team: Team; token: string }) {
     mutationFn: () => redeemInvite({ data: { token } }),
     onSuccess: async (result: RedeemResult) => {
       if (result.outcome !== "joined") return;
-      queryClient.removeQueries({ queryKey: ["app-shell"] });
-      await navigate({ to: "/", replace: true });
+      queryClient.clear();
+      await navigate(
+        result.projectId
+          ? { to: "/projects/$projectId", params: { projectId: result.projectId }, replace: true }
+          : { to: "/", replace: true },
+      );
     },
   });
   const { mutate } = redeem;
@@ -102,11 +106,25 @@ function Redeem({ team, token }: { team: Team; token: string }) {
     return (
       <InviteOutcomeScreen
         team={team}
-        title="You are already on this Team"
+        title={
+          result.projectId
+            ? "You already have access to this project"
+            : "You are already on this Team"
+        }
         action={
-          <Link to="/" className={buttonVariants()}>
-            Go to Projects
-          </Link>
+          result.projectId ? (
+            <Link
+              to="/projects/$projectId"
+              params={{ projectId: result.projectId }}
+              className={buttonVariants()}
+            >
+              Open project
+            </Link>
+          ) : (
+            <Link to="/" className={buttonVariants()}>
+              Go to Projects
+            </Link>
+          )
         }
       >
         This Invite has not been used, so it still works for the person it was meant for.

@@ -62,6 +62,7 @@ export function useCreateProject() {
                 {
                   id: `${PENDING_PREFIX}${crypto.randomUUID()}`,
                   name,
+                  role: list.member.role === "owner" ? ("owner" as const) : ("editor" as const),
                   createdAt: Date.now(),
                   completedAt: null,
                   deleteAfter: null,

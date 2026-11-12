@@ -89,14 +89,17 @@ function ProjectListView({ list }: { list: ProjectList }) {
   return (
     <div className="flex flex-col gap-6">
       <PageHeading title="Projects">
-        {writable && (
+        {(writable || list.projects.some((project) => canWrite(project.role))) && (
           <>
-            {list.projects.length > 0 && newProjectSheet}
+            {writable && list.projects.length > 0 && newProjectSheet}
             <UploadSheet
               destination={{
                 kind: "new",
                 projects: list.projects.filter(
-                  (project) => project.completedAt === null && !isPendingProject(project),
+                  (project) =>
+                    project.completedAt === null &&
+                    canWrite(project.role) &&
+                    !isPendingProject(project),
                 ),
               }}
               trigger={
@@ -161,7 +164,7 @@ function ProjectListView({ list }: { list: ProjectList }) {
                           Complete
                         </Badge>
                       ) : (
-                        writable &&
+                        canWrite(project.role) &&
                         !isPendingProject(project) && (
                           <RenameProjectButton
                             name={project.name}
@@ -188,8 +191,8 @@ function ProjectListView({ list }: { list: ProjectList }) {
               <li key={video.id} className="min-w-0">
                 <VideoTile
                   video={video}
-                  writable={writable}
-                  deletable={canDelete(list.member, video)}
+                  writable={canWrite(video.role)}
+                  deletable={canDelete({ ...list.member, role: video.role }, video)}
                 />
               </li>
             ))}

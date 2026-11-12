@@ -2,11 +2,12 @@ import { auth } from "@clerk/tanstack-react-start/server";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import * as v from "valibot";
-import { and, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { getDb, type Db } from "@/server/db";
 import {
   members,
+  projectMembers,
   projects,
   revisions,
   roles,
@@ -89,8 +90,40 @@ export const activeMember = (memberId: string, minimumRole: Role) =>
   sql`EXISTS (SELECT 1 FROM members AS acting WHERE acting.id = ${memberId}
     AND acting.removed_at IS NULL AND ${inArray(sql`acting.role`, roles.slice(roles.indexOf(minimumRole)))})`;
 
+export const memberIdForUser = (clerkUserId: string) =>
+  sql`(SELECT id FROM members WHERE clerk_user_id = ${clerkUserId})`;
+
+/** Team roles control creation; project roles control access to existing work. */
+export const projectAccess = (
+  memberId: string | SQLWrapper,
+  projectId: string | SQLWrapper,
+  minimumRole: "viewer" | "editor" = "viewer",
+) =>
+  sql`EXISTS (SELECT 1 FROM members AS project_actor
+    JOIN projects AS accessible ON accessible.id = ${projectId} AND accessible.deleted_at IS NULL
+    WHERE project_actor.id = ${memberId} AND project_actor.removed_at IS NULL
+      AND (project_actor.role = 'owner' OR EXISTS (
+        SELECT 1 FROM project_members AS assignment
+        WHERE assignment.member_id = project_actor.id AND assignment.project_id = accessible.id
+          AND ${minimumRole === "editor" ? sql`assignment.role = 'editor'` : sql`1 = 1`}
+      )))`;
+
+export const projectRole = (memberId: string | SQLWrapper, projectId: string | SQLWrapper) =>
+  sql<Role>`CASE WHEN EXISTS (SELECT 1 FROM members AS role_actor WHERE role_actor.id = ${memberId}
+      AND role_actor.role = 'owner' AND role_actor.removed_at IS NULL) THEN 'owner'
+    ELSE (SELECT assignment.role FROM project_members AS assignment
+      WHERE assignment.member_id = ${memberId} AND assignment.project_id = ${projectId}) END`;
+
+export const videoAccess = (
+  memberId: string | SQLWrapper,
+  videoId: string | SQLWrapper,
+  minimumRole: "viewer" | "editor" = "viewer",
+) =>
+  sql`EXISTS (SELECT 1 FROM videos AS accessible_video WHERE accessible_video.id = ${videoId}
+    AND accessible_video.deleted_at IS NULL AND ${projectAccess(memberId, sql`accessible_video.project_id`, minimumRole)})`;
+
 /** The Project still takes writes: live and not Complete. */
-export const openProject = (projectId: string | SQL) =>
+export const openProject = (projectId: string | SQLWrapper) =>
   sql`EXISTS (SELECT 1 FROM projects AS open WHERE open.id = ${projectId}
     AND open.deleted_at IS NULL AND open.completed_at IS NULL)`;
 
@@ -216,7 +249,7 @@ async function writeActiveMember(
               WHERE other.role = 'owner' AND other.removed_at IS NULL AND other.id <> ${targetId})`,
       );
 
-  const [written, rows] = await db.batch([
+  const [written, , rows] = await db.batch([
     db
       .update(members)
       .set(change)
@@ -227,6 +260,14 @@ async function writeActiveMember(
           sql`EXISTS (SELECT 1 FROM members AS acting
                 WHERE acting.id = ${caller.id} AND acting.role = 'owner' AND acting.removed_at IS NULL)`,
           keepsAnOwner,
+        ),
+      ),
+    db
+      .delete(projectMembers)
+      .where(
+        and(
+          eq(projectMembers.memberId, targetId),
+          sql`EXISTS (SELECT 1 FROM members WHERE id = ${targetId} AND removed_at IS NOT NULL)`,
         ),
       ),
     db

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { seedMember } from "./support/database";
+import { assignProjectMember, seedMember } from "./support/database";
 import { signInAs } from "./support/session";
 
 const owner = {
@@ -123,6 +123,8 @@ test("a Viewer can browse but gets no create or rename controls", async ({ page 
     email: "viewer@example.com",
   };
   seedMember(viewer.clerkUserId, "viewer");
+  const projectPath = await page.getByRole("link", { name, exact: true }).getAttribute("href");
+  assignProjectMember(viewer.clerkUserId, projectPath!.split("/").pop()!);
   await signInAs(page, viewer);
   await page.goto("/");
 

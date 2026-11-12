@@ -10,6 +10,10 @@ Comments appear immediately, refresh every 30 seconds and on return to the scree
 
 Parts of this project will be adapted from [Lawn](https://github.com/pingdotgg/lawn), used under the MIT licence. See `LICENSE.lawn`.
 
+## Project permissions
+
+Projects are private to assigned members and Team Owners. Editors can create their own projects; Owners manage project roles, single-use invitation links, and guest sharing. See [project access and rollout](docs/project-access.md).
+
 ## Self-hosting
 
 Follow [docs/setup.md](docs/setup.md).

@@ -1,6 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { activeMember, readAsMember, refuse, requireMember } from "@/server/access";
+import {
+  memberIdForUser,
+  projectRole,
+  videoAccess,
+  readAsMember,
+  refuse,
+  requireMember,
+} from "@/server/access";
 import { commentColumns, toComment, type Comment } from "@/server/comment-rules";
 import { getDb } from "@/server/db";
 import { comments, members, projects, revisions, videos, videoReads } from "@/server/db/schema";
@@ -15,10 +22,11 @@ export const getReview = createServerFn({ method: "POST" })
     const {
       member,
       results: [rows, ready, feedback],
-    } = await readAsMember("viewer", (db) => [
+    } = await readAsMember("viewer", (db, clerkUserId) => [
       db
         .select({
           id: videos.id,
+          role: projectRole(memberIdForUser(clerkUserId), videos.projectId),
           title: videos.title,
           projectId: videos.projectId,
           projectName: projects.name,
@@ -27,18 +35,36 @@ export const getReview = createServerFn({ method: "POST" })
         })
         .from(videos)
         .innerJoin(projects, eq(videos.projectId, projects.id))
-        .where(and(eq(videos.id, videoId), isNull(videos.deletedAt), isNull(projects.deletedAt))),
+        .where(
+          and(
+            eq(videos.id, videoId),
+            isNull(videos.deletedAt),
+            isNull(projects.deletedAt),
+            videoAccess(memberIdForUser(clerkUserId), videos.id),
+          ),
+        ),
       db
         .select()
         .from(revisions)
-        .where(and(eq(revisions.videoId, videoId), eq(revisions.state, "ready")))
+        .where(
+          and(
+            eq(revisions.videoId, videoId),
+            eq(revisions.state, "ready"),
+            videoAccess(memberIdForUser(clerkUserId), revisions.videoId),
+          ),
+        )
         .orderBy(desc(revisions.number)),
       db
         .select({ ...commentColumns, revisionId: comments.revisionId })
         .from(comments)
         .leftJoin(members, eq(comments.memberId, members.id))
         .innerJoin(revisions, eq(comments.revisionId, revisions.id))
-        .where(eq(revisions.videoId, videoId))
+        .where(
+          and(
+            eq(revisions.videoId, videoId),
+            videoAccess(memberIdForUser(clerkUserId), revisions.videoId),
+          ),
+        )
         .orderBy(comments.timecodeMs, comments.createdAt, comments.id),
     ]);
     const video = rows[0];
@@ -102,7 +128,7 @@ export const markVideoRead = createServerFn({ method: "POST" })
       SELECT ${member.id}, videos.id, ${data.readAt} FROM videos
       JOIN projects ON projects.id = videos.project_id
       WHERE videos.id = ${data.videoId} AND videos.deleted_at IS NULL AND projects.deleted_at IS NULL
-      AND ${activeMember(member.id, "viewer")}
+      AND ${videoAccess(member.id, data.videoId)}
     `)
       .onConflictDoUpdate({
         target: [videoReads.memberId, videoReads.videoId],

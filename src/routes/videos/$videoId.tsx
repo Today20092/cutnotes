@@ -1,3 +1,4 @@
+import { CopyPageLink } from "@/components/copy-page-link";
 import { ExportMarkers } from "@/components/export-markers";
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -51,7 +52,8 @@ function Review() {
               current={page.video.title}
             />
             <PageHeading title={page.video.title}>
-              {page.member.role !== "viewer" && page.revision && (
+              <CopyPageLink kind="video" path={`/videos/${videoId}`} />
+              {page.video.role !== "viewer" && page.revision && (
                 <ExportMarkers
                   key={page.revision.id}
                   title={page.video.title}
@@ -61,13 +63,15 @@ function Review() {
                   durationMs={page.revision.durationMs}
                 />
               )}
-              {page.member.role !== "viewer" && page.video.completedAt === null && (
+              {page.video.role !== "viewer" && page.video.completedAt === null && (
                 <>
-                  <ShareLinksSheet
-                    videoId={videoId}
-                    title={page.video.title}
-                    projectName={page.video.projectName}
-                  />
+                  {page.member.role === "owner" && (
+                    <ShareLinksSheet
+                      videoId={videoId}
+                      title={page.video.title}
+                      projectName={page.video.projectName}
+                    />
+                  )}
                   <UploadSheet
                     destination={{ kind: "existing", videoId, title: page.video.title }}
                     trigger={<Button variant="secondary">Upload new Revision</Button>}

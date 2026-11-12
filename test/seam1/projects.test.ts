@@ -42,6 +42,10 @@ async function seedProject(
   )
     .bind(id, `Project ${id}`, overrides.completedAt ?? null, overrides.deletedAt ?? null)
     .run();
+  await env.DB.prepare(`INSERT INTO project_members (project_id, member_id, role, added_by, created_at)
+    SELECT p.id, m.id, CASE WHEN m.role = 'editor' THEN 'editor' ELSE 'viewer' END, 'member_owner', 1
+    FROM projects p CROSS JOIN members m WHERE m.role <> 'owner' AND m.removed_at IS NULL
+      AND NOT EXISTS (SELECT 1 FROM project_members WHERE project_id = p.id AND member_id = m.id)`).run();
 }
 
 async function seedVideo(id: string, projectId: string, deletedAt: number | null = null) {
@@ -137,8 +141,8 @@ describe("permission matrix", () => {
     );
     await expectRefused(
       await call(renameProject, viewer, { projectId: "p1", name: "Nope" }),
-      403,
-      "insufficient-role",
+      404,
+      "not-found",
     );
     expect(await names()).toEqual(["Project p1"]);
   });

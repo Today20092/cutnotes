@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page, type TestInfo } from "@playwright/test";
 import { fakeSignature } from "../test/seam1/support/fake-mux";
-import { seedMember, seedReview, shareTokenFor } from "./support/database";
+import { assignProjectMember, seedMember, seedReview, shareTokenFor } from "./support/database";
 import { signInAs, type Person } from "./support/session";
 
 // Each case scans several states in both themes, including the growing seeded Projects list.
@@ -266,7 +266,9 @@ test("a Video through upload, processing, and ready", async ({ page }, testInfo)
   await page.getByRole("button", { name: "Keep Video" }).click();
   await page.unroute(failDelete);
 
-  await signInAs(page, seededViewer("video_viewer", testInfo));
+  const projectReviewer = seededViewer("video_viewer", testInfo);
+  assignProjectMember(projectReviewer.clerkUserId, new URL(page.url()).pathname.split("/").pop()!);
+  await signInAs(page, projectReviewer);
   await page.reload();
   await expect(page.getByText("Main cut")).toBeVisible();
   await expect(page.getByRole("button", { name: "Upload" })).toHaveCount(0);
@@ -448,7 +450,7 @@ test("the Invites and accept-Invite screens", async ({ page, browser }, testInfo
     .first()
     .click();
   await page.getByRole("button", { name: / now$/ }).click();
-  await expect(page.getByRole("heading", { name: "Pending Invites" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Invitation history" })).toBeFocused();
   const revoked = await openAs(
     browser,
     {
@@ -469,7 +471,7 @@ test("Share Links sheet and Guest pages", async ({ page, browser }, testInfo) =>
   };
   seedMember(person.clerkUserId, "editor");
   const videoId = seedReview(person.clerkUserId);
-  await signInAs(page, person);
+  await signInAs(page, owner);
   await page.goto(`/videos/${videoId}`);
   const share = page.getByRole("button", { name: "Share", exact: true });
   await share.click();

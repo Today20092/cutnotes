@@ -26,11 +26,12 @@ test("an Owner changes a Member's Role, and it lasts", async ({ page }, testInfo
   await signInAs(page, owner);
   await page.goto("/members");
 
-  await roleOf(page, name).selectOption("editor");
+  await roleOf(page, name).click();
+  await page.getByRole("option", { name: /Editor/ }).click();
 
   await expect(page.getByRole("status").first()).toContainText(`${name} is now Editor`);
   await page.reload();
-  await expect(roleOf(page, name)).toHaveValue("editor");
+  await expect(roleOf(page, name)).toHaveText("Editor");
 });
 
 test("an Owner removes a Member, who loses access on their next request", async ({
@@ -42,8 +43,8 @@ test("an Owner removes a Member, who loses access on their next request", async 
   await page.goto("/members");
 
   await page.getByRole("button", { name: `Remove ${name}` }).click();
-  const confirm = page.getByRole("button", { name: `Remove ${name} now` });
-  await expect(confirm).toBeFocused();
+  const confirm = page.getByRole("button", { name: "Remove from Team" });
+  await expect(page.getByRole("dialog")).toBeVisible();
   await confirm.click();
 
   await expect(page.getByText(name, { exact: true })).toHaveCount(0);
@@ -65,7 +66,7 @@ test("keeping a Member after pressing Remove returns focus to Remove", async ({
   await page.goto("/members");
 
   await page.getByRole("button", { name: `Remove ${name}` }).click();
-  await page.getByRole("button", { name: "Keep" }).click();
+  await page.getByRole("button", { name: "Keep Member" }).click();
 
   await expect(page.getByRole("button", { name: `Remove ${name}` })).toBeFocused();
 });
@@ -74,10 +75,13 @@ test("demoting the last Owner is refused, explained and rolled back", async ({ p
   await signInAs(page, owner);
   await page.goto("/members");
 
-  await roleOf(page, owner.email).selectOption("viewer");
+  await roleOf(page, owner.email).focus();
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Home");
+  await page.keyboard.press("Enter");
 
   await expect(page.getByRole("alert")).toContainText("at least one Owner");
-  await expect(roleOf(page, owner.email)).toHaveValue("owner");
+  await expect(roleOf(page, owner.email)).toHaveText("Owner");
 });
 
 test("a Viewer gets no Members link and no controls", async ({ page }, testInfo) => {

@@ -99,4 +99,5 @@ Full captured core-category variant listings: [catalog snapshot](cnippet-catalog
 - Inspected Settings and Invites at 1280px, and Invites at 390px. No horizontal overflow on those evaluated screens. An independent read-only review found no actionable issues in the adoption diff.
 - `bun run audit` passed at the configured high-severity threshold. `bun run build` passed and left the generated route tree unchanged.
 - Full phone/desktop browser suite results are recorded in the PR evidence.
+- The keyboard-feedback browser test waits for the page heading before opening the feedback Sheet, so page-load focus does not race the keyboard activation.
 - Real devices and screen readers were not checked. Existing upload transport, limits and permission checks were retained. No deployment was performed.

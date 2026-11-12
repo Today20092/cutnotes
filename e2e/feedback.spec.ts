@@ -51,6 +51,7 @@ test("Members and Guests can submit using the keyboard", async ({ page }) => {
   await signInAs(page, { clerkUserId: "user_first_owner", email: "first.owner@example.com" });
   for (const path of ["/", `/share/${"a".repeat(32)}`]) {
     await page.goto(path);
+    await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toBeVisible();
     const trigger = page.getByRole("button", { name: "Site feedback", exact: true });
     await trigger.focus();
     await page.keyboard.press("Enter");

@@ -1,3 +1,4 @@
+import { Field, FieldLabel } from "@/components/ui/field";
 import { VideoStatusBadge } from "@/components/video-status";
 import { Link } from "@tanstack/react-router";
 import { Clapperboard, Pencil } from "lucide-react";
@@ -156,10 +157,8 @@ export function ProjectNameSheet({
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
         <form onSubmit={submit} noValidate className="flex flex-col gap-3 p-4 pt-0">
-          <div className="flex flex-col gap-1">
-            <label htmlFor={inputId} className="text-sm font-medium">
-              {fieldLabel}
-            </label>
+          <Field className="items-stretch" invalid={!!error}>
+            <FieldLabel htmlFor={inputId}>{fieldLabel}</FieldLabel>
             <Input
               ref={input}
               id={inputId}
@@ -173,7 +172,7 @@ export function ProjectNameSheet({
                 {error}
               </p>
             )}
-          </div>
+          </Field>
           <Button type="submit">{submitLabel}</Button>
         </form>
       </SheetContent>

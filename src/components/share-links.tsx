@@ -1,3 +1,14 @@
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Fieldset, FieldsetLegend } from "@/components/ui/fieldset";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyMedia,
+} from "@/components/ui/empty";
+import { Link2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useTeam } from "@/lib/team";
 import { PendingButton } from "@/components/pending-button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -106,10 +117,8 @@ function ShareLinks({
           create.mutate();
         }}
       >
-        <div>
-          <label htmlFor="share-name" className="text-sm font-medium">
-            Who is this link for?
-          </label>
+        <Field className="items-stretch">
+          <FieldLabel htmlFor="share-name">Who is this link for?</FieldLabel>
           <Input
             id="share-name"
             required
@@ -117,9 +126,9 @@ function ShareLinks({
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
-        </div>
-        <fieldset className="space-y-1">
-          <legend className="text-sm font-medium">Permission</legend>
+        </Field>
+        <Fieldset className="max-w-none gap-3">
+          <FieldsetLegend className="text-sm">Permission</FieldsetLegend>
           <RadioGroup
             value={permission}
             onValueChange={(next) => setPermission(next as SharePermission)}
@@ -136,7 +145,7 @@ function ShareLinks({
               </label>
             ))}
           </RadioGroup>
-        </fieldset>
+        </Fieldset>
         <PendingButton type="submit" pending={create.isPending}>
           Create Share Link
         </PendingButton>
@@ -154,16 +163,26 @@ function ShareLinks({
         {links.isError && <p role="alert">Could not load Share Links. Close this and try again.</p>}
         {revoke.isError && <p role="alert">Could not revoke the Share Link. Try again.</p>}
         {links.data?.links.length === 0 && (
-          <p className="text-muted-foreground">No Share Links yet.</p>
+          <Empty className="rounded-xl border border-dashed py-8 md:py-8">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Link2 aria-hidden />
+              </EmptyMedia>
+              <EmptyTitle className="text-base">No Share Links yet.</EmptyTitle>
+              <EmptyDescription>
+                Create a link above to let someone review this Video.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
         <ul className="divide-y">
           {links.data?.links.map((link) => (
             <li key={link.id} className="flex flex-col gap-2 py-3 wrap-anywhere">
               <p className="font-medium">
                 {link.name}{" "}
-                <span className="text-sm font-normal">
-                  · {link.permission === "view" ? "View only" : "Can comment and draw"}
-                </span>
+                <Badge variant="secondary">
+                  {link.permission === "view" ? "View only" : "Can comment and draw"}
+                </Badge>
               </p>
               <div className="flex flex-wrap gap-2">
                 <a

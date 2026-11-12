@@ -1,3 +1,13 @@
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Fieldset, FieldsetLegend } from "@/components/ui/fieldset";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyMedia,
+} from "@/components/ui/empty";
+import { Mail } from "lucide-react";
 import { useTeam } from "@/lib/team";
 import { PendingButton } from "@/components/pending-button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -95,14 +105,14 @@ export function InvitesManager() {
           create.mutate();
         }}
       >
-        <fieldset>
-          <legend className="mb-2 font-medium">Invite someone as</legend>
+        <Fieldset className="max-w-none gap-3">
+          <FieldsetLegend>Invite someone as</FieldsetLegend>
           <RadioGroup value={role} onValueChange={(next) => setRole(next as Role)}>
             {roleChoices.map((choice) => (
               <label
                 key={choice.role}
                 htmlFor={`invite-role-${choice.role}`}
-                className="flex min-h-11 cursor-pointer items-center gap-3 py-2"
+                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3 has-[[data-checked]]:border-primary has-[[data-checked]]:bg-accent/40"
               >
                 <Radio
                   id={`invite-role-${choice.role}`}
@@ -116,7 +126,7 @@ export function InvitesManager() {
               </label>
             ))}
           </RadioGroup>
-        </fieldset>
+        </Fieldset>
         <PendingButton type="submit" pending={create.isPending}>
           Create Invite
         </PendingButton>
@@ -131,17 +141,15 @@ export function InvitesManager() {
           <p className="text-sm text-muted-foreground">
             Copy it now. It is shown only once and works for one person for 7 days.
           </p>
-          <div className="space-y-1">
-            <label htmlFor="invite-link" className="text-sm font-medium">
-              Link to send
-            </label>
+          <Field className="items-stretch">
+            <FieldLabel htmlFor="invite-link">Link to send</FieldLabel>
             <Input
               id="invite-link"
               readOnly
               value={link}
               onFocus={(event) => event.currentTarget.select()}
             />
-          </div>
+          </Field>
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={() => void copyLink()}>
               {copied ? "Copied" : "Copy link"}
@@ -167,7 +175,19 @@ export function InvitesManager() {
         )}
         {revoke.isError && <p role="alert">Could not revoke the Invite. Please try again.</p>}
         {pending.isPending && <Skeleton className="h-16" />}
-        {invites?.length === 0 && <p className="text-muted-foreground">No pending Invites.</p>}
+        {invites?.length === 0 && (
+          <Empty className="rounded-xl border border-dashed py-8 md:py-8">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Mail aria-hidden />
+              </EmptyMedia>
+              <EmptyTitle className="text-base">No pending Invites.</EmptyTitle>
+              <EmptyDescription>
+                Create an Invite above to bring someone into the Team.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
         {invites && invites.length > 0 && (
           <ul className="divide-y">
             {invites.map((invite) => (

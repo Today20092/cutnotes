@@ -31,6 +31,14 @@ test("signed-out feedback works without Clerk and the Owner can handle it", asyn
   await page.goto("/feedback");
   const report = page.getByRole("listitem").filter({ hasText: message });
   await expect(report).toBeVisible();
+  const details = report.getByRole("button", { name: "Technical details" });
+  await details.focus();
+  await page.keyboard.press("Enter");
+  await expect(details).toHaveAttribute("aria-expanded", "true");
+  await expect(report.locator("pre")).toBeVisible();
+  await page.keyboard.press("Space");
+  await expect(details).toHaveAttribute("aria-expanded", "false");
+  await expect(report.locator("pre")).toBeHidden();
   await report.getByLabel("Handled note (optional)").fill("Verified and resolved");
   await report.getByRole("button", { name: "Mark handled" }).click();
   await expect(report).toHaveCount(0);

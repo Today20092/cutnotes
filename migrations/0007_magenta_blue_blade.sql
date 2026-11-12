@@ -1,0 +1,1 @@
+ALTER TABLE `feedback` ADD `handled_note` text;

@@ -13,7 +13,7 @@ import {
 const { getAppShell } = serverFunctionIds;
 const guestIds: string[] = Object.values(guestServerFunctionIds);
 const everyServerFunction = Object.entries(serverFunctionIds).filter(
-  ([, id]) => !guestIds.includes(id),
+  ([name, id]) => name !== "sendFeedback" && !guestIds.includes(id),
 );
 const memberServerFunctions = Object.entries(memberServerFunctionIds);
 const ownerServerFunctions = Object.entries(ownerServerFunctionIds);

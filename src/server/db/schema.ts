@@ -173,3 +173,25 @@ export const shareLinks = sqliteTable(
   },
   (table) => [index("share_links_video_id_idx").on(table.videoId)],
 );
+
+export const feedbackKinds = ["broken", "idea", "other"] as const;
+export type FeedbackKind = (typeof feedbackKinds)[number];
+
+/** Site feedback from anyone: Members, Guests or signed-out people. Kept only in D1. */
+export const feedback = sqliteTable(
+  "feedback",
+  {
+    id: text("id").primaryKey(),
+    kind: text("kind", { enum: feedbackKinds }).notNull(),
+    message: text("message").notNull(),
+    contact: text("contact"),
+    // JSON from the browser, with Share Link and Invite tokens removed.
+    diagnostics: text("diagnostics").notNull(),
+    // No foreign key: a report outlives anything it mentions.
+    memberId: text("member_id"),
+    createdAt: integer("created_at").notNull(),
+    handledAt: integer("handled_at"),
+    handledNote: text("handled_note"),
+  },
+  (table) => [index("feedback_created_at_idx").on(table.createdAt)],
+);

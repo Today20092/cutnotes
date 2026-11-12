@@ -26,6 +26,7 @@ import { getReview } from "@/server/playback";
 import type { Playback } from "@/server/mux/gateway";
 import { bindPlaybackShortcuts, createShuttleController } from "./shuttle";
 import { createVideoPlaybackHealthState, observeVideoPlayback } from "./videoPlaybackHealth";
+import { recordProblem, reportDiagnostic } from "@/lib/diagnostics";
 import { Timeline, useVideoClock } from "./timeline";
 import { DrawingOverlay } from "./drawing-overlay";
 
@@ -126,8 +127,20 @@ export function VideoPlayer({
     shuttleRef.current = shuttle;
 
     function failed() {
-      if (!disposed) setFailure("Playback could not continue. Try again.");
+      if (disposed) return;
+      recordProblem("playback", `Revision ${revisionId} stopped at ${video.currentTime}s`);
+      setFailure("Playback could not continue. Try again.");
     }
+    const stopReporting = reportDiagnostic("playback", () => ({
+      revisionId,
+      health,
+      engine: hls ? "hls.js" : "native",
+      currentTime: video.currentTime,
+      paused: video.paused,
+      readyState: video.readyState,
+      networkState: video.networkState,
+      mediaError: video.error?.code ?? null,
+    }));
     function load() {
       if (hls) hls.loadSource(current.videoUrl);
       else {
@@ -250,6 +263,7 @@ export function VideoPlayer({
     load();
     return () => {
       disposed = true;
+      stopReporting();
       window.clearInterval(timer);
       unbind();
       shuttle.dispose();

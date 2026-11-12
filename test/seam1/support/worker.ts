@@ -9,6 +9,7 @@ import "@/server/videos";
 import "@/server/playback";
 import "@/server/comments";
 import "@/server/sharing";
+import "@/server/feedback";
 
 export type CallOptions = {
   bearer?: string;
@@ -49,6 +50,8 @@ export const guestServerFunctionIds = {
 
 /** Only an Owner may call these. */
 export const ownerServerFunctionIds = {
+  listFeedback: serverFnId("/src/server/feedback.ts", "listFeedback"),
+  markFeedback: serverFnId("/src/server/feedback.ts", "markFeedback"),
   deleteProject: serverFnId("/src/server/projects.ts", "deleteProject"),
   completeProject: serverFnId("/src/server/projects.ts", "completeProject"),
   reopenProject: serverFnId("/src/server/projects.ts", "reopenProject"),
@@ -86,6 +89,7 @@ export const memberServerFunctionIds = {
 
 /** Every server function in the app. A test fails if one is missing from this list. */
 export const serverFunctionIds = {
+  sendFeedback: serverFnId("/src/server/feedback.ts", "sendFeedback"),
   ...memberServerFunctionIds,
   // The one exception to Member-only: this is how a signed-in person becomes a Member.
   redeemInvite: serverFnId(invitesFile, "redeemInvite"),

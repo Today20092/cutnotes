@@ -22,7 +22,9 @@ Use cnippet by default: `npx shadcn@latest add @cnippet/<name>`. Use `@shadcn` o
 
 ## Testing
 
-`bun run check` is the normal check and does not start a browser: it runs typecheck, lint (Oxlint), format check (Oxfmt), `test:player`, `test:setup` and Seam 1. Run `bun run fmt` to fix formatting. CI also runs `bun run audit`. The full browser suite (Seam 2) is slow, so run `bun run check:full` only when the user asks or before a push or PR to `main`. CI runs Seam 2 only for pushes to `main` and PRs into it.
+`bun run check` is the normal check and does not start a browser: it runs typecheck, lint (Oxlint), format check (Oxfmt), `test:player`, `test:setup`, `test:structure` and Seam 1. Run `bun run fmt` to fix formatting. CI also runs `bun run audit`. The full browser suite (Seam 2) is slow, so run `bun run check:full` only when the user asks or before a push or PR to `main`. CI runs Seam 2 only for pushes to `main` and PRs into it.
+
+Browser input to Comment server functions uses a Valibot schema with `parse(schema, data)` after the Access check. Browser components and routes must not import `@/server/db/*` or `@/server/mux/*` at runtime; type imports are allowed. `test:structure` checks server functions for Access helpers, with an explicit exception for token-authorized public Invite previews. `bun install` enables the pre-commit hook for lint and formatting.
 
 Run one test while working:
 

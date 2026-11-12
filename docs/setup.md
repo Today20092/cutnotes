@@ -1,6 +1,6 @@
 # Set up an install
 
-One install serves one Team. A person or an agent can follow this guide, with one limit: **agents never deploy to production or run `bun run setup`. A human runs those steps.** An agent can prepare the accounts' values with the human and hand over the commands.
+One install serves one Team. A human runs initial `bun run setup`. For this repository, merging to `main` authorizes automatic production deployment after Check passes; no separate production request or environment approval is required. Agents may prepare, merge and verify an authorized release through Actions.
 
 Use a Cloudflare account on the Workers Paid plan. Install Bun and run commands from the repository root; keep `bun.lock` so installs use the tested runtime versions.
 
@@ -48,9 +48,9 @@ The GitHub `staging` and `production` environments already exist. Each has `CLOU
 
    Replace `SECRET_NAME` with one actual name at a time. Do not use production values. Existing production runtime secrets stay on the production Worker; supply its matching Clerk publishable key to GitHub for production builds.
 3. Merge the workflow and config changes through a reviewed PR. The Deploy workflow must exist on `main` for `workflow_run` and manual dispatch to activate. Then merge the same changes into `development` and let Check verify the combined candidate before staging deploys.
-4. Complete the real-service staging review in the release procedure. Production stays manual through Actions → Deploy: select the `main` branch, choose `production`, confirm staging review and enter the recovery reference. Approve the resulting production environment request only for the intended SHA.
+4. Configure the `production` environment to allow only `main`, with no required reviewers or wait timer. A passing push to `main` automatically deploys production. A passing `development` push deploys staging independently. To retry a failed deployment, use Actions → Deploy from the matching branch and select its environment; no staging-confirmation input is required.
 
-Deployment logs include the Worker version/deployment identifiers. The job summary records the source SHA, target origin and supplied recovery reference. A failed availability check requires investigation; it does not automatically reverse migrations.
+Deployment logs include the Worker version/deployment identifiers. The job summary records the source SHA, target origin and D1 recovery bookmark captured automatically before migrations. A failed availability check requires investigation; it does not automatically reverse migrations. Missing staging secrets do not prevent production deployment.
 
 ## 1. Choose the inputs
 
@@ -128,9 +128,9 @@ The script:
 
 It is safe to run again after a failure: it keeps a database already written to the config. If database creation succeeds but writing the config fails, recover that database ID from Wrangler or the dashboard before retrying, to avoid creating another database. Commit the changed `wrangler.jsonc`; never commit `.env`, `.dev.vars` or private keys.
 
-## 6. Deploy (human)
+## 6. Deploy a separate self-hosted install
 
-This step is separate from the script, and agents never run it:
+For this repository, merge to `main` and verify the automatic Actions deployment. The commands below are only for a separate single-target install provisioned by the setup script:
 
 ```sh
 bun run build
@@ -151,8 +151,8 @@ Apply D1 migrations before deploying this feature. Reports include a build commi
 
 1. Select the reviewed release commit using [the promotion rules](branch-workflow.md#promotion). Use a clean release checkout and install from `bun.lock`. Record the commit, check results, target Worker, database and origin. Keep unrelated local work outside the release checkout.
 2. Test new migrations on a staging database representing the previous release. Prefer additive changes that allow the previous Worker to keep running; remove old fields in a later release. Before production migration, record a usable D1 recovery point or backup and the recovery procedure. A database restore can discard writes made after that point.
-3. Verify the staging candidate with real services: Member sign-in and Role checks; a sample Revision upload; the signed webhook reaching Ready; playback; a Comment; Share Link access and revocation; and deletion of the sample work. Automated browser tests use service replacements and do not prove these connections work. Confirm the hourly cleanup is enabled for the intended install.
-4. A human approves the exact production commit and migration plan. For this repository's production install, use the approved GitHub deployment path above. The commands below are only for a separate single-target self-hosted install provisioned by the setup script. Check the target before running them.
+3. Verify real-service behavior on staging when available: Member sign-in and Role checks; a sample Revision upload; the signed webhook reaching Ready; playback; a Comment; Share Link access and revocation; and deletion of the sample work. Automated browser tests use service replacements and do not prove these connections work. Confirm the hourly cleanup is enabled for the intended install. Staging readiness is not a separate production gate.
+4. Merge the approved release into `main`. After Check passes, Actions deploys the exact current SHA using production credentials, records a D1 recovery bookmark and applies pending migrations. There is no additional approval or deployment command. The commands below are only for a separate single-target self-hosted install provisioned by the setup script. Check the target before running them.
 
    ```sh
    bun run build

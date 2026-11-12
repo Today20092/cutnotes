@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: [Check]
     types: [completed]
-    branches: [development]
+    branches: [main, development]
   workflow_dispatch:
     inputs:
       environment:
@@ -12,13 +12,6 @@ on:
         type: choice
         options: [staging, production]
         default: staging
-      staging_reviewed:
-        description: Production only - real-service staging checks passed for this release
-        type: boolean
-        default: false
-      recovery_point:
-        description: Production only - D1 recovery point or backup reference
-        type: string
 
 permissions:
   contents: read
@@ -46,12 +39,15 @@ jobs:
           REQUESTED_SHA: ${{ github.sha }}
           REQUESTED_REF: ${{ github.ref }}
           CHECKED_SHA: ${{ github.event.workflow_run.head_sha }}
-          STAGING_REVIEWED: ${{ inputs.staging_reviewed }}
-          RECOVERY_POINT: ${{ inputs.recovery_point }}
+          CHECKED_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           set -euo pipefail
           if [ "$EVENT" = workflow_run ]; then
-            target=staging
+            case "$CHECKED_BRANCH" in
+              main) target=production ;;
+              development) target=staging ;;
+              *) exit 1 ;;
+            esac
             sha="$CHECKED_SHA"
           else
             target="$REQUESTED_ENVIRONMENT"
@@ -59,11 +55,7 @@ jobs:
           fi
           case "$target" in
             staging) branch=development ;;
-            production)
-              branch=main
-              test "$STAGING_REVIEWED" = true
-              test -n "$RECOVERY_POINT"
-              ;;
+            production) branch=main ;;
             *) exit 1 ;;
           esac
           if [ "$EVENT" = workflow_dispatch ]; then
@@ -136,15 +128,28 @@ jobs:
           jq -e --arg expected "$expected" --arg database "$database" \
             --arg account "$CLOUDFLARE_ACCOUNT_ID" --arg origin "$APP_ORIGIN" \
             '.name == $expected and .account_id == $account and .vars.APP_ORIGIN == $origin and .d1_databases[0].database_id == $database' "$generated"
+      - name: Record database recovery point
+        id: recovery
+        run: |
+          set -euo pipefail
+          bun scripts/node.ts node_modules/wrangler/bin/wrangler.js d1 time-travel info DB \
+            --config "$CLOUDFLARE_VITE_WRANGLER_CONFIG_PATH" --json > "$RUNNER_TEMP/recovery.json"
+          bookmark=$(jq -er '.bookmark | strings | select(length > 0)' "$RUNNER_TEMP/recovery.json")
+          echo "bookmark=$bookmark" >> "$GITHUB_OUTPUT"
       - name: Apply additive migrations to the selected database
         run: bun scripts/node.ts node_modules/wrangler/bin/wrangler.js d1 migrations apply DB --remote --config "$CLOUDFLARE_VITE_WRANGLER_CONFIG_PATH"
       - name: Deploy the built Worker
-        run: bun scripts/node.ts node_modules/wrangler/bin/wrangler.js deploy
+        run: |
+          set -euo pipefail
+          bun scripts/node.ts node_modules/wrangler/bin/wrangler.js deploy | tee "$RUNNER_TEMP/deploy.log"
       - name: Check service response
         run: curl --fail --silent --show-error --retry 4 --retry-delay 5 "$APP_ORIGIN/api/team" --output /dev/null
       - name: Record release
         if: always()
         env:
-          RECOVERY_POINT: ${{ inputs.recovery_point }}
+          RECOVERY_POINT: ${{ steps.recovery.outputs.bookmark }}
         run: |
           printf 'Environment: %s\nCommit: %s\nOrigin: %s\nRecovery point: %s\n' "$TARGET" "$RELEASE_SHA" "$APP_ORIGIN" "$RECOVERY_POINT" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f "$RUNNER_TEMP/deploy.log" ]; then
+            grep -E 'Current Version ID:|Deployment ID:' "$RUNNER_TEMP/deploy.log" >> "$GITHUB_STEP_SUMMARY" || true
+          fi

@@ -16,7 +16,7 @@ Self-hosted video review for small production teams. TanStack Start on Cloudflar
 
 Before starting branch work, integrating changes, promoting a release or removing a worktree, read [the Git workflow](docs/branch-workflow.md). Use a scoped branch and worktree for each agent task.
 
-Before provisioning services, changing environment bindings, applying remote migrations or preparing a deployment, read [the setup and release guide](docs/setup.md). Agents prepare and test releases; a human runs setup and controls production deployment. Keep staging data and credentials separate from production.
+Before provisioning services, changing environment bindings, applying remote migrations or preparing a deployment, read [the setup and release guide](docs/setup.md). Merging to `main` authorizes automatic production deployment after Check passes; no second approval is required. A human runs initial setup. Keep staging data and credentials separate from production.
 
 ## UI components
 

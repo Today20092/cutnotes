@@ -1,0 +1,66 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cutnotes",
+  "account_id": "fb14df399f96dc019b8a82cb48788654",
+  "main": "src/server.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": false,
+  "preview_urls": false,
+  "triggers": {
+    "crons": [
+      "0 * * * *"
+    ]
+  },
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cutnotes",
+      "database_id": "865972cf-74e6-4ea3-9bfd-af2220fd53d4",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "SHARE_LINK_COMMENT_LIMIT",
+      "namespace_id": "2001",
+      "simple": {
+        "limit": 30,
+        "period": 60
+      }
+    },
+    {
+      "name": "SHARE_ADDRESS_LIMIT",
+      "namespace_id": "2002",
+      "simple": {
+        "limit": 300,
+        "period": 60
+      }
+    },
+    {
+      "name": "FEEDBACK_LIMIT",
+      "namespace_id": "2003",
+      "simple": {
+        "limit": 5,
+        "period": 60
+      }
+    }
+  ],
+  "vars": {
+    "TEAM_NAME": "Haithem Studio",
+    "TEAM_LOGO_URL": "",
+    "APP_ORIGIN": "https://review.yahalausa.net",
+    "FIRST_OWNER_EMAIL": "ayoub.abedrabbo@gmail.com"
+  },
+  "routes": [
+    {
+      "pattern": "review.yahalausa.net",
+      "custom_domain": true
+    }
+  ]
+}

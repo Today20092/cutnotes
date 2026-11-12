@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TeamLogo, useTeam } from "@/lib/team";
-import { draftComment, sortComments } from "@/lib/review";
+import { draftComment } from "@/lib/review";
+import { optimisticComment, replaceComment } from "@/lib/comment-cache";
 import { createGuestComment, getGuestReview } from "@/server/sharing";
 
 export const Route = createFileRoute("/share/$token")({
@@ -224,25 +225,10 @@ function useGuestActor(token: string, name: string, writable: boolean): CommentA
   const { queryKey } = guestQuery(token);
   const write = useMutation({
     mutationFn: (draft: Draft) => createGuestComment({ data: { ...draft, token, name } }),
-    onMutate: async (draft) => {
-      await client.cancelQueries({ queryKey });
-      client.setQueryData(
-        queryKey,
-        (old) =>
-          old && {
-            ...old,
-            comments: sortComments([
-              ...old.comments.filter((row) => row.id !== draft.id),
-              draftComment(draft, name, true),
-            ]),
-          },
-      );
-    },
-    onError: (_error, draft) =>
-      client.setQueryData(
-        queryKey,
-        (old) => old && { ...old, comments: old.comments.filter((row) => row.id !== draft.id) },
-      ),
+    onMutate: (draft) =>
+      optimisticComment<GuestReview>(client, queryKey, draftComment(draft, name, true)),
+    onError: (_error, draft, previous) =>
+      replaceComment<GuestReview>(client, queryKey, draft.id, previous),
     onSettled: () => client.invalidateQueries({ queryKey }),
   });
   return {

@@ -1,3 +1,4 @@
+import { useTeam } from "@/lib/team";
 import { PendingButton } from "@/components/pending-button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -23,6 +24,7 @@ const expiryDate = (expiresAt: number) =>
 const queryKey = ["invites"];
 
 export function InvitesManager() {
+  const team = useTeam().data;
   const queryClient = useQueryClient();
   const [role, setRole] = useState<Role>("viewer");
   const [link, setLink] = useState<string | null>(null);
@@ -146,7 +148,7 @@ export function InvitesManager() {
             </Button>
             <a
               className={buttonVariants({ variant: "secondary" })}
-              href={`https://wa.me/?text=${encodeURIComponent(link)}`}
+              href={`https://wa.me/?text=${encodeURIComponent(`You are invited to join ${team?.name ?? "our team"} on Cutnotes. Sign in to accept; this invitation works once and expires after 7 days.\n\n${link}`)}`}
               target="_blank"
               rel="noreferrer"
             >

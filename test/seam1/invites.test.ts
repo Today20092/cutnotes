@@ -56,6 +56,23 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+it("previews an Invite without consuming it and hides expired or revoked details", async () => {
+  const { url, invite: created } = await invite();
+  const preview = (token = tokenOf(url)) =>
+    callServerFn(serverFunctionIds.getInvitePreview, { data: { token } });
+  expect(await resultOf(await preview())).toMatchObject({
+    title: "You're invited to join Haithem Studio",
+  });
+  expect(await pending()).toHaveLength(1);
+  await env.DB.prepare("UPDATE invites SET expires_at = 1 WHERE id = ?").bind(created.id).run();
+  expect(await resultOf(await preview())).toBeNull();
+  await env.DB.prepare("UPDATE invites SET expires_at = ?, revoked_at = 1 WHERE id = ?")
+    .bind(Date.now() + DAY, created.id)
+    .run();
+  expect(await resultOf(await preview())).toBeNull();
+  expect(await resultOf(await preview("invalid"))).toBeNull();
+});
+
 describe("creating an Invite", () => {
   it("gives an Owner a link on this site, valid for 7 days", async () => {
     const before = Date.now();

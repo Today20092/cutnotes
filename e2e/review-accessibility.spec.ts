@@ -136,20 +136,24 @@ test("Comments stay reachable at narrow widths, short heights and enlarged text"
         `${width}×${height} ${css}: ${overflow.elements.join(", ")}`,
       ).toBeLessThanOrEqual(1);
       await expect(field).toBeInViewport();
-      const exposure = await field.evaluate((element) => {
-        const box = element.getBoundingClientRect();
-        const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
-        return {
-          exposed: hit === element || element.contains(hit),
-          top: box.top,
-          height: box.height,
-          hit: hit?.outerHTML.slice(0, 180),
-        };
-      });
-      expect(
-        exposure.exposed,
-        `Composer exposed at ${width}×${height} ${css}: ${JSON.stringify(exposure)}`,
-      ).toBe(true);
+      // Resizing can finish reflow or scroll restoration after the first visibility check.
+      await expect(async () => {
+        await field.scrollIntoViewIfNeeded();
+        const exposure = await field.evaluate((element) => {
+          const box = element.getBoundingClientRect();
+          const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+          return {
+            exposed: hit === element || element.contains(hit),
+            top: box.top,
+            height: box.height,
+            hit: hit?.outerHTML.slice(0, 180),
+          };
+        });
+        expect(
+          exposure.exposed,
+          `Composer exposed at ${width}×${height} ${css}: ${JSON.stringify(exposure)}`,
+        ).toBe(true);
+      }).toPass({ timeout: 5000 });
       await style.evaluate((node) => node.parentNode?.removeChild(node));
     }
   }

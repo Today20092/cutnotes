@@ -9,7 +9,10 @@ export const bearerTokenMiddleware = createMiddleware({
   type: "function",
 }).client(async ({ next }) => {
   // Feedback must still reach the server if Clerk's token refresh fails.
-  const token = await window.Clerk?.session?.getToken().catch(() => null);
+  const token =
+    typeof window === "undefined"
+      ? undefined
+      : await window.Clerk?.session?.getToken().catch(() => null);
   return next({
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });

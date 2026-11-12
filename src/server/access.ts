@@ -144,6 +144,7 @@ export async function readShareLink(token: unknown) {
       id: shareLinks.id,
       permission: shareLinks.permission,
       title: videos.title,
+      projectName: projects.name,
       revisionId: revisions.id,
       number: revisions.number,
       frameRate: revisions.frameRate,

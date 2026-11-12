@@ -15,6 +15,9 @@ beforeEach(async () => {
   await env.DB.exec(
     "INSERT INTO projects (id,name,created_by,created_at,updated_at) VALUES ('p','Project','owner',1,1); INSERT INTO videos (id,project_id,title,status,created_by,created_at,updated_at) VALUES ('own','p','Own','review','editor',1,1),('other','p','Other','review','owner',1,1);",
   );
+  await env.DB.exec(
+    "INSERT INTO project_members VALUES ('p','editor','editor','owner',1),('p','viewer','viewer','owner',1)",
+  );
 });
 
 const call = async (name: keyof typeof serverFunctionIds, role: string, data?: unknown) =>
@@ -25,7 +28,7 @@ const call = async (name: keyof typeof serverFunctionIds, role: string, data?: u
 
 it("an Editor deletes only their own Video and it disappears immediately", async () => {
   expect((await call("deleteVideo", "editor", { videoId: "other" })).status).toBe(404);
-  expect((await call("deleteVideo", "viewer", { videoId: "own" })).status).toBe(403);
+  expect((await call("deleteVideo", "viewer", { videoId: "own" })).status).toBe(404);
   expect((await call("deleteVideo", "editor", { videoId: "own" })).status).toBe(200);
   const list = await resultOf<{ videos: { id: string }[] }>(await call("listProjects", "viewer"));
   expect(list.videos.map(({ id }) => id)).toEqual(["other"]);

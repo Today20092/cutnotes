@@ -1,6 +1,6 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { fakeSignature } from "../test/seam1/support/fake-mux";
-import { seedMember } from "./support/database";
+import { assignProjectMember, seedMember } from "./support/database";
 import { signInAs } from "./support/session";
 
 const owner = {
@@ -93,6 +93,7 @@ test("an Editor sees delete only for Videos they created", async ({ page }, test
     email: "editor@example.com",
   };
   seedMember(editor.clerkUserId, "editor");
+  assignProjectMember(editor.clerkUserId, new URL(page.url()).pathname.split("/").pop()!, "editor");
   await signInAs(page, editor);
   await page.reload();
   await expect(page.getByText("Owner cut", { exact: true })).toBeVisible();
@@ -483,6 +484,7 @@ test("a Viewer sees the grid but no upload or management controls", async ({ pag
     email: "viewer@example.com",
   };
   seedMember(viewer.clerkUserId, "viewer");
+  assignProjectMember(viewer.clerkUserId, new URL(page.url()).pathname.split("/").pop()!);
   await signInAs(page, viewer);
   await page.reload();
 

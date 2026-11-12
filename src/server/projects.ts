@@ -2,6 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
 import {
   activeMember,
+  memberIdForUser,
+  projectAccess,
+  projectRole,
   id,
   readAsMember,
   refuse,
@@ -10,7 +13,7 @@ import {
   type ScreenDb,
 } from "@/server/access";
 import { getDb } from "@/server/db";
-import { projects, videos, type RevisionState } from "@/server/db/schema";
+import { projectMembers, projects, videos, type RevisionState } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
 
 const MAX_NAME_LENGTH = 120;
@@ -28,6 +31,7 @@ const selectVideos = (db: ScreenDb, clerkUserId: string) =>
   db
     .select({
       id: videos.id,
+      role: projectRole(memberIdForUser(clerkUserId), videos.projectId),
       createdBy: videos.createdBy,
       title: videos.title,
       status: videos.status,
@@ -90,11 +94,13 @@ async function withPosters<Video extends { posterPlaybackId: string | null }>(ro
 export const listProjects = createServerFn({ method: "POST" }).handler(async () => {
   const { member, results } = await readAsMember("viewer", (db, clerkUserId) => [
     db
-      .select(projectSummary)
+      .select({ ...projectSummary, role: projectRole(memberIdForUser(clerkUserId), projects.id) })
       .from(projects)
-      .where(isNull(projects.deletedAt))
+      .where(projectAccess(memberIdForUser(clerkUserId), projects.id))
       .orderBy(desc(projects.createdAt)),
-    selectVideos(db, clerkUserId).where(liveVideo).orderBy(desc(videos.updatedAt)),
+    selectVideos(db, clerkUserId)
+      .where(and(liveVideo, projectAccess(memberIdForUser(clerkUserId), videos.projectId)))
+      .orderBy(desc(videos.updatedAt)),
   ]);
   return {
     member: { id: member.id, displayName: member.displayName, role: member.role },
@@ -111,11 +117,25 @@ export const getProject = createServerFn({ method: "POST" })
       const projectId = typeof data?.projectId === "string" ? data.projectId : "";
       return [
         db
-          .select(projectSummary)
+          .select({
+            ...projectSummary,
+            role: projectRole(memberIdForUser(clerkUserId), projects.id),
+          })
           .from(projects)
-          .where(and(eq(projects.id, projectId), isNull(projects.deletedAt))),
+          .where(
+            and(
+              eq(projects.id, projectId),
+              projectAccess(memberIdForUser(clerkUserId), projects.id),
+            ),
+          ),
         selectVideos(db, clerkUserId)
-          .where(and(eq(videos.projectId, projectId), liveVideo))
+          .where(
+            and(
+              eq(videos.projectId, projectId),
+              liveVideo,
+              projectAccess(memberIdForUser(clerkUserId), videos.projectId),
+            ),
+          )
           .orderBy(desc(videos.updatedAt)),
       ] as const;
     });
@@ -133,11 +153,20 @@ export const createProject = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const member = await requireMember("editor");
     const now = Date.now();
-    const [project] = await getDb()
-      .insert(projects)
-      .select(sql`SELECT ${crypto.randomUUID()}, ${text(data, "name", MAX_NAME_LENGTH, "invalid-name")}, ${member.id}, ${now}, ${now}, NULL, NULL, NULL
+    const projectId = crypto.randomUUID();
+    const db = getDb();
+    const [created] = await db.batch([
+      db
+        .insert(projects)
+        .select(sql`SELECT ${projectId}, ${text(data, "name", MAX_NAME_LENGTH, "invalid-name")}, ${member.id}, ${now}, ${now}, NULL, NULL, NULL
         WHERE ${activeMember(member.id, "editor")}`)
-      .returning(projectSummary);
+        .returning(projectSummary),
+      db.insert(projectMembers)
+        .select(sql`SELECT ${projectId}, ${member.id}, 'editor', ${member.id}, ${now}
+          WHERE EXISTS (SELECT 1 FROM projects WHERE id = ${projectId} AND created_by = ${member.id})
+            AND ${activeMember(member.id, "editor")}`),
+    ]);
+    const project = created[0];
     if (!project) refuse(404, "not-found");
     return project;
   });
@@ -145,7 +174,7 @@ export const createProject = createServerFn({ method: "POST" })
 export const renameProject = createServerFn({ method: "POST" })
   .validator((data: { projectId: string; name: string }) => data)
   .handler(async ({ data }) => {
-    const member = await requireMember("editor");
+    const member = await requireMember("viewer");
     const [project] = await getDb()
       .update(projects)
       .set({ name: text(data, "name", MAX_NAME_LENGTH, "invalid-name"), updatedAt: Date.now() })
@@ -155,7 +184,7 @@ export const renameProject = createServerFn({ method: "POST" })
           isNull(projects.deletedAt),
           // A Complete Project is read-only until it is reopened.
           isNull(projects.completedAt),
-          activeMember(member.id, "editor"),
+          projectAccess(member.id, projects.id, "editor"),
         ),
       )
       .returning(projectSummary);

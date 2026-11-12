@@ -1,5 +1,5 @@
 import { and, eq, inArray, notExists, or, sql } from "drizzle-orm";
-import { activeMember } from "@/server/access";
+import { videoAccess } from "@/server/access";
 import { getDb, type Db } from "@/server/db";
 import { revisions, videos } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
@@ -201,7 +201,7 @@ function markUploadFailed(revisionId: string, errorCode: string) {
 
 /** Removes a Revision that never reached Mux, and a Video that held nothing else. */
 export function discardRevision(db: Db, revisionId: string, videoId: string, memberId?: string) {
-  const allowed = memberId ? activeMember(memberId, "editor") : undefined;
+  const allowed = memberId ? videoAccess(memberId, videoId, "editor") : undefined;
   return db.batch([
     db
       .delete(revisions)

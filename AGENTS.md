@@ -14,7 +14,9 @@ Self-hosted video review for small production teams. TanStack Start on Cloudflar
 - Never hand-edit `src/routeTree.gen.ts`: TanStack Router regenerates it.
 - Do not upgrade the Cloudflare tools (`wrangler`, `workerd`, the Vite and Vitest plugins) without reading the `workerd` pin note in `README.md`.
 
-For branch setup, merging, promotion or cleanup, read [the Git workflow](docs/branch-workflow.md).
+Before starting branch work, integrating changes, promoting a release or removing a worktree, read [the Git workflow](docs/branch-workflow.md). Use a scoped branch and worktree for each agent task.
+
+Before provisioning services, changing environment bindings, applying remote migrations or preparing a deployment, read [the setup and release guide](docs/setup.md). Merging to `main` authorizes automatic production deployment after Check passes; no second approval is required. A human runs initial setup. Keep staging data and credentials separate from production.
 
 ## UI components
 
@@ -22,7 +24,7 @@ Use cnippet by default: `npx shadcn@latest add @cnippet/<name>`. Use `@shadcn` o
 
 ## Testing
 
-`bun run check` is the normal check and does not start a browser: it runs typecheck, lint (Oxlint), format check (Oxfmt), `test:player`, `test:setup`, `test:structure` and Seam 1. Run `bun run fmt` to fix formatting. CI also runs `bun run audit`. The full browser suite (Seam 2) is slow, so run `bun run check:full` only when the user asks or before a push or PR to `main`. CI runs Seam 2 only for pushes to `main` and PRs into it.
+`bun run check` is the normal check and does not start a browser: it runs typecheck, lint (Oxlint), format check (Oxfmt), `test:player`, `test:setup`, `test:structure` and Seam 1. Run `bun run fmt` to fix formatting. CI also runs `bun run audit`. Use focused browser specs while editing. The Git workflow defines full-suite gates for integration and release; inspect `.github/workflows/check.yml` for the gates CI actually runs.
 
 Browser input to Comment server functions uses a Valibot schema with `parse(schema, data)` after the Access check. Browser components and routes must not import `@/server/db/*` or `@/server/mux/*` at runtime; type imports are allowed. `test:structure` checks server functions for Access helpers, with an explicit exception for token-authorized public Invite previews. `bun install` enables the pre-commit hook for lint and formatting.
 

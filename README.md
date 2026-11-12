@@ -16,6 +16,8 @@ Follow [docs/setup.md](docs/setup.md).
 
 ## Development
 
+For agent branches, combined testing and release promotion, follow [the Git workflow](docs/branch-workflow.md). For staging isolation and production deployment, follow [the setup guide](docs/setup.md).
+
 Requires [Bun](https://bun.sh). Tools that need Node use the pinned binary installed with the dependencies, or Node from PATH.
 
 - `bun install`

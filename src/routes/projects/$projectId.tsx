@@ -1,3 +1,5 @@
+import { ProjectPeople } from "@/components/project-people";
+import { CopyPageLink } from "@/components/copy-page-link";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { CompleteBanner, CompleteProject } from "@/components/complete-project";
 import { DeleteWork } from "@/components/delete-work";
@@ -79,7 +81,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
   const [status, setStatus] = useState("");
   const [failure, setFailure] = useState("");
   const { project, videos, member } = page;
-  const writable = canWrite(member.role);
+  const writable = canWrite(project.role);
 
   function rename(name: string) {
     setFailure("");
@@ -133,6 +135,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
         current={project.name}
       />
       <PageHeading title={project.name}>
+        <CopyPageLink kind="project" path={`/projects/${project.id}`} />
         {writable && project.completedAt === null && videos.length > 0 && uploadSheet}
       </PageHeading>
       <WriteFeedback status={status} failure={failure} />
@@ -171,11 +174,16 @@ function ProjectView({ page }: { page: ProjectPage }) {
         <ul className={videoGridClass}>
           {unreadFirst(videos).map((video) => (
             <li key={video.id} className="min-w-0">
-              <VideoTile video={video} writable={writable} deletable={canDelete(member, video)} />
+              <VideoTile
+                video={video}
+                writable={writable}
+                deletable={canDelete({ ...member, role: project.role }, video)}
+              />
             </li>
           ))}
         </ul>
       )}
+      {member.role === "owner" && <ProjectPeople projectId={project.id} />}
       {(member.role === "owner" || (writable && project.completedAt === null)) && (
         <section
           aria-labelledby="manage-project-heading"

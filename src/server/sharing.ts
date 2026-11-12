@@ -57,7 +57,7 @@ const linkFields = {
 export const createShareLink = createServerFn({ method: "POST" })
   .validator((data: { videoId: string; name: string; permission: SharePermission }) => data)
   .handler(async ({ data }) => {
-    const member = await requireMember("editor");
+    const member = await requireMember("owner");
     const name = text(data, "name", 60);
     const videoId = id(data, "videoId");
     if (!sharePermissions.includes(data?.permission)) refuse(400, "invalid-request");
@@ -65,7 +65,7 @@ export const createShareLink = createServerFn({ method: "POST" })
       .insert(shareLinks)
       .select(sql`
       SELECT ${crypto.randomUUID()}, ${videoId}, ${name}, ${newShareToken()}, ${data.permission}, ${member.id}, ${Date.now()}, NULL
-      WHERE ${writableVideo(videoId)} AND ${activeMember(member.id, "editor")}
+      WHERE ${writableVideo(videoId)} AND ${activeMember(member.id, "owner")}
     `)
       .returning(linkFields);
     if (!created) refuse(404, "not-found");
@@ -78,7 +78,7 @@ export const listShareLinks = createServerFn({ method: "POST" })
     const videoId = typeof data?.videoId === "string" ? data.videoId : "";
     const {
       results: [links],
-    } = await readAsMember("editor", (db) => [
+    } = await readAsMember("owner", (db) => [
       db
         .select(linkFields)
         .from(shareLinks)
@@ -91,7 +91,7 @@ export const listShareLinks = createServerFn({ method: "POST" })
 export const revokeShareLink = createServerFn({ method: "POST" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    const member = await requireMember("editor");
+    const member = await requireMember("owner");
     const [written] = await getDb()
       .update(shareLinks)
       .set({ revokedAt: Date.now() })
@@ -99,7 +99,7 @@ export const revokeShareLink = createServerFn({ method: "POST" })
         and(
           eq(shareLinks.id, id(data, "id")),
           isNull(shareLinks.revokedAt),
-          activeMember(member.id, "editor"),
+          activeMember(member.id, "owner"),
         ),
       )
       .returning({ id: shareLinks.id });

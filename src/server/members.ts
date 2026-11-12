@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { asc, isNull } from "drizzle-orm";
+import { asc, isNull, sql } from "drizzle-orm";
 import {
   id,
   readAsMember,
@@ -18,6 +18,12 @@ export const listMembers = createServerFn({ method: "POST" }).handler(async () =
         displayName: members.displayName,
         role: members.role,
         createdAt: members.createdAt,
+        invitedBy: sql<
+          string | null
+        >`(SELECT creator.display_name FROM invites i JOIN members creator ON creator.id = i.created_by WHERE i.used_by = members.id ORDER BY i.used_at DESC LIMIT 1)`,
+        invitationNote: sql<
+          string | null
+        >`(SELECT note FROM invites WHERE used_by = members.id ORDER BY used_at DESC LIMIT 1)`,
       })
       .from(members)
       .where(isNull(members.removedAt))

@@ -138,7 +138,7 @@ export function useMemberActor(
         comment: draftComment(draft, page.member.displayName, false),
       }),
     resolve:
-      open && canWrite(page.member.role)
+      open && canWrite(page.video?.role ?? "viewer")
         ? (comment, resolved) =>
             write.mutateAsync({ action: "resolve", data: { ...target(comment.id), resolved } })
         : undefined,

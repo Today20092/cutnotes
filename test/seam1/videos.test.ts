@@ -194,13 +194,13 @@ describe("permission matrix: rename a Video, change Status", () => {
 
     await expectRefused(
       await call(renameVideo, viewer, { videoId: "v1", title: "Nope" }),
-      403,
-      "insufficient-role",
+      404,
+      "not-found",
     );
     await expectRefused(
       await call(setVideoStatus, viewer, { videoId: "v1", status: "done" }),
-      403,
-      "insufficient-role",
+      404,
+      "not-found",
     );
     expect(await video()).toMatchObject({ title: "Video v1", status: "review" });
   });

@@ -550,7 +550,7 @@ test("a Guest goes from the welcome screen to a saved Comment, then sees a plain
   };
   seedMember(person.clerkUserId, "editor");
   const videoId = seedReview(person.clerkUserId);
-  await signInAs(page, person);
+  await signInAs(page, { clerkUserId: "user_first_owner", email: "first.owner@example.com" });
   await page.goto(`/videos/${videoId}`);
   await page.getByRole("button", { name: "Share", exact: true }).click();
   await page.getByLabel("Who is this link for?").fill("Client");

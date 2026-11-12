@@ -34,6 +34,10 @@ export function seedReview(clerkUserId: string, ready = true) {
       createdAt: 1,
       updatedAt: 1,
     }),
+    {
+      sql: "INSERT INTO project_members (project_id,member_id,role,added_by,created_at) SELECT ?,id,CASE WHEN role = 'viewer' THEN 'viewer' ELSE 'editor' END,id,1 FROM members WHERE id = ?",
+      params: [id, clerkUserId],
+    },
     insertRow(videos, {
       id,
       projectId: id,
@@ -142,4 +146,16 @@ function wrangler(...args: string[]) {
   );
   if (result.status !== 0) throw new Error(result.stderr || result.stdout);
   return result.stdout;
+}
+
+/** Explicit access for tests that switch identities while reviewing an existing project. */
+export function assignProjectMember(
+  memberId: string,
+  projectId: string,
+  role: "editor" | "viewer" = "viewer",
+) {
+  executeSql({
+    sql: "INSERT INTO project_members (project_id, member_id, role, added_by, created_at) SELECT id, ?, ?, created_by, 1 FROM projects WHERE id = ? ON CONFLICT (project_id, member_id) DO UPDATE SET role = excluded.role",
+    params: [memberId, role, projectId],
+  });
 }

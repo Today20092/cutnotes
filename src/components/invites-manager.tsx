@@ -11,70 +11,100 @@ import { Mail } from "lucide-react";
 import { useTeam } from "@/lib/team";
 import { PendingButton } from "@/components/pending-button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Radio, RadioGroup } from "@/components/ui/radio-group";
 import { ConfirmButton, useStatusToast } from "@/components/project-parts";
 import type { Role } from "@/server/db/schema";
-import { createInvite, listInvites, revokeInvite, type PendingInvite } from "@/server/invites";
+import { createInvite, listInvites, revokeInvite } from "@/server/invites";
 
 export const roleChoices: { role: Role; label: string; description: string }[] = [
-  { role: "viewer", label: "Viewer", description: "Watches and leaves Comments." },
-  { role: "editor", label: "Editor", description: "Also uploads and manages Videos." },
-  { role: "owner", label: "Owner", description: "Also manages the Team." },
+  {
+    role: "viewer",
+    label: "Viewer",
+    description: "Reviews assigned projects. Project roles control uploads.",
+  },
+  {
+    role: "editor",
+    label: "Editor",
+    description: "Can also create projects. Existing projects require assignment.",
+  },
+  {
+    role: "owner",
+    label: "Owner",
+    description: "Accesses all projects and manages the Team and sharing.",
+  },
 ];
 
-const roleLabel = (role: Role) => roleChoices.find((choice) => choice.role === role)?.label ?? role;
+const expiryDate = (timestamp: number) =>
+  new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(timestamp);
 
-const expiryDate = (expiresAt: number) =>
-  new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(expiresAt);
+type Invite = Awaited<ReturnType<typeof listInvites>>["invites"][number];
+const inviteStatus = (invite: Invite) =>
+  invite.usedAt !== null
+    ? "Accepted"
+    : invite.revokedAt !== null
+      ? "Revoked"
+      : invite.expiresAt <= Date.now()
+        ? "Expired"
+        : "Pending";
 
-const queryKey = ["invites"];
-
-export function InvitesManager() {
+export function InvitesManager({ projectId }: { projectId?: string }) {
   const team = useTeam().data;
   const queryClient = useQueryClient();
+  const queryKey = ["invites", projectId ?? "all"];
   const [role, setRole] = useState<Role>("viewer");
+  const [note, setNote] = useState("");
   const [link, setLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [status, setStatus] = useState("");
   useStatusToast(status);
   const linkHeading = useRef<HTMLHeadingElement>(null);
-  const pendingHeading = useRef<HTMLHeadingElement>(null);
+  const historyHeading = useRef<HTMLHeadingElement>(null);
+  const label = (value: Role, isProject = Boolean(projectId)) =>
+    isProject && value === "viewer"
+      ? "Reviewer"
+      : (roleChoices.find((choice) => choice.role === value)?.label ?? value);
+  const choices = projectId
+    ? roleChoices
+        .filter((choice) => choice.role !== "owner")
+        .map((choice) => ({
+          ...choice,
+          label: label(choice.role),
+          description:
+            choice.role === "editor"
+              ? "Watches, comments, uploads and manages videos in this project."
+              : "Watches and comments in this project.",
+        }))
+    : roleChoices;
 
-  const pending = useQuery({ queryKey, queryFn: () => listInvites() });
-
+  const history = useQuery({
+    queryKey,
+    queryFn: () => listInvites({ data: projectId ? { projectId } : undefined }),
+    retry: false,
+  });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["invites"] });
   const create = useMutation({
-    mutationFn: () => createInvite({ data: { role } }),
+    mutationFn: () => createInvite({ data: { role, note, ...(projectId ? { projectId } : {}) } }),
     onSuccess: (created) => {
       setLink(created.url);
       setCopied(false);
-      setStatus(`${roleLabel(created.invite.role)} Invite created`);
-      void queryClient.invalidateQueries({ queryKey });
+      setStatus(`${label(created.invite.role)} Invite created`);
+      void refresh();
     },
   });
-
   const revoke = useMutation({
     mutationFn: (id: string) => revokeInvite({ data: { id } }),
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey });
-      const previous = queryClient.getQueryData<{ invites: PendingInvite[] }>(queryKey);
-      queryClient.setQueryData(queryKey, {
-        invites: previous?.invites.filter((invite) => invite.id !== id) ?? [],
-      });
-      pendingHeading.current?.focus();
+    onSuccess: () => {
+      historyHeading.current?.focus();
       setStatus("Invite revoked");
-      return { previous };
+      void refresh();
     },
-    onError: (_error, _id, context) => {
-      queryClient.setQueryData(queryKey, context?.previous);
-      setStatus("");
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
-
   useEffect(() => {
     if (link) linkHeading.current?.focus();
   }, [link]);
@@ -90,16 +120,13 @@ export function InvitesManager() {
     }
   }
 
-  const invites = pending.data?.invites;
-
   return (
-    <div className="w-full max-w-xl space-y-8">
+    <div className="flex w-full max-w-xl flex-col gap-8">
       <p role="status" className="sr-only">
         {status}
       </p>
-
       <form
-        className="space-y-4"
+        className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();
           create.mutate();
@@ -108,18 +135,17 @@ export function InvitesManager() {
         <Fieldset className="max-w-none gap-3">
           <FieldsetLegend>Invite someone as</FieldsetLegend>
           <RadioGroup value={role} onValueChange={(next) => setRole(next as Role)}>
-            {roleChoices.map((choice) => (
+            {choices.map((choice) => (
               <label
                 key={choice.role}
-                htmlFor={`invite-role-${choice.role}`}
+                htmlFor={`invite-role-${projectId ?? "team"}-${choice.role}`}
                 className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3 has-[[data-checked]]:border-primary has-[[data-checked]]:bg-accent/40"
               >
                 <Radio
-                  id={`invite-role-${choice.role}`}
+                  id={`invite-role-${projectId ?? "team"}-${choice.role}`}
                   value={choice.role}
-                  aria-labelledby={`role-${choice.role}`}
                 />
-                <span id={`role-${choice.role}`}>
+                <span>
                   <span className="block font-medium">{choice.label}</span>
                   <span className="block text-sm text-muted-foreground">{choice.description}</span>
                 </span>
@@ -127,12 +153,24 @@ export function InvitesManager() {
             ))}
           </RadioGroup>
         </Fieldset>
+        <Field className="items-stretch">
+          <FieldLabel>Optional note</FieldLabel>
+          <Input
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            maxLength={240}
+            placeholder="For Alex — episode 12"
+          />
+        </Field>
+        <p className="text-sm text-muted-foreground">
+          The note is for Owners. Anyone with this link can accept it once; it is not tied to an
+          email address.
+        </p>
         <PendingButton type="submit" pending={create.isPending}>
           Create Invite
         </PendingButton>
         {create.isError && <p role="alert">Could not create the Invite. Please try again.</p>}
       </form>
-
       {link && (
         <section className="flex flex-col gap-3">
           <h2 ref={linkHeading} tabIndex={-1} className="font-semibold outline-none">
@@ -142,13 +180,8 @@ export function InvitesManager() {
             Copy it now. It is shown only once and works for one person for 7 days.
           </p>
           <Field className="items-stretch">
-            <FieldLabel htmlFor="invite-link">Link to send</FieldLabel>
-            <Input
-              id="invite-link"
-              readOnly
-              value={link}
-              onFocus={(event) => event.currentTarget.select()}
-            />
+            <FieldLabel>Link to send</FieldLabel>
+            <Input readOnly value={link} onFocus={(event) => event.currentTarget.select()} />
           </Field>
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={() => void copyLink()}>
@@ -156,7 +189,7 @@ export function InvitesManager() {
             </Button>
             <a
               className={buttonVariants({ variant: "secondary" })}
-              href={`https://wa.me/?text=${encodeURIComponent(`You are invited to join ${team?.name ?? "our team"} on Cutnotes. Sign in to accept; this invitation works once and expires after 7 days.\n\n${link}`)}`}
+              href={`https://wa.me/?text=${encodeURIComponent(`You are invited to ${projectId ? "a project" : (team?.name ?? "our team")} on Cutnotes. Sign in to accept; this invitation works once and expires after 7 days.\n\n${link}`)}`}
               target="_blank"
               rel="noreferrer"
             >
@@ -165,51 +198,87 @@ export function InvitesManager() {
           </div>
         </section>
       )}
-
       <section className="flex flex-col gap-3">
-        <h2 ref={pendingHeading} tabIndex={-1} className="text-lg font-semibold outline-none">
-          Pending Invites
+        <h2 ref={historyHeading} tabIndex={-1} className="text-lg font-semibold outline-none">
+          Invitation history
         </h2>
-        {pending.isError && (
-          <p role="alert">Could not load pending Invites. Please reload the page.</p>
-        )}
+        {history.isError && <p role="alert">Could not load Invites. Please reload the page.</p>}
         {revoke.isError && <p role="alert">Could not revoke the Invite. Please try again.</p>}
-        {pending.isPending && <Skeleton className="h-16" />}
-        {invites?.length === 0 && (
+        {history.isPending && <Skeleton className="h-16" />}
+        {history.data?.invites.length === 0 && (
           <Empty className="rounded-xl border border-dashed py-8 md:py-8">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <Mail aria-hidden />
               </EmptyMedia>
-              <EmptyTitle className="text-base">No pending Invites.</EmptyTitle>
+              <EmptyTitle className="text-base">No Invites yet.</EmptyTitle>
               <EmptyDescription>
                 Create an Invite above to bring someone into the Team.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}
-        {invites && invites.length > 0 && (
-          <ul className="divide-y">
-            {invites.map((invite) => (
-              <li
-                key={invite.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-3"
-              >
-                <span>
-                  <span className="block font-medium">{roleLabel(invite.role)}</span>
-                  <span className="block text-sm text-muted-foreground">
-                    Expires {expiryDate(invite.expiresAt)}
+        <ul className="divide-y">
+          {history.data?.invites.map((invite) => {
+            const state = inviteStatus(invite);
+            return (
+              <li key={invite.id} className="flex flex-wrap items-start justify-between gap-3 py-4">
+                <div className="flex min-w-0 flex-1 flex-col gap-1 wrap-anywhere">
+                  <span className="font-medium">
+                    {invite.note || `${label(invite.role, Boolean(invite.projectId))} invitation`}
                   </span>
-                </span>
-                <ConfirmButton
-                  label={`Revoke ${roleLabel(invite.role)} Invite, expires ${expiryDate(invite.expiresAt)}`}
-                  text="Revoke"
-                  onConfirm={() => revoke.mutate(invite.id)}
-                />
+                  <span>
+                    {invite.projectName ?? "Team membership"} ·{" "}
+                    {label(invite.role, Boolean(invite.projectId))}
+                  </span>
+                  <Badge variant="secondary" className="w-fit">
+                    {state}
+                  </Badge>
+                  <p className="text-sm text-muted-foreground">
+                    Created by {invite.createdBy} · {expiryDate(invite.createdAt)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Expires {expiryDate(invite.expiresAt)}
+                  </p>
+                  {invite.revokedAt !== null && (
+                    <p className="text-sm text-muted-foreground">
+                      Revoked {expiryDate(invite.revokedAt)}
+                    </p>
+                  )}
+                  {invite.usedAt !== null && (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        Accepted by {invite.acceptedBy ?? "former member"} ·{" "}
+                        {expiryDate(invite.usedAt)}
+                      </p>
+                      {invite.projectId ? (
+                        <Link
+                          to="/projects/$projectId"
+                          params={{ projectId: invite.projectId }}
+                          hash="people"
+                          className="inline-flex min-h-11 items-center underline"
+                        >
+                          Manage membership
+                        </Link>
+                      ) : (
+                        <Link to="/members" className="inline-flex min-h-11 items-center underline">
+                          Manage membership
+                        </Link>
+                      )}
+                    </>
+                  )}
+                </div>
+                {state === "Pending" && (
+                  <ConfirmButton
+                    label={`Revoke ${label(invite.role, Boolean(invite.projectId))} Invite${invite.note ? `: ${invite.note}` : ""}, expires ${expiryDate(invite.expiresAt)}`}
+                    text="Revoke"
+                    onConfirm={() => revoke.mutate(invite.id)}
+                  />
+                )}
               </li>
-            ))}
-          </ul>
-        )}
+            );
+          })}
+        </ul>
       </section>
     </div>
   );

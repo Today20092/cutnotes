@@ -30,6 +30,7 @@ export async function seedMember(role: string, removedAt: number | null = null) 
       removedAt,
     }),
   );
+  await assignFixtureCrew();
   return `user_${role}`;
 }
 
@@ -48,6 +49,14 @@ export async function seedProject(
       deletedAt: overrides.deletedAt ?? null,
     }),
   );
+  await assignFixtureCrew();
+}
+
+/** These legacy business fixtures explicitly share work with their seeded crew. */
+async function assignFixtureCrew() {
+  await env.DB.prepare(`INSERT OR IGNORE INTO project_members (project_id, member_id, role, added_by, created_at)
+    SELECT p.id, m.id, CASE WHEN m.role = 'editor' THEN 'editor' ELSE 'viewer' END, p.created_by, 1
+    FROM projects p CROSS JOIN members m WHERE m.removed_at IS NULL AND m.role <> 'owner'`).run();
 }
 
 export async function seedVideo(id: string, projectId: string, deletedAt: number | null = null) {

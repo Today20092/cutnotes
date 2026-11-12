@@ -8,7 +8,8 @@ import { createMiddleware } from "@tanstack/react-start";
 export const bearerTokenMiddleware = createMiddleware({
   type: "function",
 }).client(async ({ next }) => {
-  const token = await window.Clerk?.session?.getToken();
+  // Feedback must still reach the server if Clerk's token refresh fails.
+  const token = await window.Clerk?.session?.getToken().catch(() => null);
   return next({
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });

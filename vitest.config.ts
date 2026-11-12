@@ -37,6 +37,8 @@ export default defineConfig(async () => ({
     tanstackStart(),
   ],
   test: {
+    // Start's first server-function call also compiles its route dependencies.
+    testTimeout: 60_000,
     // Worker/Start cold starts contend when every file boots at once.
     maxWorkers: 2,
     include: ["test/seam1/**/*.test.ts"],

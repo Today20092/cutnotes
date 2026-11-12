@@ -2,6 +2,7 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/r
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Review, type CommentActor, type Draft } from "@/components/comments";
+import { SiteFeedback } from "@/components/site-feedback";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -74,7 +75,7 @@ function Welcome({ onDone }: { onDone: (name: string) => void }) {
     onDone(name);
   }
   return (
-    <main className="flex min-h-dvh items-center justify-center p-6">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6">
       <form
         noValidate
         className="flex w-full max-w-sm flex-col gap-3"
@@ -109,6 +110,7 @@ function Welcome({ onDone }: { onDone: (name: string) => void }) {
         )}
         <Button type="submit">Continue</Button>
       </form>
+      <SiteFeedback />
     </main>
   );
 }
@@ -141,6 +143,7 @@ function GuestReviewScreen({
             ? "Wait a minute, then reload this page."
             : "Ask the person who sent it for a new one."}
         </p>
+        <SiteFeedback error={review.error} />
       </main>
     );
   return (
@@ -193,6 +196,9 @@ function Loaded({
         renewPlayback={() => getGuestReview({ data: { token } })}
         actor={actor}
       />
+      <footer className="mt-4 border-t pt-2">
+        <SiteFeedback />
+      </footer>
     </main>
   );
 }

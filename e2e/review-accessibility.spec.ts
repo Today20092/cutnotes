@@ -449,6 +449,7 @@ test("a Guest arriving from the welcome screen lands on the heading and hears th
   browser,
 }, testInfo) => {
   const { open, videoId } = await openReview(page, testInfo);
+  await signInAs(page, { clerkUserId: "user_first_owner", email: "first.owner@example.com" });
   await open();
   await page.getByRole("button", { name: "Share", exact: true }).click();
   await page.getByLabel("Who is this link for?").fill("Client");

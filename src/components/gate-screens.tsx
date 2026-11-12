@@ -21,7 +21,7 @@ export function SignInScreen({ team }: { team: Team }) {
   return (
     <GateLayout team={team}>
       <h1 className="text-xl font-semibold">Sign in</h1>
-      <SignInForm />
+      <SignInForm returnTo={location.href} />
     </GateLayout>
   );
 }

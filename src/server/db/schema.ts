@@ -38,6 +38,8 @@ export const invites = sqliteTable("invites", {
   usedAt: integer("used_at"),
   usedBy: text("used_by").references(() => members.id, { onDelete: "cascade" }),
   revokedAt: integer("revoked_at"),
+  projectId: text("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  note: text("note"),
 });
 
 export const projects = sqliteTable(
@@ -58,6 +60,30 @@ export const projects = sqliteTable(
 );
 
 export type Project = typeof projects.$inferSelect;
+
+export const projectRoles = ["viewer", "editor"] as const;
+export type ProjectRole = (typeof projectRoles)[number];
+
+export const projectMembers = sqliteTable(
+  "project_members",
+  {
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    memberId: text("member_id")
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
+    role: text("role", { enum: projectRoles }).notNull(),
+    addedBy: text("added_by")
+      .notNull()
+      .references(() => members.id),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.projectId, table.memberId] }),
+    index("project_members_member_idx").on(table.memberId),
+  ],
+);
 
 export { videoStatuses, type VideoStatus };
 

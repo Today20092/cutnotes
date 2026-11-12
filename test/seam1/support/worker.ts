@@ -5,6 +5,7 @@ import "@/server/app-shell";
 import "@/server/invites";
 import "@/server/members";
 import "@/server/projects";
+import "@/server/project-members";
 import "@/server/videos";
 import "@/server/playback";
 import "@/server/comments";
@@ -50,6 +51,12 @@ export const guestServerFunctionIds = {
 
 /** Only an Owner may call these. */
 export const ownerServerFunctionIds = {
+  listProjectMembers: serverFnId("/src/server/project-members.ts", "listProjectMembers"),
+  setProjectMember: serverFnId("/src/server/project-members.ts", "setProjectMember"),
+  removeProjectMember: serverFnId("/src/server/project-members.ts", "removeProjectMember"),
+  createShareLink: serverFnId(sharingFile, "createShareLink"),
+  listShareLinks: serverFnId(sharingFile, "listShareLinks"),
+  revokeShareLink: serverFnId(sharingFile, "revokeShareLink"),
   listFeedback: serverFnId("/src/server/feedback.ts", "listFeedback"),
   markFeedback: serverFnId("/src/server/feedback.ts", "markFeedback"),
   deleteProject: serverFnId("/src/server/projects.ts", "deleteProject"),
@@ -66,9 +73,6 @@ export const ownerServerFunctionIds = {
 /** These need an active Member. */
 export const memberServerFunctionIds = {
   markVideoRead: serverFnId("/src/server/playback.ts", "markVideoRead"),
-  createShareLink: serverFnId(sharingFile, "createShareLink"),
-  listShareLinks: serverFnId(sharingFile, "listShareLinks"),
-  revokeShareLink: serverFnId(sharingFile, "revokeShareLink"),
   createComment: serverFnId("/src/server/comments.ts", "createComment"),
   editComment: serverFnId("/src/server/comments.ts", "editComment"),
   deleteComment: serverFnId("/src/server/comments.ts", "deleteComment"),

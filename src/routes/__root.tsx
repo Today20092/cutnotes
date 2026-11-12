@@ -34,14 +34,21 @@ const ToastProvider = lazy(() =>
   import("@/components/ui/toast").then((module) => ({ default: module.ToastProvider })),
 );
 
-function Toaster() {
+function Toaster({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const loading = (
+    <main aria-busy="true">
+      <h1 className="sr-only">Loading</h1>
+    </main>
+  );
   return mounted ? (
-    <Suspense fallback={null}>
-      <ToastProvider position="top-center" />
+    <Suspense fallback={loading}>
+      <ToastProvider position="top-center">{children}</ToastProvider>
     </Suspense>
-  ) : null;
+  ) : (
+    loading
+  );
 }
 
 function Root() {
@@ -50,8 +57,9 @@ function Root() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
-        <Outlet />
-        <Toaster />
+        <Toaster>
+          <Outlet />
+        </Toaster>
       </QueryClientProvider>
     </AuthProvider>
   );
@@ -63,15 +71,16 @@ function RootError({ error }: ErrorComponentProps) {
   useEffect(() => recordProblem("screen", describeError(error)), [error]);
   return (
     <QueryClientProvider client={queryClient}>
-      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
-        <h1 className="text-xl font-semibold">Something went wrong</h1>
-        <p className="text-muted-foreground">Reload the page to try again.</p>
-        <div className="flex flex-wrap justify-center gap-2">
-          <Button onClick={() => location.reload()}>Reload</Button>
-          <SiteFeedback error={error} />
-        </div>
-      </main>
-      <Toaster />
+      <Toaster>
+        <main className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
+          <h1 className="text-xl font-semibold">Something went wrong</h1>
+          <p className="text-muted-foreground">Reload the page to try again.</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button onClick={() => location.reload()}>Reload</Button>
+            <SiteFeedback error={error} />
+          </div>
+        </main>
+      </Toaster>
     </QueryClientProvider>
   );
 }

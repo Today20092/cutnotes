@@ -63,7 +63,11 @@ function Review() {
               )}
               {page.member.role !== "viewer" && page.video.completedAt === null && (
                 <>
-                  <ShareLinksSheet videoId={videoId} />
+                  <ShareLinksSheet
+                    videoId={videoId}
+                    title={page.video.title}
+                    projectName={page.video.projectName}
+                  />
                   <UploadSheet
                     destination={{ kind: "existing", videoId, title: page.video.title }}
                     trigger={<Button variant="secondary">Upload new Revision</Button>}

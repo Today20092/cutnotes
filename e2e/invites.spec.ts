@@ -29,8 +29,16 @@ async function openAs(browser: Browser, person: Person, url: string) {
 test("an Owner invites someone, who joins by opening the link once", async ({
   page,
   browser,
+  request,
 }, testInfo) => {
   const url = await createInviteLink(page, "Viewer");
+  const previewResponse = await request.get(url);
+  const html = await previewResponse.text();
+  expect(html).toContain(
+    'property="og:title" content="You&#x27;re invited to join Haithem Studio"',
+  );
+  expect(html).toContain('property="og:description"');
+  expect(previewResponse.headers()["cache-control"]).toBe("no-store");
   const invitee = {
     clerkUserId: `user_invitee_${testInfo.project.name}`,
     email: `invitee.${testInfo.project.name}@example.com`,

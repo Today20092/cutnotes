@@ -24,12 +24,22 @@ export function SignInScreen({ team }: { team: Team }) {
   );
 }
 
-export function InviteSignInScreen({ team, returnTo }: { team: Team; returnTo: string }) {
+export function InviteSignInScreen({
+  team,
+  returnTo,
+  description,
+}: {
+  team: Team;
+  returnTo: string;
+  description?: string;
+}) {
   return (
     <GateLayout team={team}>
       <div className="max-w-sm space-y-2">
         <h1 className="text-xl font-semibold">You have been invited</h1>
-        <p className="text-muted-foreground">Sign in to join {team.name}. No password is needed.</p>
+        <p className="text-muted-foreground">
+          {description ?? `Sign in to join ${team.name}. No password is needed.`}
+        </p>
       </div>
       <SignInForm returnTo={returnTo} />
     </GateLayout>

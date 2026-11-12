@@ -8,7 +8,7 @@ import { createMiddleware } from "@tanstack/react-start";
 export const bearerTokenMiddleware = createMiddleware({
   type: "function",
 }).client(async ({ next }) => {
-  const token = await window.Clerk?.session?.getToken();
+  const token = typeof window === "undefined" ? undefined : await window.Clerk?.session?.getToken();
   return next({
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });

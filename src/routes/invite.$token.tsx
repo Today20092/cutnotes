@@ -1,3 +1,5 @@
+import { shareMeta } from "@/lib/share-preview";
+import { getInvitePreview } from "@/server/invites";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
@@ -9,14 +11,9 @@ import { useTeam, type Team } from "@/lib/team";
 import { redeemInvite, type RedeemResult } from "@/server/invites";
 
 export const Route = createFileRoute("/invite/$token")({
-  head: () => ({
-    meta: [
-      { title: "Invite · Cutnotes" },
-      // The address is a credential.
-      { name: "referrer", content: "no-referrer" },
-      { name: "robots", content: "noindex" },
-    ],
-  }),
+  ssr: "data-only",
+  loader: ({ params }) => getInvitePreview({ data: { token: params.token } }),
+  head: ({ loaderData }) => ({ meta: shareMeta(loaderData, "Invitation unavailable") }),
   component: InvitePage,
 });
 
@@ -29,6 +26,7 @@ const unavailableTitles = {
 
 function InvitePage() {
   const { token } = Route.useParams();
+  const preview = Route.useLoaderData();
   const { isLoaded, isSignedIn } = useAuthStatus();
   const team = useTeam();
 
@@ -40,7 +38,13 @@ function InvitePage() {
       </main>
     );
   if (!isSignedIn) {
-    return <InviteSignInScreen team={team.data} returnTo={location.href} />;
+    return (
+      <InviteSignInScreen
+        team={team.data}
+        returnTo={location.href}
+        description={preview?.description}
+      />
+    );
   }
   return <Redeem team={team.data} token={token} />;
 }

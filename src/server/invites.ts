@@ -31,6 +31,23 @@ async function sha256(token: string) {
 const isPending = (now: number) =>
   and(isNull(invites.usedAt), isNull(invites.revokedAt), gt(invites.expiresAt, now));
 
+/** Reading a preview must never redeem the Invite. */
+export const getInvitePreview = createServerFn({ method: "POST" })
+  .validator((data: { token: string }) => data)
+  .handler(async ({ data }) => {
+    if (typeof data?.token !== "string" || !/^[\w-]{43}$/.test(data.token)) return null;
+    const [invite] = await getDb()
+      .select({ role: invites.role })
+      .from(invites)
+      .where(and(eq(invites.tokenHash, await sha256(data.token)), isPending(Date.now())));
+    if (!invite) return null;
+    return {
+      title: `You're invited to join ${env.TEAM_NAME}`,
+      description: `Join ${env.TEAM_NAME} as ${invite.role === "owner" ? "an" : "a"} ${invite.role} on Cutnotes. Sign in to accept. This invitation works once and expires after 7 days.`,
+      image: env.TEAM_LOGO_URL,
+    };
+  });
+
 const pendingFields = {
   id: invites.id,
   role: invites.role,

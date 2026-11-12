@@ -50,6 +50,8 @@ function Root() {
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
 }>()({
+  // Public link routes load preview metadata on the server; UI stays client-rendered.
+  ssr: "data-only",
   head: () => ({
     meta: [
       { charSet: "utf-8" },

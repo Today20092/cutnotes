@@ -41,6 +41,8 @@ const sharingFile = "/src/server/sharing.ts";
 
 /** Public by design: the Share Link token is the credential. */
 export const guestServerFunctionIds = {
+  getSharePreview: serverFnId(sharingFile, "getSharePreview"),
+  getInvitePreview: serverFnId("/src/server/invites.ts", "getInvitePreview"),
   getGuestReview: serverFnId(sharingFile, "getGuestReview"),
   createGuestComment: serverFnId(sharingFile, "createGuestComment"),
 } as const;

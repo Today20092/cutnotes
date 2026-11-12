@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { shareMeta } from "@/lib/share-preview";
 import {
   call,
   clearDatabase,
@@ -39,6 +40,31 @@ const guest = (token: string, extra: object = {}) =>
   callServerFn(fn.getGuestReview, { data: { token, ...extra } });
 const page = async (token: string, extra: object = {}) =>
   resultOf<GuestPage>(await guest(token, extra));
+
+it("previews a shared video without issuing playback credentials and hides revoked details", async () => {
+  const link = await createLink("view");
+  const preview = () => callServerFn(fn.getSharePreview, { data: { token: link.token } });
+  const result = await resultOf<{ title: string; description: string; image: string }>(
+    await preview(),
+  );
+  expect(result.title).toBe("View Video v");
+  expect(result.description).toContain("Project p");
+  expect(result.description).toContain("View only");
+  expect(JSON.stringify(result)).not.toContain("stream.mux.com");
+  expect(shareMeta(result, "Unavailable")).toContainEqual({
+    property: "og:title",
+    content: "View Video v",
+  });
+  expect(shareMeta(result, "Unavailable")).toContainEqual({
+    property: "og:image",
+    content: "https://cutnotes.test/logo.png",
+  });
+  const html = await (await fetchPath(`/share/${link.token}`)).text();
+  expect(html).toContain('property="og:title" content="View Video v"');
+  expect(html).toContain('property="og:image" content="https://cutnotes.test/logo.png"');
+  await call(fn.revokeShareLink, "user_owner", { id: link.id });
+  expect(await resultOf(await preview())).toBeNull();
+});
 
 it("an Owner creates a link with a 32-character base62 token and a Guest watches the latest ready Revision", async () => {
   await seedRevision({ id: "r2", videoId: "v", number: 2, state: "ready", playbackId: "sample" });

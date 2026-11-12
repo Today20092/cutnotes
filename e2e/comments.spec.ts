@@ -78,15 +78,23 @@ test("Drawing tools pause, undo, clear and replay over the picture after resizin
     "x",
     before!,
   );
-  const bounds = (await page.getByLabel("Drawing picture", { exact: true }).boundingBox())!;
-  const shape = (await page
-    .getByLabel("Drawing picture", { exact: true })
-    .locator("rect")
-    .boundingBox())!;
-  expect((shape.x - bounds.x) / bounds.width).toBeCloseTo(0.25, 1);
-  expect(shape.width / bounds.width).toBeCloseTo(0.5, 1);
-  expect((shape.y - bounds.y) / bounds.height).toBeCloseTo(0.25, 1);
-  expect(shape.height / bounds.height).toBeCloseTo(0.5, 1);
+  // Sample both boxes in one frame while the resize observer finishes updating the overlay.
+  await expect(async () => {
+    const [x, y, width, height] = await overlay.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      const shape = element.querySelector("rect")!.getBoundingClientRect();
+      return [
+        (shape.x - bounds.x) / bounds.width,
+        (shape.y - bounds.y) / bounds.height,
+        shape.width / bounds.width,
+        shape.height / bounds.height,
+      ];
+    });
+    expect(x).toBeCloseTo(0.25, 1);
+    expect(y).toBeCloseTo(0.25, 1);
+    expect(width).toBeCloseTo(0.5, 1);
+    expect(height).toBeCloseTo(0.5, 1);
+  }).toPass({ timeout: 5000 });
 });
 
 test("touch pen simplifies, cancelled gestures do not save, and failed sends keep the Drawing", async ({

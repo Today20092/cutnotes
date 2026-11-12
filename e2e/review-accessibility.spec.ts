@@ -135,8 +135,7 @@ test("Comments stay reachable at narrow widths, short heights and enlarged text"
         overflow.pixels,
         `${width}×${height} ${css}: ${overflow.elements.join(", ")}`,
       ).toBeLessThanOrEqual(1);
-      await expect(field).toBeInViewport();
-      // Resizing can finish reflow or scroll restoration after the first visibility check.
+      // Reflow or scroll restoration can finish after the first scroll.
       await expect(async () => {
         await field.scrollIntoViewIfNeeded();
         const exposure = await field.evaluate((element) => {
@@ -154,6 +153,7 @@ test("Comments stay reachable at narrow widths, short heights and enlarged text"
           `Composer exposed at ${width}×${height} ${css}: ${JSON.stringify(exposure)}`,
         ).toBe(true);
       }).toPass({ timeout: 5000 });
+      await expect(field).toBeInViewport();
       await style.evaluate((node) => node.parentNode?.removeChild(node));
     }
   }

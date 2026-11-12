@@ -1,4 +1,5 @@
 import { PersonAvatar } from "@/components/person-avatar";
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { PlaybackComments } from "@/components/playback-comments";
 import { PendingButton } from "@/components/pending-button";
 import { Pencil } from "lucide-react";
@@ -448,9 +449,13 @@ function Comments({
       )}
       <CommentFilter resolved={resolved} setResolved={setResolved} tab={tab} />
       {rows.length === 0 ? (
-        <p className="py-3 text-muted-foreground">
-          {resolved ? "No Resolved Comments." : "No Comments to do."}
-        </p>
+        <Empty className="py-8 md:py-8">
+          <EmptyHeader>
+            <EmptyTitle className="text-sm font-normal text-muted-foreground">
+              {resolved ? "No Resolved Comments." : "No Comments to do."}
+            </EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <ul className="divide-y" aria-label="Comments">
           {rows.map((comment) => {

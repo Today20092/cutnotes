@@ -1,4 +1,6 @@
 import { PersonAvatar } from "@/components/person-avatar";
+import { Frame, FrameHeader, FramePanel } from "@/components/ui/frame";
+import { Badge } from "@/components/ui/badge";
 import { SettingsLayout } from "@/components/settings-layout";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, LogOut, MessageSquareWarning, UserPlus, Users } from "lucide-react";
@@ -37,58 +39,68 @@ function SettingsPage() {
             current="Settings"
           />
           <PageHeading title="Settings" />
-          <section
-            aria-labelledby="account-heading"
-            className="flex flex-col gap-4 rounded-xl border bg-card p-4 sm:p-6"
-          >
-            <h2 id="account-heading" className="text-lg font-semibold">
-              Your account
-            </h2>
-            <div className="mb-4 flex items-center gap-3">
-              <PersonAvatar name={member.displayName} src={member.avatarUrl} className="size-12" />
-              <Button variant="secondary" onClick={manageProfile}>
-                Manage profile
-              </Button>
-            </div>
-            <dl>
-              <dt className="text-sm text-muted-foreground">Name</dt>
-              <dd className="wrap-anywhere">{member.displayName}</dd>
-              {email && (
-                <>
-                  <dt className="mt-2 text-sm text-muted-foreground">Email</dt>
-                  <dd className="wrap-anywhere">{email}</dd>
-                </>
-              )}
-              <dt className="mt-2 text-sm text-muted-foreground">Role</dt>
-              <dd className="capitalize">{member.role}</dd>
-            </dl>
-          </section>
-          {member.role === "owner" && (
-            <section
-              aria-labelledby="team-heading"
-              className="flex flex-col gap-4 rounded-xl border bg-card p-4 sm:p-6"
-            >
-              <h2 id="team-heading" className="text-lg font-semibold">
-                Team
+          <Frame role="region" aria-labelledby="account-heading">
+            <FrameHeader>
+              <h2 id="account-heading" className="text-lg font-semibold">
+                Your account
               </h2>
-              <ul className="divide-y">
-                {teamLinks.map(({ to, label, detail, icon: Icon }) => (
-                  <li key={to}>
-                    <Link
-                      to={to}
-                      className="flex min-h-14 items-center gap-3 rounded-md px-2 py-3 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
-                    >
-                      <Icon className="size-5 shrink-0" aria-hidden />
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-medium">{label}</span>
-                        <span className="block text-sm text-muted-foreground">{detail}</span>
-                      </span>
-                      <ChevronRight className="size-4 shrink-0" aria-hidden />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            </FrameHeader>
+            <FramePanel>
+              <div className="mb-4 flex items-center gap-3">
+                <PersonAvatar
+                  name={member.displayName}
+                  src={member.avatarUrl}
+                  className="size-12"
+                />
+                <Button variant="secondary" onClick={manageProfile}>
+                  Manage profile
+                </Button>
+              </div>
+              <dl>
+                <dt className="text-sm text-muted-foreground">Name</dt>
+                <dd className="wrap-anywhere">{member.displayName}</dd>
+                {email && (
+                  <>
+                    <dt className="mt-2 text-sm text-muted-foreground">Email</dt>
+                    <dd className="wrap-anywhere">{email}</dd>
+                  </>
+                )}
+                <dt className="mt-2 text-sm text-muted-foreground">Role</dt>
+                <dd>
+                  <Badge variant="secondary" className="capitalize">
+                    {member.role}
+                  </Badge>
+                </dd>
+              </dl>
+            </FramePanel>
+          </Frame>
+          {member.role === "owner" && (
+            <Frame role="region" aria-labelledby="team-heading">
+              <FrameHeader>
+                <h2 id="team-heading" className="text-lg font-semibold">
+                  Team
+                </h2>
+              </FrameHeader>
+              <FramePanel className="py-0">
+                <ul className="divide-y">
+                  {teamLinks.map(({ to, label, detail, icon: Icon }) => (
+                    <li key={to}>
+                      <Link
+                        to={to}
+                        className="flex min-h-14 items-center gap-3 rounded-md px-2 py-3 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+                      >
+                        <Icon className="size-5 shrink-0" aria-hidden />
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-medium">{label}</span>
+                          <span className="block text-sm text-muted-foreground">{detail}</span>
+                        </span>
+                        <ChevronRight className="size-4 shrink-0" aria-hidden />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </FramePanel>
+            </Frame>
           )}
           <Button variant="secondary" className="w-fit" onClick={signOut}>
             <LogOut aria-hidden /> Sign out

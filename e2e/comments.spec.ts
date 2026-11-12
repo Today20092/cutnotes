@@ -408,7 +408,10 @@ test("Undo and a failed delayed delete restore only the selected Comment", async
   seedComment(id, clerkUserId, "Keep this Comment");
   seedComment(id, clerkUserId, "Other Comment");
   await page.reload();
-  await expect(page.getByRole("region", { name: "Notifications" }).first()).toBeAttached();
+  // Playback Comments has a separate provider; Undo needs the lazy page-wide provider.
+  await expect(
+    page.locator('[data-slot="toast-viewport"][data-position="top-center"]'),
+  ).toBeAttached();
   const row = page.getByRole("listitem").filter({ hasText: "Keep this Comment" });
   const other = page.getByRole("listitem").filter({ hasText: "Other Comment" });
   await row.getByRole("button", { name: /^Delete Comment/ }).click();

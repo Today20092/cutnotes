@@ -1,3 +1,5 @@
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Progress } from "@/components/ui/progress";
 import { NativeSelect } from "@/components/ui/native-select";
 import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -199,10 +201,8 @@ export function UploadSheet({
             </p>
           </div>
           {destination.kind === "new" && projects.length > 1 && (
-            <div className="flex flex-col gap-1">
-              <label htmlFor={projectFieldId} className="text-sm font-medium">
-                Project
-              </label>
+            <Field className="items-stretch">
+              <FieldLabel htmlFor={projectFieldId}>Project</FieldLabel>
               <NativeSelect
                 id={projectFieldId}
                 value={chosenProject}
@@ -214,19 +214,17 @@ export function UploadSheet({
                   </option>
                 ))}
               </NativeSelect>
-            </div>
+            </Field>
           )}
           {destination.kind === "new" && (
-            <div className="flex flex-col gap-1">
-              <label htmlFor={titleId} className="text-sm font-medium">
-                Video title
-              </label>
+            <Field className="items-stretch">
+              <FieldLabel htmlFor={titleId}>Video title</FieldLabel>
               <Input
                 id={titleId}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
               />
-            </div>
+            </Field>
           )}
           {noProjects && (
             <p className="text-sm text-muted-foreground">
@@ -296,14 +294,7 @@ function UploadRow({ item }: { item: UploadItem }) {
           )}
         </span>
       </div>
-      {active && (
-        <progress
-          className="h-2 w-full overflow-hidden rounded-full accent-primary"
-          aria-label={`Uploading ${item.label}`}
-          max={100}
-          value={item.percent}
-        />
-      )}
+      {active && <Progress aria-label={`Uploading ${item.label}`} max={100} value={item.percent} />}
       <p className="text-sm text-muted-foreground">{phaseText[item.phase](item)}</p>
     </li>
   );

@@ -108,6 +108,20 @@ it.each([
   expect((await review()).comments).toEqual([]);
 });
 
+it.each([
+  ["createComment", { ...input, id: 7 }],
+  ["createComment", { ...input, id: "x".repeat(129) }],
+  ["createComment", { ...input, timecodeMs: null }],
+  ["createComment", { ...input, timecodeMs: 1.5 }],
+  ["createComment", { ...input, body: 5 }],
+  ["editComment", { ...input, videoId: "" }],
+  ["resolveComment", { ...input, resolved: "yes" }],
+  ["deleteComment", { ...input, revisionId: null }],
+] as const)("refuses forged %s input %j", async (name, data) => {
+  await expectRefused(await call(fn[name], "user_owner", data), 400, "invalid-request");
+  expect((await review()).comments).toEqual([]);
+});
+
 it("accepts exact shape and point caps and retries without replacing the Drawing", async () => {
   const drawing = Array.from({ length: 50 }, () => ({
     ...pen,

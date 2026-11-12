@@ -1,21 +1,28 @@
 import { createServerFn } from "@tanstack/react-start";
 import { and, eq, or, sql } from "drizzle-orm";
-import { activeMember, id, readyRevision, refuse, requireMember } from "@/server/access";
+import * as v from "valibot";
+import { activeMember, parse, readyRevision, refuse, requireMember } from "@/server/access";
 import { bodyOf } from "@/server/comment-rules";
 import { getDb } from "@/server/db";
 import { comments, type Member } from "@/server/db/schema";
 import { validDrawing, type Shape } from "@/lib/drawing";
 
-export type CommentTarget = { videoId: string; revisionId: string; id: string };
-export type NewComment = CommentTarget & {
-  body: string;
-  timecodeMs: number;
-  drawing?: Shape[] | null;
-};
+// Bounded so forged input cannot bloat a query.
+const idField = v.pipe(v.string(), v.nonEmpty(), v.maxLength(128));
+const targetShape = { id: idField, videoId: idField, revisionId: idField };
+const targetSchema = v.object(targetShape);
+const newCommentSchema = v.object({
+  ...targetShape,
+  // bodyOf checks length and emptiness, because an empty body is allowed with a drawing.
+  body: v.string(),
+  timecodeMs: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  drawing: v.nullish(v.custom<Shape[]>(validDrawing)),
+});
+const editCommentSchema = v.object({ ...targetShape, body: v.string() });
+const resolveCommentSchema = v.object({ ...targetShape, resolved: v.boolean() });
 
-const validTarget = (data: CommentTarget) => {
-  for (const field of ["id", "videoId", "revisionId"]) id(data, field);
-};
+export type CommentTarget = v.InferInput<typeof targetSchema>;
+export type NewComment = v.InferInput<typeof newCommentSchema>;
 
 const targetComment = (data: CommentTarget, member: Member) =>
   and(
@@ -27,13 +34,11 @@ const targetComment = (data: CommentTarget, member: Member) =>
 
 export const createComment = createServerFn({ method: "POST" })
   .validator((data: NewComment) => data)
-  .handler(async ({ data }) => {
+  .handler(async ({ data: raw }) => {
     const member = await requireMember("viewer");
-    validTarget(data);
-    if (data.drawing != null && !validDrawing(data.drawing)) refuse(400, "invalid-request");
+    const data = parse(newCommentSchema, raw);
     const drawing = data.drawing == null ? null : JSON.stringify(data.drawing);
     const body = bodyOf(data.body, drawing !== null);
-    if (!Number.isInteger(data.timecodeMs) || data.timecodeMs < 0) refuse(400, "invalid-request");
     const now = Date.now();
     const db = getDb();
     const [inserted, existing] = await db.batch([
@@ -65,10 +70,10 @@ export const createComment = createServerFn({ method: "POST" })
   });
 
 export const editComment = createServerFn({ method: "POST" })
-  .validator((data: CommentTarget & { body: string }) => data)
-  .handler(async ({ data }) => {
+  .validator((data: v.InferInput<typeof editCommentSchema>) => data)
+  .handler(async ({ data: raw }) => {
     const member = await requireMember("viewer");
-    validTarget(data);
+    const data = parse(editCommentSchema, raw);
     const body = bodyOf(data.body, true);
     const [written] = await getDb()
       .update(comments)
@@ -90,9 +95,9 @@ export const editComment = createServerFn({ method: "POST" })
 
 export const deleteComment = createServerFn({ method: "POST" })
   .validator((data: CommentTarget) => data)
-  .handler(async ({ data }) => {
+  .handler(async ({ data: raw }) => {
     const member = await requireMember("viewer");
-    validTarget(data);
+    const data = parse(targetSchema, raw);
     const [written] = await getDb()
       .delete(comments)
       .where(
@@ -107,11 +112,10 @@ export const deleteComment = createServerFn({ method: "POST" })
   });
 
 export const resolveComment = createServerFn({ method: "POST" })
-  .validator((data: CommentTarget & { resolved: boolean }) => data)
-  .handler(async ({ data }) => {
+  .validator((data: v.InferInput<typeof resolveCommentSchema>) => data)
+  .handler(async ({ data: raw }) => {
     const member = await requireMember("editor");
-    validTarget(data);
-    if (typeof data.resolved !== "boolean") refuse(400, "invalid-request");
+    const data = parse(resolveCommentSchema, raw);
     const [written] = await getDb()
       .update(comments)
       .set({

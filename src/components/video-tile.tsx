@@ -17,7 +17,7 @@ import { UploadSheet } from "@/components/upload-parts";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
 import { useRenameVideo, useSetVideoStatus, type VideoSummary } from "@/lib/projects";
-import { videoStatuses, type VideoStatus } from "@/server/db/schema";
+import { videoStatuses, type VideoStatus } from "@/lib/video-status";
 
 function EditableVideoTitle({ video }: { video: VideoSummary }) {
   const rename = useRenameVideo(video.id);

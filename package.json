@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks",
     "feedback": "bun scripts/node.ts node_modules/wrangler/bin/wrangler.js d1 execute DB --remote --json --command \"SELECT * FROM feedback WHERE handled_at IS NULL ORDER BY created_at DESC\"",
     "dev:preview": "bun scripts/preview/start.ts",
     "dev": "bun scripts/node.ts node_modules/vite/bin/vite.js dev",
@@ -18,8 +19,9 @@
     "test:seam2": "bun scripts/node.ts node_modules/@playwright/test/cli.js test",
     "test:player": "bun test test/player",
     "test:setup": "bun test test/setup",
+    "test:structure": "bun test test/structure",
     "setup": "bun scripts/setup.ts",
-    "check": "bun run typecheck && bun run lint && bun run fmt:check && bun run test:player && bun run test:setup && bun run test:seam1",
+    "check": "bun run typecheck && bun run lint && bun run fmt:check && bun run test:player && bun run test:setup && bun run test:structure && bun run test:seam1",
     "check:full": "bun run check && bun run test:seam2"
   },
   "dependencies": {

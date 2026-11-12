@@ -1,0 +1,3 @@
+#!/bin/sh
+# Fast checks only. CI and `bun run check` run everything.
+bun run lint && bun run fmt:check

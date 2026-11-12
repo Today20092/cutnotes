@@ -14,7 +14,13 @@ import {
 import { validDrawing, type Shape } from "@/lib/drawing";
 import { bodyOf, commentColumns, toComment } from "@/server/comment-rules";
 import { getDb } from "@/server/db";
-import { comments, shareLinks, sharePermissions, type SharePermission } from "@/server/db/schema";
+import {
+  comments,
+  members,
+  shareLinks,
+  sharePermissions,
+  type SharePermission,
+} from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
 
 const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -116,6 +122,7 @@ export const getGuestReview = createServerFn({ method: "POST" })
       getDb()
         .select(commentColumns)
         .from(comments)
+        .leftJoin(members, eq(comments.memberId, members.id))
         .where(eq(comments.revisionId, link.revisionId))
         .orderBy(asc(comments.timecodeMs), asc(comments.createdAt), asc(comments.id)),
       getMuxGateway().createPlayback({

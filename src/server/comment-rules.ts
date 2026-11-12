@@ -1,6 +1,6 @@
 import { refuse } from "@/server/access";
 import { readDrawing, type Shape } from "@/lib/drawing";
-import { comments } from "@/server/db/schema";
+import { comments, members } from "@/server/db/schema";
 
 /** Lives apart from the server functions so importing it keeps Access out of the browser bundle. */
 export const bodyOf = (body: string, hasDrawing = false) => {
@@ -12,6 +12,7 @@ export const bodyOf = (body: string, hasDrawing = false) => {
 export const commentColumns = {
   id: comments.id,
   authorName: comments.authorName,
+  authorAvatarUrl: members.avatarUrl,
   timecodeMs: comments.timecodeMs,
   body: comments.body,
   drawing: comments.drawing,
@@ -25,6 +26,7 @@ export const commentColumns = {
 export type Comment = {
   id: string;
   authorName: string;
+  authorAvatarUrl: string | null;
   timecodeMs: number;
   body: string;
   drawing: Shape[] | null;
@@ -41,13 +43,16 @@ export function toComment(
     shareLinkId,
     drawing,
     ...row
-  }: { [K in keyof typeof commentColumns]: (typeof comments.$inferSelect)[K] },
+  }: Pick<typeof comments.$inferSelect, Exclude<keyof typeof commentColumns, "authorAvatarUrl">> & {
+    authorAvatarUrl: string | null;
+  },
   viewerMemberId?: string,
 ): Comment {
   const shapes = readDrawing(drawing);
   return {
     id: row.id,
     authorName: row.authorName,
+    authorAvatarUrl: row.authorAvatarUrl,
     timecodeMs: row.timecodeMs,
     body: row.body,
     drawing: shapes.length ? shapes : null,

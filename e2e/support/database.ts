@@ -12,12 +12,18 @@ import {
 } from "../../test/support/rows";
 
 /** Adds a Member to the Seam 2 database, for Roles no screen can create yet. */
-export function seedMember(clerkUserId: string, role: "editor" | "viewer", displayName = "Seeded") {
+export function seedMember(
+  clerkUserId: string,
+  role: "editor" | "viewer",
+  displayName = "Seeded",
+  avatarUrl: string | null = null,
+) {
   executeSql(
     insertRowIfMissing(members, {
       id: clerkUserId,
       clerkUserId,
       displayName,
+      avatarUrl,
       role,
       createdAt: 1,
     }),

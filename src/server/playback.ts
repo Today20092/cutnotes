@@ -3,7 +3,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { activeMember, readAsMember, refuse, requireMember } from "@/server/access";
 import { commentColumns, toComment, type Comment } from "@/server/comment-rules";
 import { getDb } from "@/server/db";
-import { comments, projects, revisions, videos, videoReads } from "@/server/db/schema";
+import { comments, members, projects, revisions, videos, videoReads } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
 
 /** The same read is used to open the screen and renew its playback credentials. */
@@ -36,6 +36,7 @@ export const getReview = createServerFn({ method: "POST" })
       db
         .select({ ...commentColumns, revisionId: comments.revisionId })
         .from(comments)
+        .leftJoin(members, eq(comments.memberId, members.id))
         .innerJoin(revisions, eq(comments.revisionId, revisions.id))
         .where(eq(revisions.videoId, videoId))
         .orderBy(comments.timecodeMs, comments.createdAt, comments.id),

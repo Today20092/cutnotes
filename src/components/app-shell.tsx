@@ -1,16 +1,24 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Settings } from "lucide-react";
 import type { ReactNode } from "react";
+import { PersonAvatar } from "@/components/person-avatar";
 import { SiteFeedback } from "@/components/site-feedback";
 import { buttonVariants } from "@/components/ui/button";
 import { UploadAnnouncer, UploadList } from "@/components/upload-parts";
 import { TeamLogo, type Team } from "@/lib/team";
 import type { Role } from "@/server/db/schema";
 
-export type ShellMember = { displayName: string; role: Role };
+export type ShellMember = { displayName: string; role: Role; avatarUrl: string | null };
 
 /** One row that scrolls away: the Team on the home page, the view's breadcrumb elsewhere, Settings and Site feedback always top right. */
-export function AppShell({ team, children }: { team: Team; children: ReactNode }) {
+export function AppShell({
+  team,
+  member,
+  children,
+}: {
+  team: Team;
+  member?: ShellMember;
+  children: ReactNode;
+}) {
   const isHome = useLocation({ select: (location) => location.pathname === "/" });
   return (
     <div className="relative mx-auto min-h-dvh max-w-7xl">
@@ -31,7 +39,7 @@ export function AppShell({ team, children }: { team: Team; children: ReactNode }
             className: "size-11 aria-[current=page]:bg-muted [&_svg]:size-5",
           })}
         >
-          <Settings aria-hidden />
+          <PersonAvatar name={member?.displayName || "Member"} src={member?.avatarUrl} />
         </Link>
       </nav>
       <main id="main-content" tabIndex={-1} className="p-4 outline-none sm:p-6 lg:p-8">

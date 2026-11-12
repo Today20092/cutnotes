@@ -1,7 +1,8 @@
+import { PersonAvatar } from "@/components/person-avatar";
 import { SettingsLayout } from "@/components/settings-layout";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, LogOut, MessageSquareWarning, UserPlus, Users } from "lucide-react";
-import { useAccountEmail, useSignOut } from "@/auth/client";
+import { useAccountEmail, useManageProfile, useSignOut } from "@/auth/client";
 import { appShellQuery, MemberScreen } from "@/components/member-screen";
 import { PageBreadcrumb, PageHeading } from "@/components/project-parts";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,6 +27,7 @@ const teamLinks = [
 function SettingsPage() {
   const signOut = useSignOut();
   const email = useAccountEmail();
+  const manageProfile = useManageProfile();
   return (
     <MemberScreen query={appShellQuery} skeleton={<Skeleton className="h-40" />}>
       {({ member }) => (
@@ -42,6 +44,12 @@ function SettingsPage() {
             <h2 id="account-heading" className="text-lg font-semibold">
               Your account
             </h2>
+            <div className="mb-4 flex items-center gap-3">
+              <PersonAvatar name={member.displayName} src={member.avatarUrl} className="size-12" />
+              <Button variant="secondary" onClick={manageProfile}>
+                Manage profile
+              </Button>
+            </div>
             <dl>
               <dt className="text-sm text-muted-foreground">Name</dt>
               <dd className="wrap-anywhere">{member.displayName}</dd>

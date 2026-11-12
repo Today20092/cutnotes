@@ -383,6 +383,7 @@ it("Members and Guests receive the same Comment shape, without Member IDs for th
   expect(shared).toEqual([rest]);
   expect(rest).toMatchObject({ drawing, isGuest: false, authorName: "owner" });
   expect(Object.keys(rest).sort()).toEqual([
+    "authorAvatarUrl",
     "authorName",
     "body",
     "createdAt",

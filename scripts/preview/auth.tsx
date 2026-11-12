@@ -30,6 +30,12 @@ export function useAccountEmail() {
     .email;
 }
 
+export function useManageProfile() {
+  return () => {
+    window.alert("Profile editing is available with Clerk sign-in.");
+  };
+}
+
 export function useSignOut() {
   return () => {
     localStorage.removeItem("seam2-session-token");

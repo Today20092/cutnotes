@@ -1,3 +1,4 @@
+import { PersonAvatar } from "@/components/person-avatar";
 import { PlaybackComments } from "@/components/playback-comments";
 import { PendingButton } from "@/components/pending-button";
 import { Pencil } from "lucide-react";
@@ -465,7 +466,12 @@ function Comments({
                   comment.id === activeId && "-mx-2 rounded-lg bg-muted/60 px-2",
                 )}
               >
-                <p className="text-sm text-muted-foreground">
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <PersonAvatar
+                    name={comment.authorName}
+                    src={comment.authorAvatarUrl}
+                    className="size-6"
+                  />
                   {comment.authorName}
                   {comment.isGuest && " · Guest"}
                 </p>

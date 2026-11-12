@@ -142,7 +142,7 @@ async function redeem(person: SignedInPerson, tokenHash: string): Promise<Redeem
 
   const [, marked, , callerRows, inviteRows] = await db.batch([
     db.insert(members).select(
-      sql`SELECT ${newMemberId}, ${person.clerkUserId}, ${person.displayName}, ${invites.role}, ${now}, NULL
+      sql`SELECT ${newMemberId}, ${person.clerkUserId}, ${person.displayName}, ${invites.role}, ${now}, NULL, NULL
           FROM ${invites}
           WHERE ${redeemable}
             AND NOT EXISTS (SELECT 1 FROM ${members} WHERE ${isCaller})`,

@@ -24,7 +24,9 @@ Use cnippet by default: `npx shadcn@latest add @cnippet/<name>`. Use `@shadcn` o
 
 ## Testing
 
-`bun run check` is the normal check and does not start a browser: it runs typecheck, lint (Oxlint), format check (Oxfmt), `test:player`, `test:setup` and Seam 1. Run `bun run fmt` to fix formatting. CI also runs `bun run audit`. Use focused browser specs while editing. The Git workflow defines full-suite gates for integration and release; inspect `.github/workflows/check.yml` for the gates CI actually runs.
+`bun run check` is the normal check and does not start a browser: it runs typecheck, lint (Oxlint), format check (Oxfmt), `test:player`, `test:setup`, `test:structure` and Seam 1. Run `bun run fmt` to fix formatting. CI also runs `bun run audit`. Use focused browser specs while editing. The Git workflow defines full-suite gates for integration and release; inspect `.github/workflows/check.yml` for the gates CI actually runs.
+
+Browser input to Comment server functions uses a Valibot schema with `parse(schema, data)` after the Access check. Browser components and routes must not import `@/server/db/*` or `@/server/mux/*` at runtime; type imports are allowed. `test:structure` checks server functions for Access helpers, with an explicit exception for token-authorized public Invite previews. `bun install` enables the pre-commit hook for lint and formatting.
 
 Run one test while working:
 

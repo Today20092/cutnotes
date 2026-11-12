@@ -21,6 +21,25 @@
     "react/refs": "off",
     "react/set-state-in-effect": "off"
   },
+  "overrides": [
+    {
+      "files": ["src/components/**", "src/routes/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/server/db/*", "@/server/mux/*"],
+                "allowTypeImports": true,
+                "message": "Browser code must not import server internals. Move the shared value to src/lib/ and import it from there, or call a server function from src/server/."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
   "ignorePatterns": [
     "prototype-ui/**",
     "dist/**",

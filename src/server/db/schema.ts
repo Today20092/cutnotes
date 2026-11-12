@@ -1,4 +1,6 @@
 import { sql } from "drizzle-orm";
+// Relative path: drizzle-kit loads this file without the "@/" alias.
+import { videoStatuses, type VideoStatus } from "../../lib/video-status";
 import {
   check,
   index,
@@ -57,8 +59,7 @@ export const projects = sqliteTable(
 
 export type Project = typeof projects.$inferSelect;
 
-export const videoStatuses = ["review", "rework", "done"] as const;
-export type VideoStatus = (typeof videoStatuses)[number];
+export { videoStatuses, type VideoStatus };
 
 export const videos = sqliteTable(
   "videos",

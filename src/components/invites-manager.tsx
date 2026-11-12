@@ -10,7 +10,7 @@ import { ConfirmButton, useStatusToast } from "@/components/project-parts";
 import type { Role } from "@/server/db/schema";
 import { createInvite, listInvites, revokeInvite, type PendingInvite } from "@/server/invites";
 
-const roleChoices: { role: Role; label: string; description: string }[] = [
+export const roleChoices: { role: Role; label: string; description: string }[] = [
   { role: "viewer", label: "Viewer", description: "Watches and leaves Comments." },
   { role: "editor", label: "Editor", description: "Also uploads and manages Videos." },
   { role: "owner", label: "Owner", description: "Also manages the Team." },

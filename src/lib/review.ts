@@ -25,6 +25,7 @@ export const draftComment = (draft: Draft, authorName: string, isGuest: boolean)
   timecodeMs: draft.timecodeMs,
   drawing: draft.drawing,
   authorName,
+  authorAvatarUrl: null,
   isGuest,
   resolvedAt: null,
   createdAt: Date.now(),

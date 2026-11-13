@@ -22,6 +22,7 @@ export const members = sqliteTable("members", {
   role: text("role", { enum: roles }).notNull(),
   createdAt: integer("created_at").notNull(),
   removedAt: integer("removed_at"),
+  avatarUrl: text("avatar_url"),
 });
 
 export type Member = typeof members.$inferSelect;

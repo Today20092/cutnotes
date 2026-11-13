@@ -314,7 +314,7 @@ async function claimFirstOwner(
   const [created] = await getDb()
     .insert(members)
     .select(
-      sql`SELECT ${crypto.randomUUID()}, ${clerkUserId}, ${email}, 'owner', ${Date.now()}, NULL
+      sql`SELECT ${crypto.randomUUID()}, ${clerkUserId}, ${email}, 'owner', ${Date.now()}, NULL, NULL
           WHERE NOT EXISTS (SELECT 1 FROM ${members} WHERE ${members.role} = 'owner')`,
     )
     .onConflictDoNothing()

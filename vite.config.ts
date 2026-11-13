@@ -30,6 +30,10 @@ export default defineConfig(({ mode }) => {
         ...(e2e
           ? [
               {
+                find: "@/server/clerk-profile",
+                replacement: path.resolve(import.meta.dirname, "e2e/support/fake-clerk-profile.ts"),
+              },
+              {
                 find: /^@\/server\/mux$/,
                 replacement: path.resolve(
                   import.meta.dirname,

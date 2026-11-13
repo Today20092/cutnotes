@@ -24,6 +24,12 @@ export function useAccountEmail() {
     .email;
 }
 
+export function useManageProfile() {
+  return () => {
+    window.alert("Manage Clerk profile");
+  };
+}
+
 export function useSignOut() {
   return () => {
     localStorage.removeItem("seam2-session-token");

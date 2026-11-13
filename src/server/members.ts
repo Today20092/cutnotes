@@ -16,6 +16,7 @@ export const listMembers = createServerFn({ method: "POST" }).handler(async () =
       .select({
         id: members.id,
         displayName: members.displayName,
+        avatarUrl: members.avatarUrl,
         role: members.role,
         createdAt: members.createdAt,
         invitedBy: sql<

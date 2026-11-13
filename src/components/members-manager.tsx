@@ -4,7 +4,7 @@ import { Trash2 } from "lucide-react";
 import { Fragment, useRef, useState, type RefObject } from "react";
 import { roleChoices } from "@/components/invites-manager";
 import { PageHeading, WriteFeedback } from "@/components/project-parts";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PersonAvatar } from "@/components/person-avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
 import {
@@ -167,9 +167,7 @@ function MemberRow({
   return (
     <Item render={<li />} className="rounded-none px-0 py-3">
       <ItemMedia>
-        <Avatar aria-hidden className="size-10 text-sm uppercase">
-          <AvatarFallback>{name.charAt(0)}</AvatarFallback>
-        </Avatar>
+        <PersonAvatar name={name} src={member.avatarUrl} className="size-10" />
       </ItemMedia>
       <ItemContent className="min-w-0">
         <ItemTitle className="line-clamp-none block w-auto text-base wrap-break-word">

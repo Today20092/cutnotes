@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  check:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +22,40 @@ jobs:
       - run: bun run build
       # The build rewrites the route tree. A diff means someone hand-edited or forgot to commit it.
       - run: git diff --exit-code src/routeTree.gen.ts
-      - if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development' || github.base_ref == 'main'
-        run: bun scripts/node.ts node_modules/@playwright/test/cli.js install --with-deps chromium
-      - if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development' || github.base_ref == 'main'
-        run: bun run test:seam2
+
+  browser:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development' || github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [phone, desktop]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: bun install --frozen-lockfile
+      - run: bun scripts/node.ts node_modules/@playwright/test/cli.js install --with-deps chromium
+      - run: bun run test:seam2 --project=${{ matrix.project }}
+
+  check:
+    if: always()
+    needs: [checks, browser]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all applicable checks
+        env:
+          CHECKS_RESULT: ${{ needs.checks.result }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
+          BROWSER_REQUIRED: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development' || github.base_ref == 'main' }}
+        run: |
+          test "$CHECKS_RESULT" = success
+          if [ "$BROWSER_REQUIRED" = true ]; then
+            test "$BROWSER_RESULT" = success
+          else
+            test "$BROWSER_RESULT" = skipped
+          fi

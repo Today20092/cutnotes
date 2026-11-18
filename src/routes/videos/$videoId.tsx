@@ -8,6 +8,7 @@ import { MemberScreen } from "@/components/member-screen";
 import { PageBreadcrumb, PageHeading } from "@/components/project-parts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Review as ReviewPanel } from "@/components/comments";
+import { ReviewQueue } from "@/components/review-queue";
 import { ShareLinksSheet } from "@/components/share-links";
 import { reviewQuery, useMemberActor, type ReviewPage } from "@/lib/review";
 import { Button } from "@/components/ui/button";
@@ -166,12 +167,22 @@ function ReviewContent({
 }) {
   const actor = useMemberActor(page, videoId, cacheRevisionId);
   return (
-    <ReviewPanel
-      videoId={videoId}
-      revision={page.revision!}
-      playback={page.playback!}
-      comments={page.comments}
-      actor={actor}
-    />
+    <>
+      <ReviewPanel
+        videoId={videoId}
+        revision={page.revision!}
+        playback={page.playback!}
+        comments={page.comments}
+        actor={actor}
+      />
+      <ReviewQueue
+        comments={page.comments}
+        actor={actor}
+        // The review panel owns playback; its list button seeks and selects.
+        select={(comment) =>
+          document.querySelector<HTMLButtonElement>(`#comment-${comment.id} button`)?.click()
+        }
+      />
+    </>
   );
 }

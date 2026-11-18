@@ -1,6 +1,6 @@
 "use client";
 
-import { Toggle as TogglePrimitive } from "@base-ui/react/toggle";
+import { Toggle as TogglePrimitive } from "@ui-sdk/react/toggle";
 import { cva, type VariantProps } from "class-variance-authority";
 import type React from "react";
 import { cn } from "@/lib/utils";
@@ -32,15 +32,12 @@ export function Toggle({
   variant,
   size,
   ...props
-}: TogglePrimitive.Props &
+}: React.ComponentProps<typeof TogglePrimitive> &
   VariantProps<typeof toggleVariants>): React.ReactElement {
   return (
     <TogglePrimitive
       className={cn(toggleVariants({ className, size, variant }))}
-      data-slot="toggle"
       {...props}
     />
   );
 }
-
-export { TogglePrimitive };

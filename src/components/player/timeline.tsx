@@ -116,9 +116,9 @@ export function Timeline({
         step={1 / (frameRate || 30)}
         value={position}
         disabled={!duration}
+        format={(seconds) => `${seconds.toFixed(2)} of ${duration.toFixed(2)} seconds`}
         thumbProps={{
           "aria-label": "Playback position",
-          getAriaValueText: () => `${position.toFixed(2)} of ${duration.toFixed(2)} seconds`,
           onFocus: () => setPreview(position),
           onBlur: () => setPreview(null),
         }}

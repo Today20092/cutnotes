@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useDrawingControls } from "@/components/drawing-controls";
 import { VideoPlayer } from "@/components/player/video-player";
-import { toastManager } from "@/components/ui/toast";
+import { toast } from "@/components/ui/toast";
 import { activeCommentId } from "@/lib/comment-time";
 import { COMMENT_UNDO_MS, type Comment } from "@/lib/review";
 import { cn } from "@/lib/utils";
@@ -339,21 +339,20 @@ function Comments({
   /** The status region speaks it; the toast shows it to everyone else. */
   function announce(message: string) {
     setStatus(message);
-    toastManager.add({ title: message });
+    toast({ title: message });
   }
   function removeComment(comment: Comment) {
     setFailure("");
     const undo = actor.remove!(comment, () => setFailure("Could not delete Comment. Try again."));
     focusAfterRemoval();
     setStatus("Comment deleted");
-    const toastId = toastManager.add({
+    toast({
       title: "Comment deleted",
-      timeout: COMMENT_UNDO_MS,
-      actionProps: {
-        children: "Undo",
-        onClick: () => {
+      duration: COMMENT_UNDO_MS,
+      action: {
+        label: "Undo",
+        onAction: () => {
           undo();
-          toastManager.close(toastId);
           announce("Comment restored");
         },
       },

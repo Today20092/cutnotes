@@ -10,14 +10,7 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ReactElement,
-  type ReactNode,
-  type RefObject,
-} from "react";
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Toggle } from "@/components/ui/toggle";
@@ -39,19 +32,11 @@ type SafariVideo = HTMLVideoElement & {
 const controlClass = "size-11 [&_svg]:size-5";
 
 /** Named on hover and focus; rendered inside the player so it still shows in full screen. */
-function ControlTip({
-  label,
-  root,
-  children,
-}: {
-  label: string;
-  root: RefObject<HTMLDivElement | null>;
-  children: ReactElement;
-}) {
+function ControlTip({ label, children }: { label: string; children: ReactElement }) {
   return (
     <Tooltip>
       <TooltipTrigger render={children} />
-      <TooltipPopup portalProps={{ container: root }}>{label}</TooltipPopup>
+      <TooltipPopup>{label}</TooltipPopup>
     </Tooltip>
   );
 }
@@ -373,7 +358,7 @@ export function VideoPlayer({
           markers={timelineMarkers}
         />
         <div className="player-deck flex flex-wrap items-center gap-0 sm:gap-1">
-          <ControlTip label="Previous frame" root={rootRef}>
+          <ControlTip label="Previous frame">
             <Button
               variant="ghost"
               className={controlClass}
@@ -383,7 +368,7 @@ export function VideoPlayer({
               <StepBack aria-hidden />
             </Button>
           </ControlTip>
-          <ControlTip label={media.paused ? "Play" : "Pause"} root={rootRef}>
+          <ControlTip label={media.paused ? "Play" : "Pause"}>
             <Button
               variant="ghost"
               className={controlClass}
@@ -397,7 +382,7 @@ export function VideoPlayer({
               )}
             </Button>
           </ControlTip>
-          <ControlTip label="Next frame" root={rootRef}>
+          <ControlTip label="Next frame">
             <Button
               variant="ghost"
               className={controlClass}
@@ -411,7 +396,7 @@ export function VideoPlayer({
             {clock(position)} / {clock(duration)}
           </span>
           <span className="ml-auto" />
-          <ControlTip label="Mute" root={rootRef}>
+          <ControlTip label="Mute">
             <Toggle
               className={controlClass}
               aria-label="Mute"
@@ -423,7 +408,7 @@ export function VideoPlayer({
               {media.muted ? <VolumeX aria-hidden /> : <Volume2 aria-hidden />}
             </Toggle>
           </ControlTip>
-          <ControlTip label="Full screen" root={rootRef}>
+          <ControlTip label="Full screen">
             <Toggle
               className={controlClass}
               aria-label="Full screen"

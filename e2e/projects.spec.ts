@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { assignProjectMember, seedMember } from "./support/database";
 import { signInAs } from "./support/session";
+import { appAlert } from "./support/ui-sdk";
 
 const owner = {
   clerkUserId: "user_first_owner",
@@ -50,7 +51,7 @@ test("a failed create rolls back and says so", async ({ page }, testInfo) => {
 
   await createProjectInUi(page, name);
 
-  await expect(page.getByRole("alert")).toContainText("Could not create");
+  await expect(appAlert(page)).toContainText("Could not create");
   await expect(page.getByRole("link", { name })).toHaveCount(0);
 });
 
@@ -101,7 +102,7 @@ test("a failed rename rolls back and says so", async ({ page }, testInfo) => {
   await page.getByLabel("Project name").fill("Should not stick");
   await page.getByRole("button", { name: "Save name" }).click();
 
-  await expect(page.getByRole("alert")).toContainText("Could not rename");
+  await expect(appAlert(page)).toContainText("Could not rename");
   await expect(page.getByRole("link", { name })).toBeVisible();
   await expect(page.getByText("Should not stick")).toHaveCount(0);
 });

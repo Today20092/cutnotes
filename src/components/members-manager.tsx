@@ -33,6 +33,7 @@ type MembersData = Awaited<ReturnType<typeof listMembers>>;
 const roleLabels = Object.fromEntries(
   roleChoices.map((choice) => [choice.role, choice.label]),
 ) as Record<Role, string>;
+const roleItems = roleChoices.map((choice) => ({ value: choice.role, label: choice.label }));
 
 const queryKey = ["members"];
 
@@ -196,7 +197,7 @@ function MemberRow({
       <ItemActions className="w-full justify-between ps-12.5 sm:w-auto sm:ps-0">
         <Select<Role>
           value={member.role}
-          items={roleLabels}
+          items={roleItems}
           onValueChange={(role) => role && role !== member.role && onChangeRole(role)}
         >
           <SelectTrigger aria-label={`Role for ${name}`} className="w-auto min-w-28">
@@ -229,7 +230,7 @@ function MemberRow({
           <SheetContent
             side={mobile ? "bottom" : "right"}
             // After a removal this row is gone, so focus goes to the list heading.
-            finalFocus={() => (removed.current ? afterRemove.current : true)}
+            finalFocus={() => (removed.current ? afterRemove.current : undefined)}
           >
             <SheetHeader>
               <SheetTitle>{isYou ? "Remove yourself?" : `Remove ${name}?`}</SheetTitle>

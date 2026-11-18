@@ -1,7 +1,7 @@
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Progress } from "@/components/ui/progress";
 import { NativeSelect } from "@/components/ui/native-select";
-import { toastManager } from "@/components/ui/toast";
+import { toast } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Upload, X } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactElement } from "react";
@@ -308,11 +308,11 @@ export function UploadList() {
     for (const item of uploads) {
       if (item.phase !== "sent" || notified.current.has(item.id)) continue;
       notified.current.add(item.id);
-      toastManager.add({
+      toast({
         title: `${item.label} uploaded`,
         description: "Your video will appear when it is ready for review.",
         type: "success",
-        timeout: 5000,
+        duration: 5000,
       });
       dismissUpload(item.id);
     }

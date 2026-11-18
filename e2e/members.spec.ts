@@ -1,6 +1,7 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { seedMember } from "./support/database";
 import { signInAs, type Person } from "./support/session";
+import { appAlert } from "./support/ui-sdk";
 
 // The first Owner already exists: app-shell.spec.ts runs first against the shared database.
 const owner: Person = {
@@ -80,7 +81,7 @@ test("demoting the last Owner is refused, explained and rolled back", async ({ p
   await page.keyboard.press("Home");
   await page.keyboard.press("Enter");
 
-  await expect(page.getByRole("alert")).toContainText("at least one Owner");
+  await expect(appAlert(page)).toContainText("at least one Owner");
   await expect(roleOf(page, owner.email)).toHaveText("Owner");
 });
 

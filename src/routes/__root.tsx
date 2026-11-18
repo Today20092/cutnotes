@@ -44,7 +44,7 @@ function Toaster({ children }: { children: ReactNode }) {
   );
   return mounted ? (
     <Suspense fallback={loading}>
-      <ToastProvider position="top-center">{children}</ToastProvider>
+      <ToastProvider>{children}</ToastProvider>
     </Suspense>
   ) : (
     loading

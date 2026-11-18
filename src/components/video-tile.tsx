@@ -1,7 +1,7 @@
 import { NativeSelect } from "@/components/ui/native-select";
 import { statusTone } from "@/components/video-status";
 import { PendingButton } from "@/components/pending-button";
-import { toastManager } from "@/components/ui/toast";
+import { toast } from "@/components/ui/toast";
 import { Input } from "@/components/ui/input";
 import { Link } from "@tanstack/react-router";
 import { DeleteWork } from "@/components/delete-work";
@@ -59,7 +59,7 @@ function EditableVideoTitle({ video }: { video: VideoSummary }) {
         const title = draft.trim();
         if (!title) {
           setError("Enter a video title.");
-          toastManager.add({ title: "Enter a video title.", type: "error" });
+          toast({ title: "Enter a video title.", type: "error" });
           return;
         }
         if (title === video.title) {
@@ -71,12 +71,12 @@ function EditableVideoTitle({ video }: { video: VideoSummary }) {
           { videoId: video.id, title },
           {
             onSuccess: () => {
-              toastManager.add({ title: "Video renamed" });
+              toast({ title: "Video renamed" });
               close();
             },
             onError: () => {
               setError("Could not save the title. Try again.");
-              toastManager.add({ title: "Could not save the title. Try again.", type: "error" });
+              toast({ title: "Could not save the title. Try again.", type: "error" });
             },
           },
         );
@@ -210,9 +210,9 @@ function VideoControls({ video, deletable }: { video: VideoSummary; deletable: b
             <Ellipsis aria-hidden />
           </MenuTrigger>
           <MenuPopup>
-            <MenuItem onClick={() => setSheet("rename")}>Rename</MenuItem>
+            <MenuItem onSelect={() => setSheet("rename")}>Rename</MenuItem>
             {deletable && (
-              <MenuItem variant="destructive" onClick={() => setSheet("delete")}>
+              <MenuItem variant="destructive" onSelect={() => setSheet("delete")}>
                 Delete
               </MenuItem>
             )}

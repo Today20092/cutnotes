@@ -1,5 +1,6 @@
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@ui-sdk/react/collapsible";
 import { createParts } from "@ui-sdk/react/primitive";
-import { Check, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Trash2 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { CommentActor } from "@/components/comments";
 import { timeLabel } from "@/components/comments";
@@ -50,38 +51,47 @@ export function ReviewQueue({
   const resolve = actor.resolve;
 
   return (
-    <section aria-labelledby="queue-heading" className="mt-6 flex flex-col gap-2">
+    <Collapsible
+      render={<section aria-labelledby="queue-heading" />}
+      className="mt-6 flex flex-col gap-2"
+    >
       <h2 id="queue-heading" className="text-lg font-semibold">
-        Review queue
+        <CollapsibleTrigger className="group flex min-h-11 items-center gap-2 rounded-md focus-visible:outline-2">
+          Review queue ({notes.length} open)
+          <ChevronDown
+            aria-hidden
+            className="size-4 transition-transform group-data-open:rotate-180 motion-reduce:transition-none"
+          />
+        </CollapsibleTrigger>
       </h2>
-      <p id={help} className="text-sm text-muted-foreground">
-        Swipe a note right to resolve it or left to delete it. With a keyboard, use Up and Down to
-        move, Right to resolve and Left or Delete to delete.
-      </p>
-      {failure && (
-        <p role="alert" className="text-sm text-destructive">
-          {failure}
+      <CollapsiblePanel className="flex flex-col gap-2">
+        <p id={help} className="text-sm text-muted-foreground">
+          Swipe a note right to resolve it or left to delete it. With a keyboard, use Up and Down to
+          move, Right to resolve and Left or Delete to delete.
         </p>
-      )}
-      {undo && (
-        <p className="flex items-center gap-2 text-sm">
-          Deleted {undo.label}.
-          <Button
-            variant="outline"
-            onClick={() => {
-              clearTimeout(undoTimer.current);
-              undo.run();
-              setUndo(null);
-            }}
-          >
-            Undo
-          </Button>
-        </p>
-      )}
-      {notes.length === 0 && (
-        <p className="text-sm text-muted-foreground">No open notes. Everything is resolved.</p>
-      )}
-      {
+        {failure && (
+          <p role="alert" className="text-sm text-destructive">
+            {failure}
+          </p>
+        )}
+        {undo && (
+          <p className="flex items-center gap-2 text-sm">
+            Deleted {undo.label}.
+            <Button
+              variant="outline"
+              onClick={() => {
+                clearTimeout(undoTimer.current);
+                undo.run();
+                setUndo(null);
+              }}
+            >
+              Undo
+            </Button>
+          </p>
+        )}
+        {notes.length === 0 && (
+          <p className="text-sm text-muted-foreground">No open notes. Everything is resolved.</p>
+        )}
         <Queue.Root
           aria-label="Open notes"
           notes={notes}
@@ -154,7 +164,7 @@ export function ReviewQueue({
             </Queue.Row>
           ))}
         </Queue.Root>
-      }
-    </section>
+      </CollapsiblePanel>
+    </Collapsible>
   );
 }

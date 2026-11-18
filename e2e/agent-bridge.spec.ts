@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { seedComment } from "./support/database";
-import { openVideo, signInWithReview } from "./support/review-page";
+import { openQueue, openVideo, signInWithReview } from "./support/review-page";
 
 /**
  * One review task done two ways, as an agent's tool calls:
@@ -52,7 +52,7 @@ async function setUp(page: Page, query = "?agent") {
 
 async function expectTaskDone(page: Page, id: string) {
   await openVideo(page, id);
-  const queue = page.getByRole("list", { name: "Open notes" });
+  const queue = await openQueue(page);
   await expect(queue.getByRole("button", { name: /^0:05 Agent note/ })).toBeVisible();
   await expect(queue.getByRole("button", { name: /Lift the shadows/ })).toHaveCount(0);
   await expect(queue.getByRole("button", { name: /Trim the intro/ })).toBeVisible();
@@ -112,13 +112,13 @@ test("ui-sdk agent bridge: snapshot, then act on components by name", async ({ p
   const m = meter();
 
   const video = m.read(await agent.snapshot()) as { component: string; actions: string[] }[];
-  expect(video.find((entry) => entry.component === "review-queue")?.actions).toEqual(
-    expect.arrayContaining(["resolve", "remove", "addNote"]),
-  );
+  // The queue is behind a closed Collapsible: the agent opens it, then uses what it reveals.
+  expect(video.some((entry) => entry.component === "collapsible")).toBe(true);
   const done = await m.act(
     agent.act([
-      { ref: "review-queue", action: "addNote", args: ["0:05", "Agent note"] },
-      { ref: "review-queue", action: "resolve", args: ["Lift the shadows"] },
+      { ref: "Review queue", action: "open" },
+      { ref: "Open notes", action: "addNote", args: ["0:05", "Agent note"] },
+      { ref: "Open notes", action: "resolve", args: ["Lift the shadows"] },
     ]),
     null,
   );
@@ -141,7 +141,7 @@ test("ui-sdk agent bridge: snapshot, then act on components by name", async ({ p
 test("the dev Agent panel shows the snapshot and runs scripted steps", async ({ page }) => {
   const id = await setUp(page);
   await page.getByRole("button", { name: "Read the page" }).click();
-  await expect(page.getByLabel("Agent output")).toContainText('"component": "review-queue"');
+  await expect(page.getByLabel("Agent output")).toContainText('"component": "collapsible"');
   await page.getByRole("button", { name: "Resolve the first open note" }).click();
   await expect(page.getByLabel("Agent log")).toContainText("Resolve the first open note: ok");
   await expect(

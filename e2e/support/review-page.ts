@@ -32,9 +32,18 @@ export async function signInWithReview(page: Page) {
 
 export async function openVideo(page: Page, id: string, query = "") {
   await page.goto(`/videos/${id}${query}`);
-  await expect(page.getByRole("heading", { name: "Playback cut" })).toBeVisible();
+  // The first page after the dev server starts compiles on demand.
+  await expect(page.getByRole("heading", { name: "Playback cut" })).toBeVisible({
+    timeout: 15_000,
+  });
 }
 
 /** The text of ui-sdk's shared live regions, where `announce` writes. */
 export const announcements = (page: Page) =>
   page.locator("[aria-live]").evaluateAll((regions) => regions.map((r) => r.textContent).join(" "));
+
+/** The queue sits in a closed Collapsible so the Comment list isn't shown twice. */
+export async function openQueue(page: Page) {
+  await page.getByRole("button", { name: /^Review queue/ }).click();
+  return page.getByRole("list", { name: "Open notes" });
+}

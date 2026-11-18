@@ -4,17 +4,17 @@ import { Button } from "@/components/ui/button";
 import { agent } from "@/lib/agent";
 
 type Step = { ref: string; action: string; args?: unknown[] };
-type Script = { name: string; steps: () => Step[] | string };
+type Script = { name: string; steps: () => Step[] | string | Promise<Step[] | string> };
 
-/** Finds a component by kind in a fresh snapshot, as an agent would. */
-const find = (kind: string) => agent.snapshot().find((entry) => entry.component === kind);
+const openQueue: Step = { ref: "Review queue", action: "open" };
 
 const scripts: Script[] = [
   {
     name: "Add a note at 0:05",
     steps: () => [
+      openQueue,
       {
-        ref: "review-queue",
+        ref: "Open notes",
         action: "addNote",
         args: ["0:05", "Agent note: check the colour here"],
       },
@@ -22,11 +22,13 @@ const scripts: Script[] = [
   },
   {
     name: "Resolve the first open note",
-    steps: () => {
-      const queue = find("review-queue");
+    // Open the queue, then read its notes from a fresh snapshot, as an agent would.
+    steps: async () => {
+      await agent.act({ steps: [openQueue] });
+      const queue = agent.snapshot().find((entry) => entry.label === "Open notes");
       const first = (queue?.items as { value: string }[] | undefined)?.[0];
       return first
-        ? [{ ref: "review-queue", action: "resolve", args: [first.value] }]
+        ? [{ ref: "Open notes", action: "resolve", args: [first.value] }]
         : "No open notes on this page.";
     },
   },
@@ -50,7 +52,7 @@ export default function AgentPanel() {
 
   async function run(script: Script) {
     const started = performance.now();
-    const steps = script.steps();
+    const steps = await script.steps();
     if (typeof steps === "string") {
       setLog((lines) => [`${script.name}: ${steps}`, ...lines]);
       return;

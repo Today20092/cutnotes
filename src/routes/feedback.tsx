@@ -77,7 +77,10 @@ function FeedbackList() {
         {status}
       </p>
       <label className="flex min-h-11 items-center gap-2">
-        <Checkbox checked={showHandled} onCheckedChange={(checked) => setShowHandled(checked)} />
+        <Checkbox
+          checked={showHandled}
+          onCheckedChange={(checked) => setShowHandled(checked === true)}
+        />
         Show handled reports
       </label>
       {mark.isError && <p role="alert">Could not update the report. Try again.</p>}

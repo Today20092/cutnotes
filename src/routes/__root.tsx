@@ -51,6 +51,11 @@ function Toaster({ children }: { children: ReactNode }) {
   );
 }
 
+// Dev builds only: production replaces DEV with false and drops the import.
+const AgentPanel = import.meta.env.DEV ? lazy(() => import("@/components/agent-panel")) : null;
+const showAgent = () =>
+  import.meta.env.MODE !== "e2e" || new URLSearchParams(location.search).has("agent");
+
 function Root() {
   const { queryClient } = Route.useRouteContext();
   useEffect(watchProblems, []);
@@ -59,6 +64,11 @@ function Root() {
       <QueryClientProvider client={queryClient}>
         <Toaster>
           <Outlet />
+          {AgentPanel && showAgent() && (
+            <Suspense>
+              <AgentPanel />
+            </Suspense>
+          )}
         </Toaster>
       </QueryClientProvider>
     </AuthProvider>

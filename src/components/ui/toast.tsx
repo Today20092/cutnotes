@@ -32,7 +32,7 @@ const TOAST_ICONS = {
 } as const;
 
 const regionClass =
-  "fixed inset-auto m-0 h-(--toast-front-height) w-[calc(100%-var(--toast-inset)*2)] max-w-90 overflow-visible border-0 bg-transparent p-0 [--toast-inset:--spacing(4)] sm:[--toast-inset:--spacing(8)] data-expanded:h-[calc(var(--toast-stack-height)+(var(--toast-count)-1)*var(--toast-gap))] [--toast-gap:--spacing(3)] data-[side=top]:top-(--toast-inset) data-[side=bottom]:bottom-(--toast-inset) data-[align=start]:left-(--toast-inset) data-[align=end]:right-(--toast-inset) data-[align=center]:left-1/2 data-[align=center]:-translate-x-1/2";
+  "pointer-events-none fixed inset-auto m-0 h-(--toast-front-height) w-[calc(100%-var(--toast-inset)*2)] max-w-90 overflow-visible border-0 bg-transparent p-0 [--toast-inset:--spacing(4)] sm:[--toast-inset:--spacing(8)] data-expanded:h-[calc(var(--toast-stack-height)+(var(--toast-count)-1)*var(--toast-gap))] [--toast-gap:--spacing(3)] data-[side=top]:top-(--toast-inset) data-[side=bottom]:bottom-(--toast-inset) data-[align=start]:left-(--toast-inset) data-[align=end]:right-(--toast-inset) data-[align=center]:left-1/2 data-[align=center]:-translate-x-1/2";
 
 const toastClass = cn(
   "absolute inset-x-0 z-[calc(100-var(--toast-index))] h-(--toast-height) select-none overflow-hidden rounded-lg border bg-popover not-dark:bg-clip-padding text-popover-foreground shadow-lg/5 [transition-property:translate,scale,opacity,height] duration-400 ease-[cubic-bezier(.22,1,.36,1)] motion-reduce:[transition-property:opacity]",
@@ -47,7 +47,7 @@ function renderToast(toast: ToastData<React.ReactNode>): React.ReactNode {
   const Icon = toast.type ? TOAST_ICONS[toast.type as keyof typeof TOAST_ICONS] : null;
   const passive = (toast.data as { passive?: boolean } | undefined)?.passive;
   return (
-    <Toast className={cn(toastClass, passive && "pointer-events-none")}>
+    <Toast className={cn(toastClass, !passive && "pointer-events-auto")}>
       <div className="flex items-center justify-between gap-1.5 px-3.5 py-3 text-sm">
         <div className="flex gap-2">
           {Icon && (

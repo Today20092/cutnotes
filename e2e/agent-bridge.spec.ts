@@ -61,6 +61,7 @@ async function expectTaskDone(page: Page, id: string) {
 }
 
 const results: Record<string, Run> = {};
+let sample: unknown;
 
 test.describe.configure({ mode: "serial" });
 
@@ -112,6 +113,7 @@ test("ui-sdk agent bridge: snapshot, then act on components by name", async ({ p
   const m = meter();
 
   const video = m.read(await agent.snapshot()) as { component: string; actions: string[] }[];
+  sample = video;
   // The queue is behind a closed Collapsible: the agent opens it, then uses what it reveals.
   expect(video.some((entry) => entry.component === "collapsible")).toBe(true);
   const done = await m.act(
@@ -158,6 +160,6 @@ test("the dev Agent panel shows the snapshot and runs scripted steps", async ({ 
 test.afterAll(() => {
   if (!results.browser || !results.bridge) return;
   mkdirSync("test-results", { recursive: true });
-  writeFileSync("test-results/agent-benchmark.json", JSON.stringify(results, null, 2));
+  writeFileSync("test-results/agent-benchmark.json", JSON.stringify({ results, sample }, null, 2));
   console.table(results);
 });

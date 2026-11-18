@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { seedMember, seedReview } from "./support/database";
 import { signInAs } from "./support/session";
 import { sampleStream } from "./support/sample-stream";
+import { appAlert } from "./support/ui-sdk";
 
 const cors = { "access-control-allow-origin": "*" };
 const playlist = `#EXTM3U
@@ -182,7 +183,7 @@ test("playback failure and retry are accessible", async ({ page }) => {
     }),
   );
   await openReview(page);
-  await expect(page.getByRole("alert")).toContainText("Playback could not continue");
+  await expect(appAlert(page)).toContainText("Playback could not continue");
   await accessible(page);
   broken = false;
   await page.route("https://stream.mux.com/sample.ts", (route) =>
@@ -190,7 +191,7 @@ test("playback failure and retry are accessible", async ({ page }) => {
   );
   await page.getByRole("button", { name: "Retry playback" }).click();
   await expect(page.locator("video")).toBeFocused();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(appAlert(page)).toHaveCount(0);
   await expect
     .poll(() => page.locator("video").evaluate((video: HTMLVideoElement) => video.readyState))
     .toBeGreaterThanOrEqual(2);
@@ -273,7 +274,7 @@ for (const playing of [false, true]) {
     await expect
       .poll(() => page.locator("video").evaluate((video: HTMLVideoElement) => video.currentTime))
       .toBeCloseTo(3.04, 1);
-    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(appAlert(page)).toHaveCount(0);
     await accessible(page);
     // At 320 CSS px and short landscape heights the Comments stay in document flow.
     await page.setViewportSize({ width: 320, height: 256 });

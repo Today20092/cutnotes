@@ -3,6 +3,7 @@ import { expect, test, type Browser, type Page, type TestInfo } from "@playwrigh
 import { fakeSignature } from "../test/seam1/support/fake-mux";
 import { assignProjectMember, seedMember, seedReview, shareTokenFor } from "./support/database";
 import { signInAs, type Person } from "./support/session";
+import { appAlert } from "./support/ui-sdk";
 
 // Each case scans several states in both themes, including the growing seeded Projects list.
 test.describe.configure({ timeout: 60_000 });
@@ -175,7 +176,7 @@ test("the Projects screen", async ({ page }, testInfo) => {
   await page.route(callTo("createProject"), (route) => route.abort());
   await page.getByLabel("Project name").fill(uniqueName("Doomed", testInfo));
   await page.getByRole("button", { name: "Create Project" }).click();
-  await expect(page.getByRole("alert")).toContainText("Could not create");
+  await expect(appAlert(page)).toContainText("Could not create");
   await expectAccessible(page, "failed create");
 });
 
@@ -261,7 +262,7 @@ test("a Video through upload, processing, and ready", async ({ page }, testInfo)
   await page.getByRole("button", { name: "More actions for Main cut" }).click();
   await page.getByRole("menuitem", { name: "Delete" }).click();
   await page.getByRole("button", { name: "Delete Main cut permanently" }).click();
-  await expect(page.getByRole("alert")).toContainText("Could not delete");
+  await expect(appAlert(page)).toContainText("Could not delete");
   await expectAccessible(page, "failed Video deletion");
   await page.getByRole("button", { name: "Keep Video" }).click();
   await page.unroute(failDelete);
@@ -326,7 +327,7 @@ test("the Members screen", async ({ page }, testInfo) => {
 
   await page.getByRole("combobox", { name: `Role for ${owner.email}` }).click();
   await page.getByRole("option", { name: /Viewer/ }).click();
-  await expect(page.getByRole("alert")).toContainText("at least one Owner");
+  await expect(appAlert(page)).toContainText("at least one Owner");
   await expectAccessible(page, "last Owner refused");
 
   await signInAs(page, seededViewer("member_viewer", testInfo));
@@ -351,7 +352,7 @@ test("deleting a Project: confirmation, cancellation, failure and disappearance"
   await page.route(callTo("deleteProject"), (route) => route.abort());
   await trigger.click();
   await page.getByRole("button", { name: `Delete ${name} permanently` }).click();
-  await expect(page.getByRole("alert")).toContainText("Could not delete");
+  await expect(appAlert(page)).toContainText("Could not delete");
   await expectAccessible(page, "failed Project deletion");
   await page.unrouteAll();
   await page.getByRole("button", { name: `Delete ${name} permanently` }).click();
@@ -488,7 +489,7 @@ test("Share Links sheet and Guest pages", async ({ page, browser }, testInfo) =>
   await expect(guest.getByText("No account needed")).toBeVisible();
   await expectAccessible(guest, "Guest welcome");
   await guest.getByRole("button", { name: "Continue" }).click();
-  await expect(guest.getByRole("alert")).toHaveText("Enter your name.");
+  await expect(appAlert(guest)).toHaveText("Enter your name.");
   await guest.getByLabel("Your name").fill("Dana");
   await guest.getByRole("button", { name: "Continue" }).click();
   await expect(guest.getByRole("heading", { name: "Playback cut" })).toBeVisible();

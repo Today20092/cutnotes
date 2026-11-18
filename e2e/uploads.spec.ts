@@ -2,6 +2,7 @@ import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { fakeSignature } from "../test/seam1/support/fake-mux";
 import { assignProjectMember, seedMember } from "./support/database";
 import { signInAs } from "./support/session";
+import { appAlert } from "./support/ui-sdk";
 
 const owner = {
   clerkUserId: "user_first_owner",
@@ -396,7 +397,7 @@ test("a failed Status change rolls back and says so", async ({ page }, testInfo)
 
   await status.selectOption("done");
 
-  await expect(page.getByRole("alert")).toContainText("Could not change");
+  await expect(appAlert(page)).toContainText("Could not change");
   await expect(status).toHaveValue("review");
 });
 

@@ -5,7 +5,8 @@ import { announcements, signInWithReview } from "./support/review-page";
 test("the status board moves a Video between columns by keyboard and by drag", async ({ page }) => {
   const { id } = await signInWithReview(page);
   await page.goto(`/projects/${id}`);
-  const board = page.getByRole("region", { name: "Status board" });
+  await page.getByRole("button", { name: /^Status board/ }).click();
+  const board = page.getByRole("region", { name: /^Status board/ });
   const column = (name: string) => board.getByRole("listbox", { name: new RegExp(`^${name}`) });
   const card = board.getByRole("option", { name: "Playback cut" });
   await expect(column("Review").getByRole("option")).toHaveCount(1);
@@ -46,5 +47,6 @@ test("the status board moves a Video between columns by keyboard and by drag", a
   await expect(column("Done").getByRole("option", { name: "Playback cut" })).toBeVisible();
 
   await page.reload();
+  await page.getByRole("button", { name: /^Status board/ }).click();
   await expect(column("Done").getByRole("option", { name: "Playback cut" })).toBeVisible();
 });

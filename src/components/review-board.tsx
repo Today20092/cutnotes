@@ -1,4 +1,6 @@
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@ui-sdk/react/collapsible";
 import { createParts } from "@ui-sdk/react/primitive";
+import { ChevronDown } from "lucide-react";
 import type { TransferLists } from "@ui-sdk/core";
 import { useEffect, useId, useRef, useState } from "react";
 import { statusLabels, statusTone } from "@/components/video-status";
@@ -60,56 +62,70 @@ export function ReviewBoard({ videos }: { videos: VideoSummary[] }) {
   }
 
   return (
-    <section aria-labelledby="board-heading" className="flex flex-col gap-2">
+    // Closed by default: the board repeats the Video grid's titles.
+    <Collapsible
+      render={<section aria-labelledby="board-heading" />}
+      className="flex flex-col gap-2"
+    >
       <h2 id="board-heading" className="text-lg font-semibold">
-        Status board
+        <CollapsibleTrigger className="group flex min-h-11 items-center gap-2 rounded-md focus-visible:outline-2">
+          Status board ({videos.length} {videos.length === 1 ? "Video" : "Videos"})
+          <ChevronDown
+            aria-hidden
+            className="size-4 transition-transform group-data-open:rotate-180 motion-reduce:transition-none"
+          />
+        </CollapsibleTrigger>
       </h2>
-      <p id={help} className="text-sm text-muted-foreground">
-        Drag a Video to another column to change its Status. With a keyboard, press Space to pick it
-        up, Left and Right to change column, Up and Down to place it, Space to drop and Escape to
-        cancel.
-      </p>
       <WriteFeedback status={status} failure={failure} />
       {videos.map((video) => (
         <StatusWriter key={video.id} id={video.id} writers={writers} />
       ))}
-      <Board.Root
-        lists={lists}
-        onListsChange={change}
-        columns={statusLabels}
-        titles={titles}
-        className="grid gap-3 sm:grid-cols-3"
-      >
-        {(state) =>
-          videoStatuses.map((column) => (
-            <div key={column} className="flex min-w-0 flex-col gap-2 rounded-lg border p-2">
-              <h3 id={`board-${column}`} className="px-1 text-sm font-medium">
-                {statusLabels[column]}{" "}
-                <span className="text-muted-foreground">({state.lists[column]?.length ?? 0})</span>
-              </h3>
-              <Board.Column
-                value={column}
-                aria-labelledby={`board-${column}`}
-                className="flex min-h-16 flex-col gap-2"
-              >
-                {(state.lists[column] ?? []).map((id) => (
-                  <Board.Card
-                    key={id}
-                    value={id}
-                    aria-describedby={help}
-                    className={cn(
-                      "cursor-grab touch-none rounded-md border bg-background px-3 py-2 text-sm select-none focus-visible:outline-2 data-grabbed:ring-2 data-grabbed:ring-ring",
-                      statusTone[column],
-                    )}
-                  >
-                    {titles[id]}
-                  </Board.Card>
-                ))}
-              </Board.Column>
-            </div>
-          ))
-        }
-      </Board.Root>
-    </section>
+      <CollapsiblePanel className="flex flex-col gap-2">
+        <p id={help} className="text-sm text-muted-foreground">
+          Drag a Video to another column to change its Status. With a keyboard, press Space to pick
+          it up, Left and Right to change column, Up and Down to place it, Space to drop and Escape
+          to cancel.
+        </p>
+        <Board.Root
+          lists={lists}
+          onListsChange={change}
+          columns={statusLabels}
+          titles={titles}
+          className="grid gap-3 sm:grid-cols-3"
+        >
+          {(state) =>
+            videoStatuses.map((column) => (
+              <div key={column} className="flex min-w-0 flex-col gap-2 rounded-lg border p-2">
+                <h3 id={`board-${column}`} className="px-1 text-sm font-medium">
+                  {statusLabels[column]}{" "}
+                  <span className="text-muted-foreground">
+                    ({state.lists[column]?.length ?? 0})
+                  </span>
+                </h3>
+                <Board.Column
+                  value={column}
+                  aria-labelledby={`board-${column}`}
+                  className="flex min-h-16 flex-col gap-2"
+                >
+                  {(state.lists[column] ?? []).map((id) => (
+                    <Board.Card
+                      key={id}
+                      value={id}
+                      aria-describedby={help}
+                      className={cn(
+                        "cursor-grab touch-none rounded-md border bg-background px-3 py-2 text-sm select-none focus-visible:outline-2 data-grabbed:ring-2 data-grabbed:ring-ring",
+                        statusTone[column],
+                      )}
+                    >
+                      {titles[id]}
+                    </Board.Card>
+                  ))}
+                </Board.Column>
+              </div>
+            ))
+          }
+        </Board.Root>
+      </CollapsiblePanel>
+    </Collapsible>
   );
 }

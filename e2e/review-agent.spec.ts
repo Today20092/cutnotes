@@ -127,11 +127,14 @@ test("ui-sdk agent bridge: snapshot, then act on components by name", async ({ p
   expect(done.ok).toBe(true);
   // The bridge has no navigation; an agent follows the link like any browser agent.
   await m.act(page.getByRole("link", { name: "Playback project" }).click());
-  await expect(page.getByRole("region", { name: "Status board" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Status board/ })).toBeVisible();
   const project = m.read(await agent.snapshot()) as { component: string }[];
   expect(project.some((entry) => entry.component === "review-board")).toBe(true);
   const moved = await m.act(
-    agent.act([{ ref: "review-board", action: "setStatus", args: ["Playback cut", "Rework"] }]),
+    agent.act([
+      { ref: "Status board", action: "open" },
+      { ref: "review-board", action: "setStatus", args: ["Playback cut", "Rework"] },
+    ]),
     null,
   );
   expect(moved.ok).toBe(true);

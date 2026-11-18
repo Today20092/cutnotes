@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { Fragment } from "react";
-import { toastManager } from "@/components/ui/toast";
+import { toast } from "@/components/ui/toast";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -212,7 +212,7 @@ export function RenameProjectButton({
 /** Shows a confirmation that everyone can see; the status region still speaks it. */
 export function useStatusToast(status: string) {
   useEffect(() => {
-    if (status) toastManager.add({ title: status });
+    if (status) toast({ title: status });
   }, [status]);
 }
 

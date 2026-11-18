@@ -20,6 +20,7 @@ import {
 } from "@/components/project-parts";
 import { UploadSheet } from "@/components/upload-parts";
 import { VideoTile } from "@/components/video-tile";
+import { ReviewBoard } from "@/components/review-board";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -182,6 +183,9 @@ function ProjectView({ page }: { page: ProjectPage }) {
             </li>
           ))}
         </ul>
+      )}
+      {writable && project.completedAt === null && videos.length > 0 && (
+        <ReviewBoard videos={videos} />
       )}
       {member.role === "owner" && <ProjectPeople projectId={project.id} />}
       {(member.role === "owner" || (writable && project.completedAt === null)) && (

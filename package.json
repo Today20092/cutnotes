@@ -32,6 +32,8 @@
     "@tanstack/react-query": "5.107.1",
     "@tanstack/react-router": "1.170.46",
     "@tanstack/react-start": "1.169.5",
+    "@ui-sdk/core": "0.1.0-beta.9",
+    "@ui-sdk/react": "0.1.0-beta.9",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "drizzle-orm": "0.45.4",

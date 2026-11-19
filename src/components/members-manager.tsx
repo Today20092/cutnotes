@@ -257,7 +257,7 @@ function MemberRow({
                 <Link
                   to="/projects/$projectId"
                   params={{ projectId: project.id }}
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-md text-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring sm:min-h-0"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-md text-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring sm:pointer-fine:min-h-0"
                 >
                   <span className="wrap-anywhere">{project.name}</span>
                   <Badge variant="secondary">{roleLabel(project.role)}</Badge>

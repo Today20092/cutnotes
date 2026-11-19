@@ -94,7 +94,40 @@ function Review() {
               ]}
               current={page.video.title}
             />
-            <PageHeading title={page.video.title}>
+            <PageHeading
+              title={page.video.title}
+              // At most two actions stay visible; the rest live in this menu.
+              menu={
+                <ActionMenu<"markers">
+                  label={`More actions for ${page.video.title}`}
+                  current={search.sheet}
+                  onCurrentChange={(sheet) => setSearch({ sheet })}
+                  actions={[
+                    { label: "Copy video link", onSelect: () => void copyLink.copy() },
+                    ...(canWrite(page.video.role) && page.revision
+                      ? [
+                          {
+                            id: "markers" as const,
+                            label: "Export markers",
+                            sheet: (onClosed: () => void) => (
+                              <ExportMarkers
+                                key={page.revision!.id}
+                                open
+                                onOpenChange={(open) => !open && onClosed()}
+                                title={page.video!.title}
+                                revision={page.revision!.number}
+                                comments={page.comments}
+                                frameRate={page.revision!.frameRate}
+                                durationMs={page.revision!.durationMs}
+                              />
+                            ),
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
+              }
+            >
               {canUpload(page.video.role) && page.video.completedAt === null && (
                 <>
                   {page.member.role === "owner" && (
@@ -132,35 +165,6 @@ function Review() {
                   )}
                 </>
               )}
-              {/* At most two actions stay visible; the rest live in this menu. */}
-              <ActionMenu<"markers">
-                label={`More actions for ${page.video.title}`}
-                current={search.sheet}
-                onCurrentChange={(sheet) => setSearch({ sheet })}
-                actions={[
-                  { label: "Copy video link", onSelect: () => void copyLink.copy() },
-                  ...(canWrite(page.video.role) && page.revision
-                    ? [
-                        {
-                          id: "markers" as const,
-                          label: "Export markers",
-                          sheet: (onClosed: () => void) => (
-                            <ExportMarkers
-                              key={page.revision!.id}
-                              open
-                              onOpenChange={(open) => !open && onClosed()}
-                              title={page.video!.title}
-                              revision={page.revision!.number}
-                              comments={page.comments}
-                              frameRate={page.revision!.frameRate}
-                              durationMs={page.revision!.durationMs}
-                            />
-                          ),
-                        },
-                      ]
-                    : []),
-                ]}
-              />
             </PageHeading>
             {copyLink.feedback}
             <a href="#comments" className="sr-only focus:not-sr-only">
@@ -209,7 +213,7 @@ function Review() {
                   <ToggleGroupItem
                     key={cut.id}
                     value={cut.id}
-                    className="h-11 aria-pressed:underline aria-pressed:decoration-2 aria-pressed:underline-offset-4 sm:h-8"
+                    className="h-11 aria-pressed:underline aria-pressed:decoration-2 aria-pressed:underline-offset-4 sm:pointer-fine:h-8"
                   >
                     Revision {cut.number}
                   </ToggleGroupItem>

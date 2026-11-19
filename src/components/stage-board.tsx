@@ -167,7 +167,7 @@ export function StageBoard({
           }}
         >
           {(["all", ...projectStages] as const).map((value) => (
-            <ToggleGroupItem key={value} value={value} className="h-11 sm:h-9">
+            <ToggleGroupItem key={value} value={value} className="h-11 sm:pointer-fine:h-9">
               {value === "all" ? "All" : stageLabels[value]}{" "}
               {value === "all" ? projects.length : lists[value]!.length}
             </ToggleGroupItem>
@@ -215,7 +215,7 @@ export function StageBoard({
       </div>
       {anyMovable && (
         <details className="text-meta">
-          <summary className="min-h-6 w-fit cursor-pointer">How to move a Project</summary>
+          <summary className="w-fit cursor-pointer py-3">How to move a Project</summary>
           <p id={help} className="mt-1">
             Drag a Project to another column to change its Stage, or use its More actions menu. With
             a keyboard, focus a card and press Space to pick it up, Left and Right to change column,

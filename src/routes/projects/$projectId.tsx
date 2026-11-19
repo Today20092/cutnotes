@@ -226,14 +226,18 @@ function ProjectView({ page }: { page: ProjectPage }) {
         trail={[{ label: "Projects", link: <Link to="/" /> }]}
         current={project.name}
       />
-      <PageHeading title={project.name}>
+      <PageHeading
+        title={project.name}
+        menu={
+          <ActionMenu
+            label={`More actions for ${project.name}`}
+            actions={actions}
+            current={search.sheet}
+            onCurrentChange={setSheet}
+          />
+        }
+      >
         <CopyPageLink kind="project" path={`/projects/${project.id}`} />
-        <ActionMenu
-          label={`More actions for ${project.name}`}
-          actions={actions}
-          current={search.sheet}
-          onCurrentChange={setSheet}
-        />
       </PageHeading>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <p className="flex items-center gap-2 text-sm">

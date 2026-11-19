@@ -61,7 +61,7 @@ export function PageBreadcrumb({
           <Fragment key={label}>
             <BreadcrumbItem>
               <BreadcrumbLink
-                className="inline-flex min-h-11 min-w-11 items-center wrap-anywhere sm:min-h-0 sm:min-w-0"
+                className="inline-flex min-h-11 min-w-11 items-center wrap-anywhere sm:pointer-fine:min-h-0 sm:pointer-fine:min-w-0"
                 render={link}
               >
                 {label}
@@ -83,7 +83,16 @@ export function PageBreadcrumb({
 export const backLinkClass =
   "inline-flex min-h-11 w-fit items-center gap-1 text-sm underline-offset-4 hover:underline";
 
-export function PageHeading({ title, children }: { title: string; children?: ReactNode }) {
+/** `menu` is a More actions button. It follows `children` in tab order, but on a phone it sits beside the title and `children` wrap below. */
+export function PageHeading({
+  title,
+  children,
+  menu,
+}: {
+  title: string;
+  children?: ReactNode;
+  menu?: ReactNode;
+}) {
   const heading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -95,11 +104,16 @@ export function PageHeading({ title, children }: { title: string; children?: Rea
   }, [title]);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <h1 ref={heading} tabIndex={-1} className="text-title min-w-0 wrap-anywhere">
+    <div className="flex flex-wrap items-center gap-2">
+      <h1 ref={heading} tabIndex={-1} className="text-title min-w-0 flex-[1_1_12rem] wrap-anywhere">
         {title}
       </h1>
-      {children && <div className="flex max-w-full flex-wrap gap-2">{children}</div>}
+      {children && (
+        <div className="order-last flex w-full flex-wrap gap-2 sm:order-none sm:w-auto">
+          {children}
+        </div>
+      )}
+      {menu}
     </div>
   );
 }
@@ -369,10 +383,13 @@ export function Poster({ url }: { url: string | null }) {
 export function VideoCard({
   video,
   editableTitle,
+  actions,
   showProject = false,
 }: {
   video: VideoSummary;
   editableTitle?: ReactNode;
+  /** Controls at the end of the title row, such as a More actions menu. */
+  actions?: ReactNode;
   /** Off inside the Project itself, where the name is already the page title. */
   showProject?: boolean;
 }) {
@@ -417,6 +434,7 @@ export function VideoCard({
             </div>
           )}
         </div>
+        {actions}
       </div>
     </>
   );

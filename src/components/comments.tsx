@@ -32,7 +32,7 @@ export const selectedRowClass =
 
 /** Shared by the Member and Guest lists; the underline survives forced colours. */
 const segmentClass =
-  "h-11 aria-pressed:underline aria-pressed:decoration-2 aria-pressed:underline-offset-4 sm:h-8";
+  "h-11 aria-pressed:underline aria-pressed:decoration-2 aria-pressed:underline-offset-4 sm:pointer-fine:h-8";
 
 export function CommentMarkers<
   Row extends { id: string; timecodeMs: number; body: string; resolvedAt: number | null },
@@ -53,7 +53,9 @@ export function CommentMarkers<
     const observer = new ResizeObserver(([entry]) =>
       setSize({
         width: entry!.contentRect.width,
-        marker: 1.5 * parseFloat(getComputedStyle(document.documentElement).fontSize),
+        marker:
+          (matchMedia("(pointer: coarse)").matches ? 2.75 : 1.5) *
+          parseFloat(getComputedStyle(document.documentElement).fontSize),
       }),
     );
     observer.observe(track.current!);
@@ -61,7 +63,7 @@ export function CommentMarkers<
   }, []);
   const left = (comment: Row) =>
     Math.max(2, Math.min(98, (comment.timecodeMs / (durationMs || 1)) * 100));
-  // Targets are 1.5rem wide, including enlarged text. Every Comment stays selectable in the list.
+  // Targets are 1.5rem wide (2.75rem on a touch screen), including enlarged text. Every Comment stays selectable in the list.
   const groups: Row[][] = [];
   for (const comment of [...comments].sort((a, b) => a.timecodeMs - b.timecodeMs)) {
     const group = groups.at(-1);
@@ -74,7 +76,7 @@ export function CommentMarkers<
       ref={track}
       role="group"
       aria-label="Comment timeline markers"
-      className="relative mx-2.5 h-6"
+      className="relative mx-2.5 h-6 pointer-coarse:h-11"
     >
       {groups.map((group) => {
         const first = group[0]!;
@@ -83,7 +85,7 @@ export function CommentMarkers<
           <button
             key={first.id}
             type="button"
-            className="absolute inset-y-0 w-6 -translate-x-1/2 rounded-full text-center text-[0.625rem] leading-6 focus-visible:outline-2 aria-[current=true]:bg-white aria-[current=true]:text-black forced-colors:aria-[current=true]:outline-2"
+            className="absolute inset-y-0 w-6 -translate-x-1/2 rounded-full text-center text-xs leading-6 pointer-coarse:w-11 pointer-coarse:leading-11 focus-visible:outline-2 aria-[current=true]:bg-white aria-[current=true]:text-black forced-colors:aria-[current=true]:outline-2"
             style={{ left: `${left(first)}%` }}
             aria-label={
               group.length > 1

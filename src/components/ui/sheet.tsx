@@ -47,7 +47,7 @@ function SheetContent({
         {showCloseButton && (
           <DialogClose
             aria-label="Close"
-            render={<Button variant="ghost" className="absolute top-2 right-2 max-sm:size-11" size="icon-sm" />}
+            render={<Button variant="ghost" className="absolute top-2 right-2 max-sm:size-11 pointer-coarse:size-11" size="icon-sm" />}
           >
             <XIcon aria-hidden />
           </DialogClose>
@@ -80,7 +80,7 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
 function SheetTitle({ className, ...props }: React.ComponentProps<typeof DialogTitle>) {
   return (
     <DialogTitle
-      className={cn("font-heading text-base font-medium text-foreground", className)}
+      className={cn("font-heading text-xl font-semibold text-foreground", className)}
       {...props}
     />
   )

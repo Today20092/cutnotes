@@ -148,7 +148,7 @@ export function InviteLinkForm({
             <Field className="items-stretch">
               <FieldLabel>Optional note</FieldLabel>
               <Input
-                className="h-11 sm:h-8"
+                className="h-11 sm:pointer-fine:h-8"
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
                 maxLength={240}
@@ -177,7 +177,7 @@ export function InviteLinkForm({
           <Field className="items-stretch">
             <FieldLabel>Link to send</FieldLabel>
             <Input
-              className="h-11 sm:h-8"
+              className="h-11 sm:pointer-fine:h-8"
               readOnly
               value={link}
               onFocus={(event) => event.currentTarget.select()}

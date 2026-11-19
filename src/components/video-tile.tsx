@@ -159,43 +159,53 @@ function VideoControls({
     );
   }
 
+  const actions = (
+    <div className="-mr-2.5 -mt-1.5 flex shrink-0 flex-wrap items-center justify-end gap-2">
+      {video.latestRevisionState === "errored" && (
+        <UploadSheet
+          open={sheet === "retry-video"}
+          onOpenChange={(next) => onSheetChange(next ? "retry-video" : undefined)}
+          destination={{ kind: "existing", videoId: video.id, title: video.title }}
+          trigger={
+            <Button variant="secondary" aria-label={`Retry ${video.title} with a new upload`}>
+              <RotateCcw aria-hidden /> Retry
+            </Button>
+          }
+        />
+      )}
+      <Menu>
+        <MenuTrigger
+          render={
+            <Button
+              ref={more}
+              variant="ghost"
+              size="icon"
+              aria-label={`More actions for ${video.title}`}
+            />
+          }
+        >
+          <Ellipsis aria-hidden />
+        </MenuTrigger>
+        <MenuPopup>
+          <MenuItem onSelect={() => onSheetChange("rename-video")}>Rename</MenuItem>
+          {deletable && (
+            <MenuItem variant="destructive" onSelect={() => onSheetChange("delete-video")}>
+              Delete
+            </MenuItem>
+          )}
+        </MenuPopup>
+      </Menu>
+    </div>
+  );
+
   return (
-    <div className="mt-2 flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        {video.latestRevisionState === "errored" && (
-          <UploadSheet
-            open={sheet === "retry-video"}
-            onOpenChange={(next) => onSheetChange(next ? "retry-video" : undefined)}
-            destination={{ kind: "existing", videoId: video.id, title: video.title }}
-            trigger={
-              <Button variant="secondary" aria-label={`Retry ${video.title} with a new upload`}>
-                <RotateCcw aria-hidden /> Retry
-              </Button>
-            }
-          />
-        )}
-        <Menu>
-          <MenuTrigger
-            render={
-              <Button
-                ref={more}
-                variant="ghost"
-                size="icon"
-                aria-label={`More actions for ${video.title}`}
-              />
-            }
-          >
-            <Ellipsis aria-hidden />
-          </MenuTrigger>
-          <MenuPopup>
-            <MenuItem onSelect={() => onSheetChange("rename-video")}>Rename</MenuItem>
-            {deletable && (
-              <MenuItem variant="destructive" onSelect={() => onSheetChange("delete-video")}>
-                Delete
-              </MenuItem>
-            )}
-          </MenuPopup>
-        </Menu>
+    <div className="flex flex-col gap-2">
+      <div className="block min-[400px]:flex min-[400px]:gap-3 sm:block">
+        <VideoCard
+          video={video}
+          editableTitle={<EditableVideoTitle video={video} />}
+          actions={actions}
+        />
       </div>
       {sheet === "rename-video" && (
         <ProjectNameSheet
@@ -235,9 +245,12 @@ export function VideoTile({
   return (
     <>
       {manageable ? (
-        <div className="block min-[400px]:flex min-[400px]:gap-3 sm:block">
-          <VideoCard video={video} editableTitle={<EditableVideoTitle video={video} />} />
-        </div>
+        <VideoControls
+          video={video}
+          deletable={deletable}
+          sheet={sheet}
+          onSheetChange={onSheetChange}
+        />
       ) : (
         <Link
           to="/videos/$videoId"
@@ -246,14 +259,6 @@ export function VideoTile({
         >
           {card}
         </Link>
-      )}
-      {manageable && (
-        <VideoControls
-          video={video}
-          deletable={deletable}
-          sheet={sheet}
-          onSheetChange={onSheetChange}
-        />
       )}
       {!manageable && deletable && (
         <div className="mt-2">

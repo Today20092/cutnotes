@@ -7,8 +7,12 @@ A self-hosted tool where a production team reviews video cuts before final deliv
 ### Work
 
 **Project**:
-A piece of production work under review, such as one episode.
-_Avoid_: Folder, workspace
+A piece of production work under review, such as one episode. A Folder groups Projects; it is not another word for a Project.
+_Avoid_: Workspace
+
+**Folder**:
+A named group of Projects that an Owner makes. A Project is in at most one Folder, or unfiled. Access given on a Folder covers every Project in it, including Projects added later.
+_Avoid_: Workspace, collection
 
 **Video**:
 One titled piece of content inside a Project, made up of one or more Revisions.
@@ -56,6 +60,13 @@ _Avoid_: User, account
 **Role**:
 A Member's level of access: Owner, Editor or Viewer.
 _Avoid_: Permission level
+
+**Project role**:
+A person's assignment on a Project or a Folder: Reviewer, Uploader or Editor. The higher of the Project and Folder assignments applies. Separate from the Team Role.
+
+**Uploader**:
+A Project role that can watch and comment, add new Videos, and upload Revisions to Videos they created. An Uploader deletes only Videos they created and cannot rename, change Status, Resolve or manage people.
+_Avoid_: Contributor
 
 **Guest**:
 A person using a Share Link who gives only a name and has no sign-in.

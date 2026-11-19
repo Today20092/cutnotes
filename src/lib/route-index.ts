@@ -50,7 +50,7 @@ export const routeIndex: RouteEntry[] = [
     purpose: "Review one Video: play a Revision, read and add Comments, decide.",
     who: "Owners, and people assigned to the Project",
     params: {
-      sheet: "customer | upload: the open sheet",
+      sheet: "customer | upload | markers: the open sheet",
       revision: "the Revision number (default: the latest)",
       ...reviewParams,
     },

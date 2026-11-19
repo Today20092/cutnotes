@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import { idParam, param, positiveInt, secondsParam, sheetParam } from "@/lib/search-params";
-import { CopyPageLink } from "@/components/copy-page-link";
+import { ActionMenu } from "@/components/action-menu";
+import { useCopyPageLink } from "@/components/copy-page-link";
 import { ExportMarkers } from "@/components/export-markers";
 import { useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -22,7 +23,7 @@ import { refreshProjects } from "@/lib/writes";
 
 // An unknown value is dropped rather than shown as an error page.
 const searchSchema = v.object({
-  sheet: sheetParam(["customer", "upload"]),
+  sheet: sheetParam(["customer", "upload", "markers"]),
   /** The Revision number; without it the latest. */
   revision: positiveInt,
   /** Opens at this moment, in seconds. */
@@ -51,6 +52,7 @@ function Review() {
   if (search.revision) linkParams.set("revision", String(search.revision));
   if (search.t !== undefined) linkParams.set("t", String(search.t));
   const linkSearch = linkParams.size ? `?${linkParams}` : "";
+  const copyLink = useCopyPageLink("video", `/videos/${videoId}${linkSearch}`);
   const setSheet = (sheet: "customer" | "upload", open: boolean) =>
     setSearch({ sheet: open ? sheet : undefined });
   /**
@@ -93,17 +95,6 @@ function Review() {
               current={page.video.title}
             />
             <PageHeading title={page.video.title}>
-              <CopyPageLink kind="video" path={`/videos/${videoId}${linkSearch}`} />
-              {canWrite(page.video.role) && page.revision && (
-                <ExportMarkers
-                  key={page.revision.id}
-                  title={page.video.title}
-                  revision={page.history.find((r) => r.id === page.revision?.id)?.number ?? 1}
-                  comments={page.comments}
-                  frameRate={page.revision.frameRate}
-                  durationMs={page.revision.durationMs}
-                />
-              )}
               {canUpload(page.video.role) && page.video.completedAt === null && (
                 <>
                   {page.member.role === "owner" && (
@@ -141,7 +132,37 @@ function Review() {
                   )}
                 </>
               )}
+              {/* At most two actions stay visible; the rest live in this menu. */}
+              <ActionMenu<"markers">
+                label={`More actions for ${page.video.title}`}
+                current={search.sheet}
+                onCurrentChange={(sheet) => setSearch({ sheet })}
+                actions={[
+                  { label: "Copy video link", onSelect: () => void copyLink.copy() },
+                  ...(canWrite(page.video.role) && page.revision
+                    ? [
+                        {
+                          id: "markers" as const,
+                          label: "Export markers",
+                          sheet: (onClosed: () => void) => (
+                            <ExportMarkers
+                              key={page.revision!.id}
+                              open
+                              onOpenChange={(open) => !open && onClosed()}
+                              title={page.video!.title}
+                              revision={page.revision!.number}
+                              comments={page.comments}
+                              frameRate={page.revision!.frameRate}
+                              durationMs={page.revision!.durationMs}
+                            />
+                          ),
+                        },
+                      ]
+                    : []),
+                ]}
+              />
             </PageHeading>
+            {copyLink.feedback}
             <a href="#comments" className="sr-only focus:not-sr-only">
               Skip to Comments
             </a>

@@ -232,6 +232,14 @@ test("the review page's params", async ({ page }, testInfo) => {
   await page.getByRole("button", { name: "Close" }).click();
   await open("?sheet=upload");
   await expect(dialog(page, /^Upload .* again$/)).toBeVisible();
+  // The ⋯ menu's Export markers sheet.
+  await open("?sheet=markers");
+  await expect(dialog(page, "Export Premiere markers")).toContainText("Revision 2.");
+  await page.getByRole("button", { name: "Close" }).click();
+  await expect(page).not.toHaveURL(/sheet=/);
+  await expect(
+    page.getByRole("button", { name: `More actions for Deep link cut ${tag}` }),
+  ).toBeFocused();
 });
 
 test("the Team, Invites and Site feedback params", async ({ page }, testInfo) => {

@@ -79,12 +79,16 @@ export function PeopleStrip({
         <>
           <AvatarStack people={people} />
           <ul className="flex min-w-0 flex-wrap gap-x-3 gap-y-1">
-            {people.map((person) => (
+            {people.slice(0, 3).map((person) => (
               <li key={person.id} className="wrap-anywhere">
                 <span className="font-medium">{person.displayName}</span>{" "}
                 <span className="text-muted-foreground">{roleLabel(person.role)}</span>
               </li>
             ))}
+            {/* The People sheet lists the rest. */}
+            {people.length > 3 && (
+              <li className="text-muted-foreground">+{people.length - 3} more</li>
+            )}
           </ul>
         </>
       )}

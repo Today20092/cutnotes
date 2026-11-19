@@ -1,5 +1,5 @@
-import { and, eq, inArray, notExists, or, sql } from "drizzle-orm";
-import { openProject, uploadAccess } from "@/server/access";
+import { and, eq, inArray, isNull, notExists, or, sql } from "drizzle-orm";
+import { latestReadyRevision, openProject, uploadAccess } from "@/server/access";
 import { getDb, type Db } from "@/server/db";
 import { revisions, videos } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
@@ -99,42 +99,47 @@ async function markReady(revisionId: string, data: Partial<MuxAsset>) {
 
   const now = Date.now();
   const db = getDb();
-  const ready = await db
-    .update(revisions)
-    .set({
-      state: "ready",
-      muxAssetId: sql`COALESCE(${revisions.muxAssetId}, ${assetId ?? null})`,
-      muxPlaybackId: playbackId,
-      durationMs: Math.round(duration * 1000),
-      frameRate: data.tracks?.find((track) => track.type === "video")?.max_frame_rate ?? null,
-      aspectRatio: data.aspect_ratio ?? null,
-      readyAt: now,
-    })
-    .where(and(eq(revisions.id, revisionId), isUnfinished))
-    .returning({ videoId: revisions.videoId });
-
-  if (ready[0]) {
-    const videoId = ready[0].videoId;
-    const live = sql`EXISTS (SELECT 1 FROM videos WHERE id = ${videoId} AND deleted_at IS NULL)`;
-    // A new cut answers a change request, so the Video and its open Project are in review again.
-    await db.batch([
-      db
-        .update(videos)
-        .set({
-          updatedAt: now,
-          status: sql`CASE WHEN ${videos.status} = 'rework' AND ${openProject(videos.projectId)}
-            THEN 'review' ELSE ${videos.status} END`,
-        })
-        .where(eq(videos.id, videoId)),
-      moveStage(
-        db,
-        sql`(SELECT project_id FROM videos WHERE id = ${videoId})`,
-        "in_review",
-        live,
-        now,
+  const videoId = sql`(SELECT video_id FROM revisions WHERE id = ${revisionId})`;
+  // Only the write that made this Revision ready, and only when it is the newest ready cut:
+  // a late older cut neither reopens the Video nor moves the Stage.
+  const newest = and(
+    sql`EXISTS (SELECT 1 FROM revisions WHERE id = ${revisionId} AND ready_at = ${now})`,
+    latestReadyRevision(revisionId),
+  );
+  // One batch, so a failure leaves the Revision unfinished and a retry transitions again.
+  await db.batch([
+    db
+      .update(revisions)
+      .set({
+        state: "ready",
+        muxAssetId: sql`COALESCE(${revisions.muxAssetId}, ${assetId ?? null})`,
+        muxPlaybackId: playbackId,
+        durationMs: Math.round(duration * 1000),
+        frameRate: data.tracks?.find((track) => track.type === "video")?.max_frame_rate ?? null,
+        aspectRatio: data.aspect_ratio ?? null,
+        readyAt: now,
+      })
+      .where(and(eq(revisions.id, revisionId), isUnfinished)),
+    // A new cut is in review again, even after an earlier one was approved.
+    db
+      .update(videos)
+      .set({ updatedAt: now, status: "review" })
+      .where(
+        and(
+          eq(videos.id, videoId),
+          isNull(videos.deletedAt),
+          openProject(videos.projectId),
+          newest,
+        ),
       ),
-    ]);
-  }
+    moveStage(
+      db,
+      sql`(SELECT project_id FROM videos WHERE id = ${videoId})`,
+      "in_review",
+      and(sql`EXISTS (SELECT 1 FROM videos WHERE id = ${videoId} AND deleted_at IS NULL)`, newest),
+      now,
+    ),
+  ]);
 }
 
 /** The sweep shares the webhook's conditional, monotonic transitions. */

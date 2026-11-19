@@ -62,7 +62,6 @@ function ProjectBoard({ list }: { list: ProjectList }) {
   const setSearch = (change: Partial<typeof Route.types.fullSearchSchema>) =>
     void navigate({ search: (prev) => ({ ...prev, ...change }), replace: true });
   const createProject = useCreateProject();
-  const [status, setStatus] = useState("");
   const [failure, setFailure] = useState("");
   const writable = canWrite(list.member.role);
   const uploadTargets = list.projects.filter(
@@ -75,7 +74,8 @@ function ProjectBoard({ list }: { list: ProjectList }) {
     createProject.mutate(
       { name },
       {
-        onSuccess: () => setStatus(`Project ${name} created`),
+        onSuccess: (created) =>
+          void navigate({ to: "/projects/$projectId", params: { projectId: created.id } }),
         onError: () => setFailure(`Could not create ${name}. Nothing was saved. Try again.`),
       },
     );
@@ -115,7 +115,7 @@ function ProjectBoard({ list }: { list: ProjectList }) {
           </>
         )}
       </PageHeading>
-      <WriteFeedback status={status} failure={failure} />
+      <WriteFeedback status="" failure={failure} />
 
       {list.projects.length === 0 ? (
         <Empty>

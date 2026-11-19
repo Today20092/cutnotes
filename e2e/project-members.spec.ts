@@ -25,7 +25,7 @@ test("an Owner assigns a project, sends a scoped invitation, and removes access"
   const name = `Private project ${suffix}`;
   await page.getByLabel("Project name").fill(name);
   await page.getByRole("button", { name: "Create Project", exact: true }).click();
-  await page.getByRole("link", { name, exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1, name, exact: true })).toBeVisible();
   const projectUrl = page.url();
   const strip = page.getByRole("region", { name: "People with access" });
   await expect(strip).toContainText("Only Team Owners have access");
@@ -169,7 +169,7 @@ test("a team Editor creates private projects and can reopen a direct video URL",
   const name = `Created by editor ${testInfo.project.name} ${Date.now()}`;
   await page.getByLabel("Project name").fill(name);
   await page.getByRole("button", { name: "Create Project", exact: true }).click();
-  await page.getByRole("link", { name, exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1, name, exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Copy project link", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Copy project link", exact: true }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(page.url());

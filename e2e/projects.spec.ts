@@ -39,9 +39,11 @@ test("a created Project appears before the server answers", async ({ page }, tes
 
   await expect(page.getByText(name)).toBeVisible();
   release();
-  await expect(page.getByRole("link", { name })).toBeVisible();
+  // The new Project opens once the server confirms it.
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+  await expect(page).toHaveURL(/\/projects\//);
   await page.reload();
-  await expect(page.getByRole("link", { name })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
 });
 
 test("a failed create rolls back and says so", async ({ page }, testInfo) => {
@@ -65,13 +67,13 @@ test("an empty name is explained and nothing is sent", async ({ page }) => {
   await expect(page.getByLabel("Project name")).toBeFocused();
 });
 
-test("a Project opens, shows the next step, and can be renamed", async ({ page }, testInfo) => {
+test("a created Project opens, shows the next step, and can be renamed", async ({
+  page,
+}, testInfo) => {
   const name = `Open ${testInfo.project.name} ${Date.now()}`;
   const renamed = `${name} renamed`;
   await page.goto("/");
   await createProjectInUi(page, name);
-
-  await page.getByRole("link", { name }).click();
 
   const heading = page.getByRole("heading", { level: 1, name });
   await expect(heading).toBeVisible();
@@ -96,8 +98,7 @@ test("a failed rename rolls back and says so", async ({ page }, testInfo) => {
   const name = `Keep ${testInfo.project.name} ${Date.now()}`;
   await page.goto("/");
   await createProjectInUi(page, name);
-  await expect(page.getByRole("link", { name })).toBeVisible();
-  await page.getByRole("link", { name }).click();
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   await page.route(callTo("renameProject"), (route) => route.abort());
 
   await page.getByRole("button", { name: `More actions for ${name}` }).click();
@@ -120,15 +121,14 @@ test("a Viewer can browse but gets no create or rename controls", async ({ page 
   const name = `Browse ${testInfo.project.name} ${Date.now()}`;
   await page.goto("/");
   await createProjectInUi(page, name);
-  await expect(page.getByRole("link", { name })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
 
   const viewer = {
     clerkUserId: `user_viewer_${testInfo.project.name}`,
     email: "viewer@example.com",
   };
   seedMember(viewer.clerkUserId, "viewer");
-  const projectPath = await page.getByRole("link", { name, exact: true }).getAttribute("href");
-  assignProjectMember(viewer.clerkUserId, projectPath!.split("/").pop()!);
+  assignProjectMember(viewer.clerkUserId, new URL(page.url()).pathname.split("/").pop()!);
   await signInAs(page, viewer);
   await page.goto("/");
 

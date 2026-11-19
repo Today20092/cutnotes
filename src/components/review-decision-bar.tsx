@@ -1,4 +1,5 @@
 import { createParts } from "@ui-sdk/react/primitive";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { PendingButton } from "@/components/pending-button";
 import { WriteFeedback } from "@/components/project-parts";
@@ -11,18 +12,57 @@ const Decision = createParts(reviewDecision, { root: "section" });
 
 /**
  * The only way a Video's Status changes. Request changes sends the Project back to Editing;
- * Approve marks the Video done, and the Project Done once every Video is.
+ * Approve marks the Video done, and the Project Done once every Video is. A decision applies to
+ * the Revision on screen, so an older Revision shows a link to the latest instead.
  */
 export function ReviewDecisionBar({
   videoId,
   title,
   status,
+  revision,
+  latest,
 }: {
   videoId: string;
   title: string;
   status: VideoStatus;
+  /** The Revision on screen. */
+  revision: { id: string; number: number };
+  /** The newest ready Revision. */
+  latest: { id: string; number: number };
 }) {
-  const decision = useReviewDecision(videoId);
+  if (revision.id !== latest.id)
+    return (
+      <section
+        aria-label="Review decision"
+        className="flex flex-wrap items-center gap-2 rounded-card border p-3 text-sm"
+      >
+        <p>You're viewing Revision {revision.number}. Decisions apply to the latest cut.</p>
+        <Link
+          to="/videos/$videoId"
+          params={{ videoId }}
+          className="ms-auto font-medium underline underline-offset-4"
+        >
+          Go to Revision {latest.number}
+        </Link>
+      </section>
+    );
+  return (
+    <DecisionButtons videoId={videoId} title={title} status={status} revisionId={revision.id} />
+  );
+}
+
+function DecisionButtons({
+  videoId,
+  title,
+  status,
+  revisionId,
+}: {
+  videoId: string;
+  title: string;
+  status: VideoStatus;
+  revisionId: string;
+}) {
+  const decision = useReviewDecision(videoId, revisionId);
   const [said, setSaid] = useState("");
   const [failure, setFailure] = useState("");
 
@@ -31,7 +71,12 @@ export function ReviewDecisionBar({
     decision.mutate(choice, {
       onSuccess: () =>
         setSaid(choice === "approve" ? `${title} is approved` : `Changes requested on ${title}`),
-      onError: () => setFailure(`Could not save your decision on ${title}. Try again.`),
+      onError: (error) =>
+        setFailure(
+          error instanceof Response && error.status === 409
+            ? `A newer Revision of ${title} is ready. Review it before you decide.`
+            : `Could not save your decision on ${title}. Try again.`,
+        ),
     });
   }
 

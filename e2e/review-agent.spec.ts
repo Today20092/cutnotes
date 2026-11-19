@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import { seedComment } from "./support/database";
+import { seedComment, seedReadyRevision } from "./support/database";
 import { openQueue, openVideo, signInWithReview } from "./support/review-page";
 
 /**
@@ -150,7 +150,27 @@ test("ui-sdk agent bridge: the decision bar offers approve and requestChanges", 
   ).toBe(true);
   const done = await agent.act([{ ref: "review-decision", action: "requestChanges" }]);
   expect(done.ok).toBe(true);
-  await expect(page.getByRole("region", { name: "Review decision" })).toContainText("Rework");
+  await expect(page.getByRole("region", { name: "Review decision" })).toContainText(
+    "Changes requested",
+  );
+});
+
+test("an older Revision offers no decision, to the reviewer or an agent", async ({ page }) => {
+  const { id, clerkUserId } = await signInWithReview(page);
+  seedReadyRevision(id, clerkUserId, 2);
+  await openVideo(page, id, "?agent&revision=1");
+  await expect.poll(() => page.evaluate(() => !!window.__cutnotesAgent)).toBe(true);
+  const decision = page.getByRole("region", { name: "Review decision" });
+  await expect(decision).toContainText(
+    "You're viewing Revision 1. Decisions apply to the latest cut.",
+  );
+  await expect(decision.getByRole("button")).toHaveCount(0);
+  const snapshot = (await bridge(page).snapshot()) as { actions?: string[] }[];
+  expect(snapshot.some((entry) => entry.actions?.includes("approve"))).toBe(false);
+
+  await decision.getByRole("link", { name: "Go to Revision 2" }).click();
+  await expect(decision.getByRole("button", { name: "Approve" })).toBeVisible();
+  await expect(page).not.toHaveURL(/revision=/);
 });
 
 test("the dev Agent panel shows the snapshot and runs scripted steps", async ({ page }) => {

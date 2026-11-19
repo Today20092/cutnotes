@@ -207,6 +207,65 @@ function ManagePeople({ projectId }: { projectId: string }) {
             : ""
         }
       />
+      <section aria-labelledby={`${roleField}-heading`}>
+        <h3 id={`${roleField}-heading`} className="mb-2 text-section">
+          Add from Team
+        </h3>
+        {available && available.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Every Team member already has access. To bring in someone new, use an invite link below.
+          </p>
+        ) : (
+          <form
+            className="flex flex-col gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (memberId) assign.mutate({ memberId, role });
+            }}
+          >
+            <div className="flex flex-col gap-2">
+              <label htmlFor={memberField}>Team member</label>
+              <NativeSelect
+                id={memberField}
+                value={memberId}
+                required
+                onChange={(event) => setMemberId(event.target.value)}
+              >
+                <option value="">Choose a person</option>
+                {available?.map((person) => (
+                  <option key={person.id} value={person.id}>
+                    {person.displayName}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor={roleField}>Role</label>
+              <RoleSelect
+                id={roleField}
+                value={role}
+                onChange={setRole}
+                aria-describedby={roleHelp}
+              />
+              <p id={roleHelp} className="text-sm text-muted-foreground">
+                {chosen.description}
+              </p>
+            </div>
+            <PendingButton type="submit" pending={assign.isPending} disabled={!memberId}>
+              Add to project
+            </PendingButton>
+          </form>
+        )}
+      </section>
+      <section aria-labelledby={`${memberField}-invite`} className="flex flex-col gap-3">
+        <h3 id={`${memberField}-invite`} className="text-section">
+          Invite link
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          For someone new, or a Team member. The link works once and opens this project only.
+        </p>
+        <InviteLinkForm nested projectId={projectId} />
+      </section>
       <section aria-labelledby={`${memberField}-heading`} className="flex flex-col gap-2">
         <h3
           id={`${memberField}-heading`}
@@ -271,65 +330,6 @@ function ManagePeople({ projectId }: { projectId: string }) {
             </li>
           ))}
         </ul>
-      </section>
-      <section aria-labelledby={`${roleField}-heading`}>
-        <h3 id={`${roleField}-heading`} className="mb-2 text-section">
-          Add from Team
-        </h3>
-        {available && available.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Every Team member already has access. To bring in someone new, use an invite link below.
-          </p>
-        ) : (
-          <form
-            className="flex flex-col gap-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (memberId) assign.mutate({ memberId, role });
-            }}
-          >
-            <div className="flex flex-col gap-2">
-              <label htmlFor={memberField}>Team member</label>
-              <NativeSelect
-                id={memberField}
-                value={memberId}
-                required
-                onChange={(event) => setMemberId(event.target.value)}
-              >
-                <option value="">Choose a person</option>
-                {available?.map((person) => (
-                  <option key={person.id} value={person.id}>
-                    {person.displayName}
-                  </option>
-                ))}
-              </NativeSelect>
-            </div>
-            <div className="flex flex-col gap-2">
-              <label htmlFor={roleField}>Role</label>
-              <RoleSelect
-                id={roleField}
-                value={role}
-                onChange={setRole}
-                aria-describedby={roleHelp}
-              />
-              <p id={roleHelp} className="text-sm text-muted-foreground">
-                {chosen.description}
-              </p>
-            </div>
-            <PendingButton type="submit" pending={assign.isPending} disabled={!memberId}>
-              Add to project
-            </PendingButton>
-          </form>
-        )}
-      </section>
-      <section aria-labelledby={`${memberField}-invite`} className="flex flex-col gap-3">
-        <h3 id={`${memberField}-invite`} className="text-section">
-          Invite link
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          For someone new, or a Team member. The link works once and opens this project only.
-        </p>
-        <InviteLinkForm nested projectId={projectId} />
       </section>
     </div>
   );

@@ -259,6 +259,7 @@ export function StageBoard({
                           project={project}
                           list={list}
                           help={movable(project) ? help : undefined}
+                          showStage={view === "list"}
                           actions={actions(project)}
                           completing={completing === project.id}
                           onCompletingChange={(open) =>
@@ -282,6 +283,7 @@ function ProjectCard({
   project,
   list,
   help,
+  showStage,
   actions,
   completing,
   onCompletingChange,
@@ -289,6 +291,8 @@ function ProjectCard({
   project: ProjectSummary;
   list: ProjectList;
   help?: string;
+  /** A board column's heading already names the Stage; the list shows it on each card. */
+  showStage: boolean;
   actions: Action[];
   completing: boolean;
   onCompletingChange: (open: boolean) => void;
@@ -325,7 +329,7 @@ function ProjectCard({
         />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <StageBadge stage={project.stage} />
+        {showStage && <StageBadge stage={project.stage} />}
         {project.completedAt !== null && <Badge variant="secondary">Complete</Badge>}
         {unread && (
           <span className="flex items-center gap-1.5 font-semibold">

@@ -46,13 +46,16 @@ export function CustomerLinkSheet({
   videoId,
   title,
   revision,
+  requested,
   open,
   onOpenChange,
 }: {
   videoId: string;
   title: string;
-  /** The Revision being viewed, which a new link pins. */
-  revision: Revision;
+  /** The Revision named in the URL, which a new link pins; null when it cannot be loaded. */
+  revision: Revision | null;
+  /** The Revision number the URL asked for. */
+  requested: number | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -66,11 +69,36 @@ export function CustomerLinkSheet({
         <SheetHeader>
           <SheetTitle>Send to customer</SheetTitle>
           <SheetDescription>
-            The customer opens Revision {revision.number} of {title} without an account. They see
-            only that Revision and their own comments, never your Team's notes.
+            {revision
+              ? `Sends Revision ${revision.number} of ${title}`
+              : requested
+                ? `Revision ${requested} of ${title} is not available`
+                : `No Revision of ${title} is ready to send`}
           </SheetDescription>
         </SheetHeader>
-        <CustomerLinks videoId={videoId} title={title} revision={revision} />
+        {revision ? (
+          <>
+            <p className="px-4 text-sm text-muted-foreground">
+              The customer opens it without an account. They see only that Revision and their own
+              comments, never your Team's notes.
+            </p>
+            <CustomerLinks videoId={videoId} title={title} revision={revision} />
+          </>
+        ) : (
+          // Never retarget a link to another cut than the one asked for.
+          <Empty className="mx-4 rounded-card border border-dashed py-8 md:py-8">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Link2 aria-hidden />
+              </EmptyMedia>
+              <EmptyTitle className="text-base">This Revision cannot be sent.</EmptyTitle>
+              <EmptyDescription>
+                It is not ready to watch, or it was removed. Close this, open the Revision you want
+                to send, and choose Send to customer again.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
       </SheetContent>
     </Sheet>
   );

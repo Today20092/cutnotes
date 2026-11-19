@@ -311,7 +311,8 @@ export function WriteFeedback({ status, failure }: { status: string; failure: st
 
 export { statusLabels } from "@/components/video-status";
 
-function formatUpdated(timestamp: number) {
+function formatUpdated(timestamp: number | null | undefined) {
+  if (!timestamp) return "";
   const minutes = Math.floor((Date.now() - timestamp) / 60_000);
   if (minutes < 1) return "just now";
   if (minutes < 60) return `${minutes} min ago`;
@@ -404,7 +405,8 @@ export function VideoCard({
           )}
           <div className="text-meta">
             {showProject && `${video.projectName} · `}
-            {revision} · {formatUpdated(video.updatedAt)}
+            {revision}
+            {video.updatedAt ? ` · ${formatUpdated(video.updatedAt)}` : ""}
           </div>
           {progress && (
             <div className={progress.failed ? "text-sm text-destructive" : "text-sm"}>

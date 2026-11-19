@@ -104,13 +104,13 @@ test("Request changes and Approve on the review page move the Project", async ({
   await openVideo(page, id);
   const decision = page.getByRole("region", { name: "Review decision" });
   await decision.getByRole("button", { name: "Request changes" }).click();
-  await expect(decision.getByText("Rework")).toBeVisible();
+  await expect(decision.getByText("Changes requested", { exact: true })).toBeVisible();
   await page.goto("/");
   await expect(card(page, "Editing")).toContainText("Changes requested · Rev 1");
 
   await openVideo(page, id);
   await decision.getByRole("button", { name: "Approve" }).click();
-  await expect(decision.getByText("Done")).toBeVisible();
+  await expect(decision.getByText("Approved", { exact: true })).toBeVisible();
   await page.goto("/");
   await expect(card(page, "Done")).toBeVisible();
 });

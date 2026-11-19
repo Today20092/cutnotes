@@ -11,7 +11,7 @@ export const shareRoles: { role: ProjectRole; label: string; description: string
     role: "uploader",
     label: "Uploader",
     description:
-      "Can add videos and new versions of their own videos, and comment. Can't change status.",
+      "Can add videos and new versions of their own videos, and comment. Can't approve or request changes.",
   },
   {
     role: "editor",

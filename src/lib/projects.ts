@@ -57,7 +57,7 @@ export const isPendingProject = (project: ProjectSummary) => project.id.startsWi
 export function useCreateProject() {
   const client = useQueryClient();
   return useMutation(
-    projectWrite<ProjectList | ProjectPage, { name: string }>(client, {
+    projectWrite<ProjectList | ProjectPage, { name: string }, { id: string }>(client, {
       mutationFn: (input) => createProject({ data: input }),
       apply: ({ name }) =>
         client.setQueryData(
@@ -200,12 +200,15 @@ export const useRenameVideo = (videoId: string) =>
     (video, { title }) => ({ ...video, title }),
   );
 
-/** A review decision on the Video page: it changes the Video's Status and may move its Project. */
-export function useReviewDecision(videoId: string) {
+/**
+ * A review decision on the Revision shown on the Video page: it changes the Video's Status and
+ * may move its Project. The server refuses it once a newer cut is ready.
+ */
+export function useReviewDecision(videoId: string, revisionId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (decision: "requestChanges" | "approve") =>
-      (decision === "approve" ? approveVideo : requestChanges)({ data: { videoId } }),
+      (decision === "approve" ? approveVideo : requestChanges)({ data: { videoId, revisionId } }),
     onSettled: () =>
       Promise.all([
         client.invalidateQueries({ queryKey: reviewKey(videoId) }),

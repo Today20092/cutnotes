@@ -31,7 +31,8 @@ export type RefusalCode =
   | "invalid-name"
   | "invalid-title"
   | "already-sent"
-  | "upload-unavailable";
+  | "upload-unavailable"
+  | "not-latest-revision";
 
 type BatchResults<Reads extends readonly unknown[]> = {
   -readonly [Index in keyof Reads]: Awaited<Reads[Index]>;
@@ -147,6 +148,13 @@ export const writableVideo = (videoId: string | SQL) =>
 export const readyRevision = (revisionId: string, videoId: string) =>
   sql`EXISTS (SELECT 1 FROM revisions AS cut WHERE cut.id = ${revisionId}
     AND cut.video_id = ${videoId} AND cut.state = 'ready' AND ${writableVideo(videoId)})`;
+
+/** The Revision is the newest ready cut of its Video (of `videoId`, when given). */
+export const latestReadyRevision = (revisionId: string, videoId?: string) =>
+  sql`EXISTS (SELECT 1 FROM revisions AS cut WHERE cut.id = ${revisionId}
+    AND cut.state = 'ready' AND ${videoId === undefined ? sql`1` : sql`cut.video_id = ${videoId}`}
+    AND NOT EXISTS (SELECT 1 FROM revisions AS newer WHERE newer.video_id = cut.video_id
+      AND newer.state = 'ready' AND newer.number > cut.number))`;
 
 /** Selects only: a screen's reads run before the Role is checked, so they must change nothing. */
 export type ScreenDb = Pick<Db, "select">;

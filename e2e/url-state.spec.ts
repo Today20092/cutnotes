@@ -206,11 +206,25 @@ test("the review page's params", async ({ page }, testInfo) => {
   await pressed("To do").click();
   await expect(page).not.toHaveURL(/filter=/);
 
-  // Sheets.
+  // Sheets. The customer sheet names the Revision it sends in the URL, and never swaps it.
   await open("?sheet=customer");
-  await expect(dialog(page, "Send to customer")).toBeVisible();
+  await expect(page).toHaveURL(/revision=2/);
+  await expect(dialog(page, "Send to customer")).toContainText(
+    `Sends Revision 2 of Deep link cut ${tag}`,
+  );
   await page.getByRole("button", { name: "Close" }).click();
   await expect(page).not.toHaveURL(/sheet=/);
+  await open("?revision=1");
+  await page.getByRole("button", { name: "Send to customer" }).click();
+  await expect(page).toHaveURL(/revision=1/);
+  await expect(dialog(page, "Send to customer")).toContainText(
+    `Sends Revision 1 of Deep link cut ${tag}`,
+  );
+  await open("?sheet=customer&revision=99");
+  await expect(dialog(page, "Send to customer")).toContainText("Revision 99");
+  await expect(dialog(page, "Send to customer")).toContainText("This Revision cannot be sent.");
+  await expect(page.getByLabel("Who is this link for?")).toHaveCount(0);
+  await page.getByRole("button", { name: "Close" }).click();
   await open("?sheet=upload");
   await expect(dialog(page, /^Upload .* again$/)).toBeVisible();
 });

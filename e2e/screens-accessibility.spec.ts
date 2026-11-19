@@ -80,7 +80,6 @@ async function openNewProject(page: Page, testInfo: TestInfo) {
   await page.getByRole("button", { name: "New project" }).click();
   await page.getByLabel("Project name").fill(name);
   await page.getByRole("button", { name: "Create Project" }).click();
-  await page.getByRole("link", { name }).click();
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   return name;
 }

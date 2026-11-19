@@ -1,8 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
+import * as v from "valibot";
 import {
   activeMember,
+  latestReadyRevision,
+  parse,
   projectAccess,
   uploadAccess,
   videoAccess,
@@ -209,15 +212,22 @@ export const renameVideo = createServerFn({ method: "POST" })
     return video;
   });
 
+const idField = v.pipe(v.string(), v.nonEmpty(), v.maxLength(128));
+const decisionSchema = v.object({ videoId: idField, revisionId: idField });
+export type DecisionInput = v.InferInput<typeof decisionSchema>;
+
 /**
- * A review decision by an Owner or the Project's Editor: the Video's Status, then its
- * Project's Stage, in one batch that re-checks Access in each statement.
+ * A review decision by an Owner or the Project's Editor on the Revision they watched: the
+ * Video's Status, then its Project's Stage, in one batch that re-checks Access and that the
+ * Revision is still the newest ready cut in each statement.
  */
-async function decide(memberId: string, videoId: string, status: VideoStatus) {
+async function decide(memberId: string, raw: DecisionInput, status: VideoStatus) {
+  const { videoId, revisionId } = parse(decisionSchema, raw);
   const db = getDb();
   const now = Date.now();
   const projectId = sql`(SELECT project_id FROM videos WHERE id = ${videoId})`;
-  const allowed = videoAccess(memberId, videoId, "editor");
+  const editor = videoAccess(memberId, videoId, "editor");
+  const allowed = and(editor, latestReadyRevision(revisionId, videoId));
   const [decided] = await db.batch([
     db
       .update(videos)
@@ -240,22 +250,28 @@ async function decide(memberId: string, videoId: string, status: VideoStatus) {
         ),
   ]);
   const [video] = decided;
-  if (!video) refuse(404, "not-found");
-  return video;
+  if (video) return video;
+  // Only someone who may decide learns that a newer cut is ready.
+  const [decider] = await db
+    .select({ id: videos.id })
+    .from(videos)
+    .where(and(eq(videos.id, videoId), writableVideo(videoId), editor));
+  if (decider) refuse(409, "not-latest-revision");
+  refuse(404, "not-found");
 }
 
 export const requestChanges = createServerFn({ method: "POST" })
-  .validator((data: { videoId: string }) => data)
+  .validator((data: DecisionInput) => data)
   .handler(async ({ data }) => {
     const member = await requireMember("viewer");
-    return decide(member.id, id(data, "videoId"), "rework");
+    return decide(member.id, data, "rework");
   });
 
 export const approveVideo = createServerFn({ method: "POST" })
-  .validator((data: { videoId: string }) => data)
+  .validator((data: DecisionInput) => data)
   .handler(async ({ data }) => {
     const member = await requireMember("viewer");
-    return decide(member.id, id(data, "videoId"), "done");
+    return decide(member.id, data, "done");
   });
 
 export const deleteVideo = createServerFn({ method: "POST" })

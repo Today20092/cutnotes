@@ -176,12 +176,15 @@ describe("processing and failed states", () => {
 describe("permission matrix: rename a Video, decide its Status", () => {
   it.each(["owner", "editor"])("lets a %s do both", async (role) => {
     const owner = await seedVideoInProject();
+    await seedRevision({ id: "r1", videoId: "v1", state: "ready" });
     const caller = role === "owner" ? owner : await seedMember(role);
 
     expect((await call(renameVideo, caller, { videoId: "v1", title: "New title" })).status).toBe(
       200,
     );
-    expect((await call(approveVideo, caller, { videoId: "v1" })).status).toBe(200);
+    expect((await call(approveVideo, caller, { videoId: "v1", revisionId: "r1" })).status).toBe(
+      200,
+    );
 
     expect(await video()).toMatchObject({ title: "New title", status: "done" });
   });
@@ -195,7 +198,11 @@ describe("permission matrix: rename a Video, decide its Status", () => {
       404,
       "not-found",
     );
-    await expectRefused(await call(approveVideo, viewer, { videoId: "v1" }), 404, "not-found");
+    await expectRefused(
+      await call(approveVideo, viewer, { videoId: "v1", revisionId: "r1" }),
+      404,
+      "not-found",
+    );
     expect(await video()).toMatchObject({ title: "Video v1", status: "review" });
   });
 
@@ -208,7 +215,11 @@ describe("permission matrix: rename a Video, decide its Status", () => {
       403,
       "not-a-member",
     );
-    await expectRefused(await call(approveVideo, removed, { videoId: "v1" }), 403, "not-a-member");
+    await expectRefused(
+      await call(approveVideo, removed, { videoId: "v1", revisionId: "r1" }),
+      403,
+      "not-a-member",
+    );
   });
 });
 
@@ -238,10 +249,11 @@ describe("renaming a Video and deciding its Status", () => {
 
   it("Request changes sets Rework and Approve sets Done", async () => {
     const owner = await seedVideoInProject();
+    await seedRevision({ id: "r1", videoId: "v1", state: "ready" });
 
-    await call(requestChanges, owner, { videoId: "v1" });
+    await call(requestChanges, owner, { videoId: "v1", revisionId: "r1" });
     expect((await video()).status).toBe("rework");
-    await call(approveVideo, owner, { videoId: "v1" });
+    await call(approveVideo, owner, { videoId: "v1", revisionId: "r1" });
     expect((await video()).status).toBe("done");
   });
 
@@ -253,7 +265,11 @@ describe("renaming a Video and deciding its Status", () => {
       404,
       "not-found",
     );
-    await expectRefused(await call(approveVideo, owner, { videoId: "v1" }), 404, "not-found");
+    await expectRefused(
+      await call(approveVideo, owner, { videoId: "v1", revisionId: "r1" }),
+      404,
+      "not-found",
+    );
     expect(await video()).toMatchObject({ title: "Video v1", status: "review" });
   });
 
@@ -272,6 +288,10 @@ describe("renaming a Video and deciding its Status", () => {
     await seedProject("p1");
     await seedVideo("v1", "p1", 5);
 
-    await expectRefused(await call(approveVideo, owner, { videoId: "v1" }), 404, "not-found");
+    await expectRefused(
+      await call(approveVideo, owner, { videoId: "v1", revisionId: "r1" }),
+      404,
+      "not-found",
+    );
   });
 });

@@ -2,7 +2,7 @@ import * as v from "valibot";
 import { idParam, param, positiveInt, secondsParam, sheetParam } from "@/lib/search-params";
 import { CopyPageLink } from "@/components/copy-page-link";
 import { ExportMarkers } from "@/components/export-markers";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CompleteBanner } from "@/components/complete-project";
@@ -46,8 +46,20 @@ function Review() {
   const { revision } = search;
   const setSearch = (change: Partial<typeof search>) =>
     void navigate({ search: (prev) => ({ ...prev, ...change }), replace: true });
+  // A copied link opens the same cut at the same moment.
+  const linkParams = new URLSearchParams();
+  if (search.revision) linkParams.set("revision", String(search.revision));
+  if (search.t !== undefined) linkParams.set("t", String(search.t));
+  const linkSearch = linkParams.size ? `?${linkParams}` : "";
   const setSheet = (sheet: "customer" | "upload", open: boolean) =>
     setSearch({ sheet: open ? sheet : undefined });
+  /** The customer sheet sends the Revision named in the URL, so it never retargets on its own. */
+  const sendToCustomer = (page: ReviewPage) => {
+    const number = page.revision!.number;
+    // Seed the pinned page so the player stays mounted while the URL changes.
+    client.setQueryData(reviewQuery(videoId, undefined, number).queryKey, page);
+    setSearch({ sheet: "customer", revision: number });
+  };
   return (
     <MemberScreen
       query={reviewQuery(videoId, client, revision)}
@@ -75,7 +87,7 @@ function Review() {
               current={page.video.title}
             />
             <PageHeading title={page.video.title}>
-              <CopyPageLink kind="video" path={`/videos/${videoId}`} />
+              <CopyPageLink kind="video" path={`/videos/${videoId}${linkSearch}`} />
               {canWrite(page.video.role) && page.revision && (
                 <ExportMarkers
                   key={page.revision.id}
@@ -88,18 +100,26 @@ function Review() {
               )}
               {canUpload(page.video.role) && page.video.completedAt === null && (
                 <>
-                  {page.member.role === "owner" && page.revision && (
+                  {page.member.role === "owner" && (
                     <>
-                      <Button variant="secondary" onClick={() => setSheet("customer", true)}>
-                        Send to customer
-                      </Button>
+                      {page.revision && (
+                        <Button variant="secondary" onClick={() => sendToCustomer(page)}>
+                          Send to customer
+                        </Button>
+                      )}
+                      {search.sheet === "customer" && revision === undefined && page.revision && (
+                        <OnMount run={() => sendToCustomer(page)} />
+                      )}
                       <CustomerLinkSheet
                         videoId={videoId}
                         title={page.video.title}
-                        revision={{
-                          id: page.revision.id,
-                          number: page.history.find((r) => r.id === page.revision?.id)?.number ?? 1,
-                        }}
+                        // Without a number, the shown Revision until OnMount writes it to the URL.
+                        revision={
+                          revision === undefined || page.revision?.number === revision
+                            ? page.revision
+                            : null
+                        }
+                        requested={revision}
                         open={search.sheet === "customer"}
                         onOpenChange={(open) => setSheet("customer", open)}
                       />
@@ -127,6 +147,8 @@ function Review() {
                 videoId={videoId}
                 title={page.video.title}
                 status={page.video.status}
+                revision={page.revision}
+                latest={page.history[0]!}
               />
             )}
             {page.history.length === 1 ? (
@@ -187,6 +209,16 @@ function Review() {
       }
     </MemberScreen>
   );
+}
+
+/** Runs once when shown, for a URL that needs completing before the screen can use it. */
+function OnMount({ run }: { run: () => void }) {
+  const done = useRef(false);
+  useEffect(() => {
+    if (!done.current) run();
+    done.current = true;
+  });
+  return null;
 }
 
 function ReadMarker({ videoId, readAt }: { videoId: string; readAt: number }) {

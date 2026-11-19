@@ -15,7 +15,7 @@ import { getMuxGateway } from "@/server/mux";
 
 /** The same read is used to open the screen and renew its playback credentials. */
 export const getReview = createServerFn({ method: "POST" })
-  .validator((data: { videoId: string; revisionId?: string }) => data)
+  .validator((data: { videoId: string; revisionId?: string; revisionNumber?: number }) => data)
   .handler(async ({ data }) => {
     const readAt = Date.now();
     const videoId = typeof data?.videoId === "string" ? data.videoId : "";
@@ -28,6 +28,8 @@ export const getReview = createServerFn({ method: "POST" })
           id: videos.id,
           role: projectRole(memberIdForUser(clerkUserId), videos.projectId),
           title: videos.title,
+          status: videos.status,
+          createdBy: videos.createdBy,
           projectId: videos.projectId,
           projectName: projects.name,
           completedAt: projects.completedAt,
@@ -80,8 +82,13 @@ export const getReview = createServerFn({ method: "POST" })
         history: [] as { id: string; number: number }[],
         comments: [] as Comment[],
       };
-    // Renewal stays on the Revision being watched, even if a newer cut is ready.
-    const revision = data?.revisionId ? ready.find((row) => row.id === data.revisionId) : ready[0];
+    // Renewal stays on the Revision being watched, even if a newer cut is ready. A Revision
+    // number that matches no ready cut opens nothing, so the screen never swaps cuts silently.
+    const revision = data?.revisionId
+      ? ready.find((row) => row.id === data.revisionId)
+      : data?.revisionNumber === undefined
+        ? ready[0]
+        : ready.find((row) => row.number === data.revisionNumber);
     if (data?.revisionId && !revision) refuse(404, "not-found");
     const playback =
       revision?.muxPlaybackId && revision.durationMs !== null

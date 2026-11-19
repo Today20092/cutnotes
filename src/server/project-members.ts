@@ -3,6 +3,7 @@ import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import * as v from "valibot";
 import { activeMember, id, parse, readAsMember, refuse, requireMember } from "@/server/access";
 import { getDb } from "@/server/db";
+import { startEditing } from "@/server/project-stage";
 import {
   members,
   projectMembers,
@@ -26,6 +27,7 @@ export const listProjectMembers = createServerFn({ method: "POST" })
         .select({
           id: members.id,
           displayName: members.displayName,
+          avatarUrl: members.avatarUrl,
           teamRole: sql<typeof members.$inferSelect.role>`${members.role}`.as("team_role"),
           role: sql<ProjectRole | null>`${projectMembers.role}`.as("project_role"),
           addedAt: projectMembers.createdAt,
@@ -57,17 +59,28 @@ export const setProjectMember = createServerFn({ method: "POST" })
     const owner = await requireMember("owner");
     const data = parse(assignmentSchema, raw);
     const now = Date.now();
-    const [assigned] = await getDb()
-      .insert(projectMembers)
-      .select(sql`SELECT ${data.projectId}, ${data.memberId}, ${data.role}, ${owner.id}, ${now}
+    const db = getDb();
+    const [[assigned]] = await db.batch([
+      db
+        .insert(projectMembers)
+        .select(sql`SELECT ${data.projectId}, ${data.memberId}, ${data.role}, ${owner.id}, ${now}
         WHERE ${activeMember(owner.id, "owner")}
           AND EXISTS (SELECT 1 FROM projects WHERE id = ${data.projectId} AND deleted_at IS NULL)
           AND EXISTS (SELECT 1 FROM members WHERE id = ${data.memberId} AND removed_at IS NULL AND role <> 'owner')`)
-      .onConflictDoUpdate({
-        target: [projectMembers.projectId, projectMembers.memberId],
-        set: { role: data.role },
-      })
-      .returning({ id: projectMembers.memberId });
+        .onConflictDoUpdate({
+          target: [projectMembers.projectId, projectMembers.memberId],
+          set: { role: data.role },
+        })
+        .returning({ id: projectMembers.memberId }),
+      startEditing(
+        db,
+        data.projectId,
+        sql`${activeMember(owner.id, "owner")} AND EXISTS (SELECT 1 FROM project_members AS crew
+          JOIN members AS person ON person.id = crew.member_id AND person.removed_at IS NULL
+          WHERE crew.project_id = ${data.projectId} AND crew.member_id = ${data.memberId}
+            AND crew.role IN ('uploader', 'editor'))`,
+      ),
+    ]);
     if (!assigned) refuse(404, "not-found");
     return null;
   });

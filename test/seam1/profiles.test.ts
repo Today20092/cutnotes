@@ -100,6 +100,7 @@ it("serves cached author photos to members and guests without revealing identity
       await callServerFn(fn.createGuestComment, {
         data: {
           token,
+          revisionId: "r",
           id: crypto.randomUUID(),
           name: "Client",
           body: "Looks good",
@@ -108,19 +109,21 @@ it("serves cached author photos to members and guests without revealing identity
       })
     ).status,
   ).toBe(200);
-  for (const response of [
-    await call(fn.getReview, "user_owner", { videoId: "v" }),
-    await callServerFn(fn.getGuestReview, { data: { token } }),
-  ]) {
+  const guestComment = { authorAvatarUrl: null, isGuest: true };
+  // A Guest sees only their own link's Comments, so the Member's photo reaches Members only.
+  for (const [response, expected] of [
+    [
+      await call(fn.getReview, "user_owner", { videoId: "v" }),
+      [{ authorAvatarUrl: avatarUrl, isGuest: false }, guestComment],
+    ],
+    [await callServerFn(fn.getGuestReview, { data: { token } }), [guestComment]],
+  ] as const) {
     const result = await resultOf<{
       comments: { authorAvatarUrl: string | null; isGuest: boolean }[];
     }>(response);
     expect(
       result.comments.map(({ authorAvatarUrl, isGuest }) => ({ authorAvatarUrl, isGuest })),
-    ).toEqual([
-      { authorAvatarUrl: avatarUrl, isGuest: false },
-      { authorAvatarUrl: null, isGuest: true },
-    ]);
+    ).toEqual(expected);
     expect(JSON.stringify(result.comments)).not.toMatch(
       /user_editor|member_editor|clerkUserId|memberId|shareLinkId/,
     );

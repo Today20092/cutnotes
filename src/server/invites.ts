@@ -11,7 +11,16 @@ import {
   type SignedInPerson,
 } from "@/server/access";
 import { getDb } from "@/server/db";
-import { invites, members, projects, projectMembers, roles, type Role } from "@/server/db/schema";
+import { startEditing } from "@/server/project-stage";
+import {
+  invites,
+  members,
+  projectMembers,
+  projectRoles,
+  projects,
+  roles,
+  type InviteRole,
+} from "@/server/db/schema";
 
 const inviteLifetimeMs = 7 * 24 * 60 * 60 * 1000;
 
@@ -31,23 +40,33 @@ async function sha256(token: string) {
 const isPending = (now: number) =>
   and(isNull(invites.usedAt), isNull(invites.revokedAt), gt(invites.expiresAt, now));
 
+const roleLabels: Record<InviteRole, string> = {
+  viewer: "a Reviewer",
+  uploader: "an Uploader",
+  editor: "an Editor",
+  owner: "an Owner",
+};
+
 /** Reading a preview must never redeem the Invite. */
 export const getInvitePreview = createServerFn({ method: "POST" })
   .validator((data: { token: string }) => data)
   .handler(async ({ data }) => {
     if (typeof data?.token !== "string" || !/^[\w-]{43}$/.test(data.token)) return null;
     const [invite] = await getDb()
-      .select({ role: invites.role, projectId: invites.projectId, projectName: projects.name })
+      .select({
+        role: invites.role,
+        projectId: invites.projectId,
+        projectName: projects.name,
+      })
       .from(invites)
       .leftJoin(projects, and(eq(projects.id, invites.projectId), isNull(projects.deletedAt)))
       .where(and(eq(invites.tokenHash, await sha256(data.token)), isPending(Date.now())));
     if (!invite || (invite.projectId && !invite.projectName)) return null;
+    const scope = invite.projectName;
     return {
-      title: invite.projectId
-        ? `You're invited to ${invite.projectName}`
-        : `You're invited to join ${env.TEAM_NAME}`,
-      description: invite.projectId
-        ? `Join ${invite.projectName} as ${invite.role === "editor" ? "an Editor" : "a Reviewer"}. Sign in to accept. This invitation works once and expires after 7 days.`
+      title: scope ? `You're invited to ${scope}` : `You're invited to join ${env.TEAM_NAME}`,
+      description: scope
+        ? `Join ${scope} as ${roleLabels[invite.role]}. Sign in to accept. This invitation works once and expires after 7 days.`
         : `Join ${env.TEAM_NAME} as ${invite.role === "owner" ? "an" : "a"} ${invite.role} on Cutnotes. Sign in to accept. This invitation works once and expires after 7 days.`,
       image: env.TEAM_LOGO_URL,
     };
@@ -67,7 +86,7 @@ const pendingFields = {
 
 export type PendingInvite = {
   id: string;
-  role: Role;
+  role: InviteRole;
   createdAt: number;
   expiresAt: number;
   projectId: string | null;
@@ -76,13 +95,14 @@ export type PendingInvite = {
 
 /** The token exists only in this response. Afterwards the server holds just its hash. */
 export const createInvite = createServerFn({ method: "POST" })
-  .validator((data: { role: Role; projectId?: string; note?: string }) => data)
+  .validator((data: { role: InviteRole; projectId?: string; note?: string }) => data)
   .handler(async ({ data }): Promise<{ url: string; invite: PendingInvite }> => {
     const owner = await requireMember("owner");
-    const role = roles.find((known) => known === (data as { role?: unknown } | undefined)?.role);
+    const projectId = data?.projectId === undefined ? null : id(data, "projectId");
+    // A Project Invite offers an assignment; a Team Invite offers a Team Role.
+    const offered: readonly InviteRole[] = projectId ? projectRoles : roles;
+    const role = offered.find((known) => known === (data as { role?: unknown } | undefined)?.role);
     if (!role) refuse(400, "invalid-request");
-    const projectId = data.projectId === undefined ? null : id(data, "projectId");
-    if (projectId && role === "owner") refuse(400, "invalid-request");
     if (data.note !== undefined && (typeof data.note !== "string" || data.note.length > 240))
       refuse(400, "invalid-request");
     const note = data.note?.trim() || null;
@@ -252,7 +272,7 @@ async function redeemProject(
     sql`EXISTS (SELECT 1 FROM projects WHERE id = ${projectId} AND deleted_at IS NULL)`,
   );
   const isCaller = eq(members.clerkUserId, person.clerkUserId);
-  const [, marked, , , callerRows, inviteRows, assignmentRows] = await db.batch([
+  const [, marked, , , , callerRows, inviteRows, assignmentRows] = await db.batch([
     db.insert(members)
       .select(sql`SELECT ${newMemberId}, ${person.clerkUserId}, ${person.displayName}, 'viewer', ${now}, NULL, NULL
       FROM invites WHERE ${redeemable} AND NOT EXISTS (SELECT 1 FROM members WHERE ${isCaller})`),
@@ -282,6 +302,16 @@ async function redeemProject(
           sql`EXISTS (SELECT 1 FROM invites WHERE token_hash = ${tokenHash} AND used_at = ${now} AND used_by = members.id)`,
         ),
       ),
+    // Last write: the statements above chain on changes().
+    startEditing(
+      db,
+      projectId,
+      sql`EXISTS (SELECT 1 FROM invites AS used JOIN members AS joiner ON joiner.id = used.used_by
+        AND joiner.removed_at IS NULL
+        JOIN project_members AS crew ON crew.member_id = joiner.id AND crew.project_id = ${projectId}
+        WHERE used.token_hash = ${tokenHash} AND used.used_at = ${now}
+          AND crew.role IN ('uploader', 'editor'))`,
+    ),
     db.select().from(members).where(isCaller),
     db.select().from(invites).where(eq(invites.tokenHash, tokenHash)),
     db

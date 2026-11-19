@@ -1,17 +1,10 @@
-import { Badge } from "@/components/ui/badge";
-import type { VideoStatus } from "@/server/db/schema";
+import { ToneBadge } from "@/components/stage-badge";
+import type { VideoStatus } from "@/lib/video-status";
 
-export const statusLabels = { review: "Review", rework: "Rework", done: "Done" };
-export const statusTone = {
-  review: "bg-info/10 text-info-foreground",
-  rework: "bg-warning/10 text-warning-foreground",
-  done: "bg-success/10 text-success-foreground",
-} satisfies Record<VideoStatus, string>;
+export const statusLabels = { review: "In review", rework: "Changes requested", done: "Approved" };
+const statusTone = { review: "in_review", rework: "editing", done: "done" } as const;
 
+/** Read-only: the Status changes only through Request changes and Approve. */
 export function VideoStatusBadge({ status }: { status: VideoStatus }) {
-  return (
-    <Badge variant={status === "done" ? "success" : status === "rework" ? "warning" : "info"}>
-      {statusLabels[status]}
-    </Badge>
-  );
+  return <ToneBadge tone={statusTone[status]}>{statusLabels[status]}</ToneBadge>;
 }

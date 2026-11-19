@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 // Relative path: drizzle-kit loads this file without the "@/" alias.
 import { videoStatuses, type VideoStatus } from "../../lib/video-status";
+import { projectStages, type ProjectStage } from "../../lib/project-stage";
 import {
   check,
   index,
@@ -14,6 +15,17 @@ import {
 
 export const roles = ["viewer", "editor", "owner"] as const;
 export type Role = (typeof roles)[number];
+
+/** Project assignments, lowest first: Reviewer, Uploader, Editor. */
+export const projectRoles = ["viewer", "uploader", "editor"] as const;
+export type ProjectRole = (typeof projectRoles)[number];
+
+/** What a Project screen grants: an assignment, or an Owner's implicit access. */
+export type AccessRole = ProjectRole | "owner";
+
+/** A Team Invite offers a Role; a Project Invite offers a ProjectRole. */
+export const inviteRoles = ["viewer", "uploader", "editor", "owner"] as const;
+export type InviteRole = (typeof inviteRoles)[number];
 
 export const members = sqliteTable("members", {
   id: text("id").primaryKey(),
@@ -30,7 +42,7 @@ export type Member = typeof members.$inferSelect;
 export const invites = sqliteTable("invites", {
   id: text("id").primaryKey(),
   tokenHash: text("token_hash").notNull().unique(),
-  role: text("role", { enum: roles }).notNull(),
+  role: text("role", { enum: inviteRoles }).notNull(),
   createdBy: text("created_by")
     .notNull()
     .references(() => members.id, { onDelete: "cascade" }),
@@ -56,14 +68,13 @@ export const projects = sqliteTable(
     completedAt: integer("completed_at"),
     deleteAfter: integer("delete_after"),
     deletedAt: integer("deleted_at"),
+    stage: text("stage", { enum: projectStages }).notNull().default("new"),
   },
   (table) => [index("projects_delete_after_idx").on(table.deleteAfter)],
 );
 
 export type Project = typeof projects.$inferSelect;
-
-export const projectRoles = ["viewer", "editor"] as const;
-export type ProjectRole = (typeof projectRoles)[number];
+export { projectStages, type ProjectStage };
 
 export const projectMembers = sqliteTable(
   "project_members",
@@ -198,6 +209,8 @@ export const shareLinks = sqliteTable(
       .references(() => members.id),
     createdAt: integer("created_at").notNull(),
     revokedAt: integer("revoked_at"),
+    // The Revision the Guest sees. NULL only on links made before pinning: they follow the latest.
+    revisionId: text("revision_id").references(() => revisions.id, { onDelete: "cascade" }),
   },
   (table) => [index("share_links_video_id_idx").on(table.videoId)],
 );

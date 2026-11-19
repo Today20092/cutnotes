@@ -11,25 +11,28 @@ import {
   SheetHeader,
   SheetTitle,
   SheetDescription,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import { markerRates, premiereMarkers } from "@/lib/marker-export";
 import type { Comment } from "@/server/comment-rules";
 
+/** Opened from the review page's ⋯ menu, which owns `open`. */
 export function ExportMarkers({
+  open,
+  onOpenChange,
   title,
   revision,
   comments,
   frameRate,
   durationMs,
 }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   title: string;
   revision: number;
   comments: Comment[];
   frameRate: number | null;
   durationMs: number | null;
 }) {
-  const [open, setOpen] = useState(false);
   const [rateLabel, setRateLabel] = useState<string>(
     () =>
       markerRates.find(
@@ -41,11 +44,7 @@ export function ExportMarkers({
   const [error, setError] = useState("");
   const id = useId();
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<Button variant="secondary" />}>
-        <Download data-icon="inline-start" aria-hidden />
-        Export markers
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Export Premiere markers</SheetTitle>
@@ -79,7 +78,7 @@ export function ExportMarkers({
               link.click();
               setTimeout(() => URL.revokeObjectURL(url), 1000);
               setError("");
-              setOpen(false);
+              onOpenChange(false);
             } catch (problem) {
               setError(problem instanceof Error ? problem.message : "Could not export markers.");
             }

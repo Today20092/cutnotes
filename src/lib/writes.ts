@@ -50,13 +50,13 @@ export function refreshProjects(client: QueryClient) {
 }
 
 /** A Project write shown at once, every Projects cache restored if it fails. */
-export function projectWrite<Data, Input>(
+export function projectWrite<Data, Input, Result = unknown>(
   client: QueryClient,
   options: {
-    mutationFn: (input: Input) => Promise<unknown>;
+    mutationFn: (input: Input) => Promise<Result>;
     apply: (input: Input) => void;
   },
-): MutationOptions<unknown, Error, Input, { snapshot: Snapshot<Data> }> {
+): MutationOptions<Result, Error, Input, { snapshot: Snapshot<Data> }> {
   return {
     mutationKey: projectWrites,
     mutationFn: options.mutationFn,

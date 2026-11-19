@@ -7,7 +7,8 @@ import {
   EmptyDescription,
   EmptyMedia,
 } from "@/components/ui/empty";
-import { Mail } from "lucide-react";
+import { ChevronRight, Mail } from "lucide-react";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useTeam } from "@/lib/team";
 import { PendingButton } from "@/components/pending-button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,7 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Radio, RadioGroup } from "@/components/ui/radio-group";
 import { ConfirmButton, useStatusToast } from "@/components/project-parts";
-import type { Role } from "@/server/db/schema";
+import { roleLabel, shareRoles } from "@/lib/share-roles";
+import type { InviteRole, Role } from "@/server/db/schema";
 import { createInvite, listInvites, revokeInvite } from "@/server/invites";
 
 export const roleChoices: { role: Role; label: string; description: string }[] = [
@@ -43,8 +45,12 @@ export const roleChoices: { role: Role; label: string; description: string }[] =
 const expiryDate = (timestamp: number) =>
   new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(timestamp);
 
-type Invite = Awaited<ReturnType<typeof listInvites>>["invites"][number];
-const inviteStatus = (invite: Invite) =>
+/** A Project Invite offers a Project role; a Team Invite a Team Role. */
+export const inviteRoleLabel = (value: InviteRole, scoped: boolean) =>
+  scoped ? roleLabel(value) : (roleChoices.find((choice) => choice.role === value)?.label ?? value);
+
+export type Invite = Awaited<ReturnType<typeof listInvites>>["invites"][number];
+export const inviteStatus = (invite: Invite) =>
   invite.usedAt !== null
     ? "Accepted"
     : invite.revokedAt !== null
@@ -53,56 +59,33 @@ const inviteStatus = (invite: Invite) =>
         ? "Expired"
         : "Pending";
 
-export function InvitesManager({ projectId }: { projectId?: string }) {
+/** Creates one Invite link: a Team Invite, or with `projectId` an Invite to that Project only. */
+export function InviteLinkForm({
+  projectId,
+  nested = false,
+}: {
+  projectId?: string;
+  nested?: boolean;
+}) {
+  const scoped = Boolean(projectId);
+  const Heading = nested ? "h4" : "h2";
   const team = useTeam().data;
   const queryClient = useQueryClient();
-  const queryKey = ["invites", projectId ?? "all"];
-  const [role, setRole] = useState<Role>("viewer");
+  const [role, setRole] = useState<InviteRole>(scoped ? "uploader" : "viewer");
   const [note, setNote] = useState("");
   const [link, setLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [status, setStatus] = useState("");
   useStatusToast(status);
   const linkHeading = useRef<HTMLHeadingElement>(null);
-  const historyHeading = useRef<HTMLHeadingElement>(null);
-  const label = (value: Role, isProject = Boolean(projectId)) =>
-    isProject && value === "viewer"
-      ? "Reviewer"
-      : (roleChoices.find((choice) => choice.role === value)?.label ?? value);
-  const choices = projectId
-    ? roleChoices
-        .filter((choice) => choice.role !== "owner")
-        .map((choice) => ({
-          ...choice,
-          label: label(choice.role),
-          description:
-            choice.role === "editor"
-              ? "Watches, comments, uploads and manages videos in this project."
-              : "Watches and comments in this project.",
-        }))
-    : roleChoices;
-
-  const history = useQuery({
-    queryKey,
-    queryFn: () => listInvites({ data: projectId ? { projectId } : undefined }),
-    retry: false,
-  });
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ["invites"] });
+  const choices = scoped ? shareRoles : roleChoices;
   const create = useMutation({
     mutationFn: () => createInvite({ data: { role, note, ...(projectId ? { projectId } : {}) } }),
     onSuccess: (created) => {
       setLink(created.url);
       setCopied(false);
-      setStatus(`${label(created.invite.role)} Invite created`);
-      void refresh();
-    },
-  });
-  const revoke = useMutation({
-    mutationFn: (id: string) => revokeInvite({ data: { id } }),
-    onSuccess: () => {
-      historyHeading.current?.focus();
-      setStatus("Invite revoked");
-      void refresh();
+      setStatus(`${inviteRoleLabel(created.invite.role, scoped)} Invite created`);
+      void queryClient.invalidateQueries({ queryKey: ["invites"] });
     },
   });
   useEffect(() => {
@@ -121,7 +104,7 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
   }
 
   return (
-    <div className="flex w-full max-w-xl flex-col gap-8">
+    <div className="flex w-full max-w-xl flex-col gap-6">
       <p role="status" className="sr-only">
         {status}
       </p>
@@ -134,7 +117,7 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
       >
         <Fieldset className="max-w-none gap-3">
           <FieldsetLegend>Invite someone as</FieldsetLegend>
-          <RadioGroup value={role} onValueChange={(next) => setRole(next as Role)}>
+          <RadioGroup value={role} onValueChange={(next) => setRole(next as InviteRole)}>
             {choices.map((choice) => (
               <label
                 key={choice.role}
@@ -153,19 +136,31 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
             ))}
           </RadioGroup>
         </Fieldset>
-        <Field className="items-stretch">
-          <FieldLabel>Optional note</FieldLabel>
-          <Input
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            maxLength={240}
-            placeholder="For Alex — episode 12"
-          />
-        </Field>
-        <p className="text-sm text-muted-foreground">
-          The note is for Owners. Anyone with this link can accept it once; it is not tied to an
-          email address.
-        </p>
+        <Collapsible className="flex flex-col gap-3">
+          <CollapsibleTrigger className="group inline-flex min-h-11 w-fit items-center gap-2 rounded-md text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">
+            <ChevronRight
+              className="size-4 transition-transform group-data-[panel-open]:rotate-90"
+              aria-hidden
+            />
+            More options
+          </CollapsibleTrigger>
+          <CollapsiblePanel className="flex flex-col gap-2">
+            <Field className="items-stretch">
+              <FieldLabel>Optional note</FieldLabel>
+              <Input
+                className="h-11 sm:pointer-fine:h-8"
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                maxLength={240}
+                placeholder="For Alex — episode 12"
+              />
+            </Field>
+            <p className="text-sm text-muted-foreground">
+              The note is for Owners. Anyone with this link can accept it once; it is not tied to an
+              email address.
+            </p>
+          </CollapsiblePanel>
+        </Collapsible>
         <PendingButton type="submit" pending={create.isPending}>
           Create Invite
         </PendingButton>
@@ -173,15 +168,20 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
       </form>
       {link && (
         <section className="flex flex-col gap-3">
-          <h2 ref={linkHeading} tabIndex={-1} className="font-semibold outline-none">
+          <Heading ref={linkHeading} tabIndex={-1} className="font-semibold outline-none">
             Invite link
-          </h2>
+          </Heading>
           <p className="text-sm text-muted-foreground">
             Copy it now. It is shown only once and works for one person for 7 days.
           </p>
           <Field className="items-stretch">
             <FieldLabel>Link to send</FieldLabel>
-            <Input readOnly value={link} onFocus={(event) => event.currentTarget.select()} />
+            <Input
+              className="h-11 sm:pointer-fine:h-8"
+              readOnly
+              value={link}
+              onFocus={(event) => event.currentTarget.select()}
+            />
           </Field>
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={() => void copyLink()}>
@@ -198,15 +198,58 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+/** A Team Invite link, and the history of every Invite. */
+export function InvitesManager({ project }: { project?: string }) {
+  const queryClient = useQueryClient();
+  const [status, setStatus] = useState("");
+  useStatusToast(status);
+  const historyHeading = useRef<HTMLHeadingElement>(null);
+  const history = useQuery({
+    queryKey: ["invites", "all"],
+    queryFn: () => listInvites({ data: undefined }),
+    retry: false,
+  });
+  const revoke = useMutation({
+    mutationFn: (id: string) => revokeInvite({ data: { id } }),
+    onSuccess: () => {
+      historyHeading.current?.focus();
+      setStatus("Invite revoked");
+      void queryClient.invalidateQueries({ queryKey: ["invites"] });
+    },
+  });
+  const label = inviteRoleLabel;
+  // `?project=` narrows the history to one Project's Invites.
+  const invites = history.data?.invites.filter(
+    (invite) => !project || invite.projectId === project,
+  );
+
+  return (
+    <div className="flex w-full max-w-xl flex-col gap-8">
+      <p role="status" className="sr-only">
+        {status}
+      </p>
+      <InviteLinkForm />
       <section className="flex flex-col gap-3">
-        <h2 ref={historyHeading} tabIndex={-1} className="text-lg font-semibold outline-none">
+        <h2 ref={historyHeading} tabIndex={-1} className="text-section outline-none">
           Invitation history
         </h2>
         {history.isError && <p role="alert">Could not load Invites. Please reload the page.</p>}
         {revoke.isError && <p role="alert">Could not revoke the Invite. Please try again.</p>}
         {history.isPending && <Skeleton className="h-16" />}
-        {history.data?.invites.length === 0 && (
-          <Empty className="rounded-xl border border-dashed py-8 md:py-8">
+        {project && (
+          <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            Showing Invites for one Project.
+            <Link to="/invites" className="inline-flex min-h-11 items-center underline">
+              Show all Invites
+            </Link>
+          </p>
+        )}
+        {invites?.length === 0 && (
+          <Empty className="rounded-card border border-dashed py-8 md:py-8">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <Mail aria-hidden />
@@ -219,7 +262,7 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
           </Empty>
         )}
         <ul className="divide-y">
-          {history.data?.invites.map((invite) => {
+          {invites?.map((invite) => {
             const state = inviteStatus(invite);
             return (
               <li key={invite.id} className="flex flex-wrap items-start justify-between gap-3 py-4">
@@ -255,7 +298,7 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
                         <Link
                           to="/projects/$projectId"
                           params={{ projectId: invite.projectId }}
-                          hash="people"
+                          search={{ sheet: "people" }}
                           className="inline-flex min-h-11 items-center underline"
                         >
                           Manage membership

@@ -1,6 +1,7 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { seedMember } from "./support/database";
 import { signInAs, type Person } from "./support/session";
+import { appAlert } from "./support/ui-sdk";
 
 // The first Owner already exists: app-shell.spec.ts runs first against the shared database.
 const owner: Person = {
@@ -80,27 +81,27 @@ test("demoting the last Owner is refused, explained and rolled back", async ({ p
   await page.keyboard.press("Home");
   await page.keyboard.press("Enter");
 
-  await expect(page.getByRole("alert")).toContainText("at least one Owner");
+  await expect(appAlert(page)).toContainText("at least one Owner");
   await expect(roleOf(page, owner.email)).toHaveText("Owner");
 });
 
-test("a Viewer gets no Members link and no controls", async ({ page }, testInfo) => {
+test("a Viewer gets no Team link and no controls", async ({ page }, testInfo) => {
   const { person } = seededPerson(testInfo, "onlooker", "viewer");
   await signInAs(page, person);
   await page.goto("/members");
 
-  await expect(page.getByText("Only an Owner can manage Members.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Members" })).toHaveCount(0);
+  await expect(page.getByText("Only an Owner can manage the Team.")).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Team Roles/ })).toHaveCount(0);
   await expect(page.getByRole("combobox")).toHaveCount(0);
 });
 
-test("an Owner reaches Members from the navigation", async ({ page }) => {
+test("an Owner reaches the Team from the navigation", async ({ page }) => {
   await signInAs(page, owner);
   await page.goto("/");
 
   await page.getByRole("link", { name: "Settings" }).filter({ visible: true }).click();
-  await page.getByRole("link", { name: "Members" }).click();
+  await page.getByRole("link", { name: /^Team Roles/ }).click();
 
-  await expect(page.getByRole("heading", { level: 1, name: "Members" })).toBeFocused();
-  await expect(page).toHaveTitle(/Members/);
+  await expect(page.getByRole("heading", { level: 1, name: "Team" })).toBeFocused();
+  await expect(page).toHaveTitle(/Team/);
 });

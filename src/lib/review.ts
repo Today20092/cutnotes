@@ -32,10 +32,12 @@ export const draftComment = (draft: Draft, authorName: string, isGuest: boolean)
   ...(!isGuest && { mine: true }),
 });
 
-export const reviewQuery = (videoId: string, client?: QueryClient, revisionId?: string) =>
+/** `revision` is the Revision number from the URL; without one the latest is shown. */
+export const reviewQuery = (videoId: string, client?: QueryClient, revision?: number) =>
   queryOptions({
-    queryKey: [...reviewKey(videoId), revisionId ?? "latest"],
-    queryFn: () => getReview({ data: revisionId ? { videoId, revisionId } : { videoId } }),
+    queryKey: [...reviewKey(videoId), revision ?? "latest"],
+    queryFn: () =>
+      getReview({ data: revision ? { videoId, revisionNumber: revision } : { videoId } }),
     retry: false,
     refetchInterval: () => (client && isWritingVideo(client, videoId) ? false : 30_000),
     refetchOnWindowFocus: () => (client && isWritingVideo(client, videoId) ? false : "always"),
@@ -47,9 +49,9 @@ type Write =
   | { action: "delete"; data: CommentTarget; comment: Comment }
   | { action: "resolve"; data: CommentTarget & { resolved: boolean } };
 
-export function useCommentWrite(videoId: string, revisionId?: string) {
+export function useCommentWrite(videoId: string, revision?: number) {
   const client = useQueryClient();
-  const queryKey = reviewQuery(videoId, undefined, revisionId).queryKey;
+  const queryKey = reviewQuery(videoId, undefined, revision).queryKey;
   const waiting = useRef(new Map<string, () => void>());
   useEffect(() => {
     const commits = waiting.current;
@@ -123,9 +125,9 @@ export function useCommentWrite(videoId: string, revisionId?: string) {
 export function useMemberActor(
   page: ReviewPage,
   videoId: string,
-  cacheRevisionId?: string,
+  cacheRevision?: number,
 ): CommentActor {
-  const write = useCommentWrite(videoId, cacheRevisionId);
+  const write = useCommentWrite(videoId, cacheRevision);
   const target = (id: string) => ({ id, videoId, revisionId: page.revision!.id });
   const open = page.video?.completedAt === null;
   return {

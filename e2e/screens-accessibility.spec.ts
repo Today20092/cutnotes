@@ -1,8 +1,15 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page, type TestInfo } from "@playwright/test";
 import { fakeSignature } from "../test/seam1/support/fake-mux";
-import { assignProjectMember, seedMember, seedReview, shareTokenFor } from "./support/database";
+import {
+  assignProjectMember,
+  seedComment,
+  seedMember,
+  seedReview,
+  shareTokenFor,
+} from "./support/database";
 import { signInAs, type Person } from "./support/session";
+import { appAlert } from "./support/ui-sdk";
 
 // Each case scans several states in both themes, including the growing seeded Projects list.
 test.describe.configure({ timeout: 60_000 });
@@ -73,7 +80,6 @@ async function openNewProject(page: Page, testInfo: TestInfo) {
   await page.getByRole("button", { name: "New project" }).click();
   await page.getByLabel("Project name").fill(name);
   await page.getByRole("button", { name: "Create Project" }).click();
-  await page.getByRole("link", { name }).click();
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   return name;
 }
@@ -175,7 +181,7 @@ test("the Projects screen", async ({ page }, testInfo) => {
   await page.route(callTo("createProject"), (route) => route.abort());
   await page.getByLabel("Project name").fill(uniqueName("Doomed", testInfo));
   await page.getByRole("button", { name: "Create Project" }).click();
-  await expect(page.getByRole("alert")).toContainText("Could not create");
+  await expect(appAlert(page)).toContainText("Could not create");
   await expectAccessible(page, "failed create");
 });
 
@@ -189,12 +195,12 @@ test("the Project screen", async ({ page }, testInfo) => {
   await expect(page.getByText(/No Videos yet/)).toBeVisible();
   await expectAccessible(page, "empty Project");
 
-  await page
-    .getByRole("button", { name: /^Rename/ })
-    .first()
-    .click();
+  await page.getByRole("button", { name: /^More actions for/ }).click();
+  await expectAccessible(page, "Project actions menu");
+  await page.getByRole("menuitem", { name: "Rename" }).click();
   await expectAccessible(page, "renaming a Project");
-  await page.reload();
+  // The sheet is in the URL, so a reload would reopen it.
+  await page.goto(new URL(page.url()).pathname);
 
   await page.getByRole("button", { name: "Upload" }).click();
   await expect(page.getByText(/1080p H\.264 MP4/)).toBeVisible();
@@ -261,7 +267,7 @@ test("a Video through upload, processing, and ready", async ({ page }, testInfo)
   await page.getByRole("button", { name: "More actions for Main cut" }).click();
   await page.getByRole("menuitem", { name: "Delete" }).click();
   await page.getByRole("button", { name: "Delete Main cut permanently" }).click();
-  await expect(page.getByRole("alert")).toContainText("Could not delete");
+  await expect(appAlert(page)).toContainText("Could not delete");
   await expectAccessible(page, "failed Video deletion");
   await page.getByRole("button", { name: "Keep Video" }).click();
   await page.unroute(failDelete);
@@ -307,13 +313,13 @@ test("a Video whose send or processing failed", async ({ page }, testInfo) => {
   await expectAccessible(page, "failed processing");
 });
 
-test("the Members screen", async ({ page }, testInfo) => {
+test("the Team screen", async ({ page }, testInfo) => {
   const name = uniqueName("Axe member", testInfo);
   seedMember(`user_axe_member_${testInfo.project.name}_${Date.now()}`, "viewer", name);
   await signInAs(page, owner);
   await page.goto("/members");
   await expect(page.getByRole("button", { name: `Remove ${name}` })).toBeVisible();
-  await expectAccessible(page, "Members");
+  await expectAccessible(page, "Team");
 
   await page.getByRole("combobox", { name: `Role for ${name}` }).click();
   await expectAccessible(page, "choosing a Member role");
@@ -326,13 +332,13 @@ test("the Members screen", async ({ page }, testInfo) => {
 
   await page.getByRole("combobox", { name: `Role for ${owner.email}` }).click();
   await page.getByRole("option", { name: /Viewer/ }).click();
-  await expect(page.getByRole("alert")).toContainText("at least one Owner");
+  await expect(appAlert(page)).toContainText("at least one Owner");
   await expectAccessible(page, "last Owner refused");
 
   await signInAs(page, seededViewer("member_viewer", testInfo));
   await page.goto("/members");
-  await expect(page.getByText("Only an Owner can manage Members.")).toBeVisible();
-  await expectAccessible(page, "Members as a Viewer");
+  await expect(page.getByText("Only an Owner can manage the Team.")).toBeVisible();
+  await expectAccessible(page, "Team as a Viewer");
 });
 
 test("deleting a Project: confirmation, cancellation, failure and disappearance", async ({
@@ -340,8 +346,12 @@ test("deleting a Project: confirmation, cancellation, failure and disappearance"
 }, testInfo) => {
   await signInAs(page, owner);
   const name = await openNewProject(page, testInfo);
-  const trigger = page.getByRole("button", { name: `Delete ${name}`, exact: true });
-  await trigger.click();
+  const trigger = page.getByRole("button", { name: `More actions for ${name}`, exact: true });
+  const openDelete = async () => {
+    await trigger.click();
+    await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
+  };
+  await openDelete();
   await expect(page.getByRole("dialog", { name: "Delete Project?" })).toBeVisible();
   await expectAccessible(page, "confirm Project deletion");
   await page.getByRole("button", { name: "Keep Project" }).click();
@@ -349,9 +359,9 @@ test("deleting a Project: confirmation, cancellation, failure and disappearance"
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
 
   await page.route(callTo("deleteProject"), (route) => route.abort());
-  await trigger.click();
+  await openDelete();
   await page.getByRole("button", { name: `Delete ${name} permanently` }).click();
-  await expect(page.getByRole("alert")).toContainText("Could not delete");
+  await expect(appAlert(page)).toContainText("Could not delete");
   await expectAccessible(page, "failed Project deletion");
   await page.unrouteAll();
   await page.getByRole("button", { name: `Delete ${name} permanently` }).click();
@@ -370,7 +380,9 @@ test("completing and reopening a Project", async ({ page }, testInfo) => {
   await signInAs(page, owner);
   await page.goto(`/projects/${id}`);
   const heading = page.getByRole("heading", { level: 1, name: "Playback project" });
-  await page.getByRole("button", { name: "Complete Playback project" }).click();
+  const actions = page.getByRole("button", { name: "More actions for Playback project" });
+  await actions.click();
+  await page.getByRole("menuitem", { name: "Complete" }).click();
   await expect(page.getByRole("dialog", { name: "Complete Project?" })).toBeVisible();
   await expectAccessible(page, "confirm Complete");
   await page
@@ -391,13 +403,15 @@ test("completing and reopening a Project", async ({ page }, testInfo) => {
 
   await page.goto(`/videos/${id}`);
   await expect(countdown).toBeVisible();
-  await expect(page.getByRole("button", { name: "Share", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Send to customer" })).toHaveCount(0);
   await expectAccessible(page, "Video countdown");
 
   await page.goto(`/projects/${id}`);
   await page.getByRole("button", { name: "Reopen Playback project" }).click();
   await expect(countdown).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Complete Playback project" })).toBeVisible();
+  await actions.click();
+  await expect(page.getByRole("menuitem", { name: "Complete" })).toBeVisible();
+  await page.keyboard.press("Escape");
   await expectAccessible(page, "Project reopened");
 });
 
@@ -464,23 +478,40 @@ test("the Invites and accept-Invite screens", async ({ page, browser }, testInfo
   await revoked.context().close();
 });
 
-test("Share Links sheet and Guest pages", async ({ page, browser }, testInfo) => {
+test("Send to customer sheet and Guest pages", async ({ page, browser }, testInfo) => {
   const person = {
     clerkUserId: `user_share_${testInfo.project.name}_${Date.now()}`,
     email: "share@example.com",
   };
   seedMember(person.clerkUserId, "editor");
   const videoId = seedReview(person.clerkUserId);
+  seedComment(videoId, person.clerkUserId, "Internal team note");
   await signInAs(page, owner);
+  // Approving offers an Owner the next step, sending that cut.
   await page.goto(`/videos/${videoId}`);
-  const share = page.getByRole("button", { name: "Share", exact: true });
-  await share.click();
+  const decision = page.getByRole("region", { name: "Review decision" });
+  await decision.getByRole("button", { name: "Approve" }).click();
+  await decision.getByRole("link", { name: "Send to customer" }).click();
+  await expect(page).toHaveURL(/sheet=customer/);
+  await expect(page.getByRole("dialog", { name: "Send to customer" })).toContainText(
+    "Sends Revision 1 of",
+  );
+  // The sheet opens from its URL, so an agent or a shared link can land on it.
+  await page.goto(`/videos/${videoId}?sheet=customer`);
+  const sheet = page.getByRole("dialog", { name: "Send to customer" });
+  await expect(sheet).toContainText("Sends Revision 1 of");
   await page.getByLabel("Who is this link for?").fill("Client");
-  await page.getByRole("button", { name: "Create Share Link" }).click();
+  await page.getByRole("button", { name: "Create link" }).click();
   await expect(page.getByRole("button", { name: "Revoke link for Client" })).toBeVisible();
+  await expect(sheet.getByRole("listitem").getByText("Revision 1")).toBeVisible();
+  await expect(sheet.getByRole("listitem").getByText("Comment and draw")).toBeVisible();
   await expect(page.getByText("already issued keeps working until it expires")).toBeVisible();
   await page.mouse.move(0, 0); // The new row can appear under the pointer on a phone.
-  await expectAccessible(page, "Share Links sheet");
+  await expectAccessible(page, "Send to customer sheet");
+  await page.keyboard.press("Escape");
+  await expect(page).not.toHaveURL(/sheet=customer/);
+  await page.getByRole("button", { name: "Send to customer" }).click();
+  await expect(page).toHaveURL(/sheet=customer/);
 
   const token = shareTokenFor(videoId);
   const guest = await (await browser.newContext()).newPage();
@@ -488,11 +519,16 @@ test("Share Links sheet and Guest pages", async ({ page, browser }, testInfo) =>
   await expect(guest.getByText("No account needed")).toBeVisible();
   await expectAccessible(guest, "Guest welcome");
   await guest.getByRole("button", { name: "Continue" }).click();
-  await expect(guest.getByRole("alert")).toHaveText("Enter your name.");
+  await expect(appAlert(guest)).toHaveText("Enter your name.");
   await guest.getByLabel("Your name").fill("Dana");
   await guest.getByRole("button", { name: "Continue" }).click();
   await expect(guest.getByRole("heading", { name: "Playback cut" })).toBeVisible();
   await expect(guest.getByText(/Resolve Comment/)).toHaveCount(0);
+  // A Guest sees one Revision and their own Comments: no Team notes, Projects or history.
+  await expect(guest.getByText("Internal team note")).toHaveCount(0);
+  await expect(guest.getByText("Playback project")).toHaveCount(0);
+  await expect(guest.getByRole("group", { name: "Revision history" })).toHaveCount(0);
+  await expect(guest.getByRole("navigation")).toHaveCount(0);
   await guest.getByLabel(/^Add a Comment/).fill("Too dark here");
   await guest.getByRole("button", { name: "Send Comment" }).click();
   await expect(guest.getByText("Dana · Guest")).toBeVisible();

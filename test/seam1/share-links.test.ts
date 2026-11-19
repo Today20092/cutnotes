@@ -32,10 +32,18 @@ beforeEach(async () => {
   await env.DB.prepare("UPDATE revisions SET duration_ms = 8000").run();
 });
 
-const createLink = async (permission: "view" | "comment" = "comment", caller = "user_owner") =>
+const createLink = async (
+  permission: "view" | "comment" = "comment",
+  caller = "user_owner",
+  extra: object = {},
+) =>
   resultOf<Link>(
-    await call(fn.createShareLink, caller, { videoId: "v", name: "Client", permission }),
+    await call(fn.createShareLink, caller, { videoId: "v", name: "Client", permission, ...extra }),
   );
+const readyRevision = async (id: string, number: number) => {
+  await seedRevision({ id, videoId: "v", number, state: "ready", playbackId: "sample" });
+  await env.DB.prepare("UPDATE revisions SET duration_ms = 8000").run();
+};
 const guest = (token: string, extra: object = {}) =>
   callServerFn(fn.getGuestReview, { data: { token, ...extra } });
 const page = async (token: string, extra: object = {}) =>
@@ -48,7 +56,7 @@ it("previews a shared video without issuing playback credentials and hides revok
     await preview(),
   );
   expect(result.title).toBe("View Video v");
-  expect(result.description).toContain("Project p");
+  expect(result.description).not.toContain("Project p");
   expect(result.description).toContain("View only");
   expect(JSON.stringify(result)).not.toContain("stream.mux.com");
   expect(shareMeta(result, "Unavailable")).toContainEqual({
@@ -86,6 +94,7 @@ const comment = (token: string, extra: object = {}, address?: string) =>
     address,
     data: {
       token,
+      revisionId: "r1",
       id: crypto.randomUUID(),
       name: "Dana",
       body: "Too dark",
@@ -134,6 +143,14 @@ it("Viewers, non-Members, removed Members and Guests cannot manage links", async
   }
 });
 
+it("a Project Editor cannot create, list or revoke links", async () => {
+  const link = await createLink();
+  const editor = await seedMember("editor");
+  const data = { videoId: "v", revisionId: "r1", name: "x", permission: "view", id: link.id };
+  for (const action of [fn.createShareLink, fn.listShareLinks, fn.revokeShareLink])
+    await expectRefused(await call(action, editor, data), 403, "insufficient-role");
+});
+
 it("a Guest cannot reach any Member function with only a token", async () => {
   const link = await createLink();
   for (const action of [
@@ -164,13 +181,33 @@ it("a comment link accepts a Comment with a Guest badge, and a retry does not du
   ]);
 });
 
-it("a view link plays and shows existing Comments, while every write is refused", async () => {
+it("a view link plays without another link's Comments, while every write is refused", async () => {
   const commenter = await createLink();
   await comment(commenter.token);
   const link = await createLink("view");
-  expect((await page(link.token)).comments).toHaveLength(1);
+  expect((await page(link.token)).comments).toEqual([]);
   await expectRefused(await comment(link.token), 403, "insufficient-role");
-  expect((await page(link.token)).comments).toHaveLength(1);
+  expect((await page(commenter.token)).comments).toHaveLength(1);
+});
+
+it("a Guest sees only the Comments made through their own link, and Owners see them all", async () => {
+  await call(fn.createComment, "user_owner", {
+    videoId: "v",
+    revisionId: "r1",
+    id: "team",
+    body: "Internal note",
+    timecodeMs: 1,
+  });
+  const mine = await createLink();
+  const other = await createLink();
+  await comment(mine.token, { id: "mine", body: "Mine" });
+  await comment(other.token, { id: "theirs", body: "Theirs" });
+  expect((await page(mine.token)).comments.map((c) => c.id)).toEqual(["mine"]);
+  expect((await page(other.token)).comments.map((c) => c.id)).toEqual(["theirs"]);
+  const owner = await resultOf<{ comments: { id: string }[] }>(
+    await call(fn.getReview, "user_owner", { videoId: "v" }),
+  );
+  expect(owner.comments.map((c) => c.id).sort()).toEqual(["mine", "team", "theirs"]);
 });
 
 it("a Revision or Video ID in the request is ignored", async () => {
@@ -182,18 +219,92 @@ it("a Revision or Video ID in the request is ignored", async () => {
   const link = await createLink();
   const forged = { videoId: "v2", revisionId: "r1" };
   expect((await page(link.token, forged)).revision.id).toBe("r2");
-  expect((await comment(link.token, { ...forged, id: "c" })).status).toBe(200);
+  // A Comment names the Revision on screen; one the link does not show is refused.
+  for (const revisionId of ["r1", "other-r"])
+    await expectRefused(
+      await comment(link.token, { ...forged, revisionId, id: "c" }),
+      409,
+      "revision-changed",
+    );
+  expect((await comment(link.token, { videoId: "v2", revisionId: "r2", id: "c" })).status).toBe(
+    200,
+  );
   expect(
     await env.DB.prepare("SELECT revision_id FROM comments WHERE id = 'c'").first("revision_id"),
   ).toBe("r2");
 });
 
-it("the link moves to a new Revision once it is ready", async () => {
+it("a pinned link keeps serving its Revision after a newer one is ready", async () => {
   const link = await createLink();
+  expect((await page(link.token)).revision).toMatchObject({ id: "r1", number: 1 });
+  await readyRevision("r2", 2);
   expect((await page(link.token)).revision.id).toBe("r1");
-  await seedRevision({ id: "r2", videoId: "v", number: 2, state: "ready", playbackId: "sample" });
-  await env.DB.prepare("UPDATE revisions SET duration_ms = 8000").run();
+  expect((await comment(link.token, { id: "c" })).status).toBe(200);
+  expect(
+    await env.DB.prepare("SELECT revision_id FROM comments WHERE id = 'c'").first("revision_id"),
+  ).toBe("r1");
+  expect(
+    (
+      await resultOf<{ links: { revisionNumber: number | null }[] }>(
+        await call(fn.listShareLinks, "user_owner", { videoId: "v" }),
+      )
+    ).links,
+  ).toMatchObject([{ revisionNumber: 1 }]);
+});
+
+it("a link pins the Revision the Owner chose, and refuses one that is not ready or not this Video's", async () => {
+  await readyRevision("r2", 2);
+  const link = await createLink("comment", "user_owner", { revisionId: "r1" });
+  expect((await page(link.token)).revision.id).toBe("r1");
+  await seedRevision({ id: "r3", videoId: "v", number: 3, state: "processing" });
+  await seedVideo("v2", "p");
+  await seedRevision({ id: "other", videoId: "v2", state: "ready", playbackId: "sample" });
+  for (const revisionId of ["r3", "other", "missing"])
+    await expectRefused(
+      await call(fn.createShareLink, "user_owner", {
+        videoId: "v",
+        revisionId,
+        name: "Client",
+        permission: "view",
+      }),
+      404,
+      "not-found",
+    );
+});
+
+it("a link made before pinning (no Revision) follows the latest ready Revision", async () => {
+  const link = await createLink();
+  await env.DB.prepare("UPDATE share_links SET revision_id = NULL").run();
+  expect((await page(link.token)).revision.id).toBe("r1");
+  await readyRevision("r2", 2);
   expect((await page(link.token)).revision.id).toBe("r2");
+  expect(
+    (
+      await resultOf<{ links: { revisionNumber: number | null }[] }>(
+        await call(fn.listShareLinks, "user_owner", { videoId: "v" }),
+      )
+    ).links,
+  ).toMatchObject([{ revisionNumber: null }]);
+});
+
+it("a Guest on a link made before pinning cannot comment on a cut they have not seen", async () => {
+  const link = await createLink();
+  await env.DB.prepare("UPDATE share_links SET revision_id = NULL").run();
+  expect((await page(link.token)).revision.id).toBe("r1");
+  // A newer cut becomes ready while the Guest is still watching Revision 1.
+  await readyRevision("r2", 2);
+  await expectRefused(await comment(link.token, { id: "late" }), 409, "revision-changed");
+  await expectRefused(
+    await comment(link.token, { revisionId: undefined, id: "late" }),
+    400,
+    "invalid-request",
+  );
+  expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM comments").first("n")).toBe(0);
+  // After reopening the link, the Guest comments on the cut it now shows.
+  expect((await comment(link.token, { revisionId: "r2", id: "c" })).status).toBe(200);
+  expect(
+    await env.DB.prepare("SELECT revision_id FROM comments WHERE id = 'c'").first("revision_id"),
+  ).toBe("r2");
 });
 
 it("unknown, malformed, not-ready, Complete and deleted links all answer identically, and Reopen restores", async () => {
@@ -265,7 +376,8 @@ it("Guest responses carry no Clerk or Member IDs", async () => {
   const { token } = await createLink();
   await comment(token);
   const text = await (await guest(token)).text();
-  expect(text).toContain("Member note");
+  expect(text).toContain("Too dark");
+  expect(text).not.toContain("Member note");
   expect(text).not.toMatch(/member_owner|user_owner|memberId|clerk|shareLinkId/i);
 });
 
@@ -364,24 +476,18 @@ it("Members and Guests receive the same Comment shape, without Member IDs for th
       ],
     },
   ];
-  const input = {
-    videoId: "v",
-    revisionId: "r1",
-    id: "c1",
-    body: "Trim",
-    timecodeMs: 900,
-    drawing,
-  };
-  expect((await call(fn.createComment, "user_owner", input)).status).toBe(200);
   const { token } = await createLink();
+  expect((await comment(token, { id: "c1", body: "Trim", timecodeMs: 900, drawing })).status).toBe(
+    200,
+  );
   const member = await resultOf<{ comments: object[] }>(
     await call(fn.getReview, "user_owner", { videoId: "v" }),
   );
   const shared = (await page(token)).comments;
   const { mine, ...rest } = member.comments[0] as { mine: boolean };
-  expect(mine).toBe(true);
+  expect(mine).toBe(false);
   expect(shared).toEqual([rest]);
-  expect(rest).toMatchObject({ drawing, isGuest: false, authorName: "owner" });
+  expect(rest).toMatchObject({ drawing, isGuest: true, authorName: "Dana" });
   expect(Object.keys(rest).sort()).toEqual([
     "authorAvatarUrl",
     "authorName",

@@ -1,23 +1,15 @@
-import { NativeSelect } from "@/components/ui/native-select";
-import { statusTone } from "@/components/video-status";
 import { PendingButton } from "@/components/pending-button";
-import { toastManager } from "@/components/ui/toast";
+import { toast } from "@/components/ui/toast";
 import { Input } from "@/components/ui/input";
 import { Link } from "@tanstack/react-router";
 import { DeleteWork } from "@/components/delete-work";
 import { Check, Ellipsis, Pencil, RotateCcw, X } from "lucide-react";
-import { useCallback, useId, useRef, useState } from "react";
-import {
-  ProjectNameSheet,
-  statusLabels,
-  VideoCard,
-  WriteFeedback,
-} from "@/components/project-parts";
+import { useCallback, useRef, useState } from "react";
+import { ProjectNameSheet, VideoCard, WriteFeedback } from "@/components/project-parts";
 import { UploadSheet } from "@/components/upload-parts";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
-import { useRenameVideo, useSetVideoStatus, type VideoSummary } from "@/lib/projects";
-import { videoStatuses, type VideoStatus } from "@/lib/video-status";
+import { useRenameVideo, type VideoSummary } from "@/lib/projects";
 
 function EditableVideoTitle({ video }: { video: VideoSummary }) {
   const rename = useRenameVideo(video.id);
@@ -59,7 +51,7 @@ function EditableVideoTitle({ video }: { video: VideoSummary }) {
         const title = draft.trim();
         if (!title) {
           setError("Enter a video title.");
-          toastManager.add({ title: "Enter a video title.", type: "error" });
+          toast({ title: "Enter a video title.", type: "error" });
           return;
         }
         if (title === video.title) {
@@ -71,12 +63,12 @@ function EditableVideoTitle({ video }: { video: VideoSummary }) {
           { videoId: video.id, title },
           {
             onSuccess: () => {
-              toastManager.add({ title: "Video renamed" });
+              toast({ title: "Video renamed" });
               close();
             },
             onError: () => {
               setError("Could not save the title. Try again.");
-              toastManager.add({ title: "Could not save the title. Try again.", type: "error" });
+              toast({ title: "Could not save the title. Try again.", type: "error" });
             },
           },
         );
@@ -131,30 +123,29 @@ function EditableVideoTitle({ video }: { video: VideoSummary }) {
   );
 }
 
-function VideoControls({ video, deletable }: { video: VideoSummary; deletable: boolean }) {
-  const [sheet, setSheet] = useState<"rename" | "delete" | null>(null);
+/** The Video sheets the Project page keeps in its URL (`?sheet=…&video=<id>`). */
+export type VideoSheet = "rename-video" | "delete-video" | "retry-video";
+
+function VideoControls({
+  video,
+  deletable,
+  sheet,
+  onSheetChange,
+}: {
+  video: VideoSummary;
+  deletable: boolean;
+  sheet?: string;
+  onSheetChange: (sheet?: VideoSheet) => void;
+}) {
   const more = useRef<HTMLButtonElement>(null);
   function closeSheet() {
-    setSheet(null);
+    onSheetChange(undefined);
     // The sheet unmounts with focus inside it.
     requestAnimationFrame(() => more.current?.focus());
   }
   const renameVideo = useRenameVideo(video.id);
-  const setVideoStatus = useSetVideoStatus(video.id);
   const [status, setStatus] = useState("");
   const [failure, setFailure] = useState("");
-  const selectId = useId();
-
-  function changeStatus(next: VideoStatus) {
-    setFailure("");
-    setVideoStatus.mutate(
-      { videoId: video.id, status: next },
-      {
-        onSuccess: () => setStatus(`${video.title} is now ${statusLabels[next]}`),
-        onError: () => setFailure(`Could not change the Status of ${video.title}. Try again.`),
-      },
-    );
-  }
 
   function rename(title: string) {
     setFailure("");
@@ -168,58 +159,55 @@ function VideoControls({ video, deletable }: { video: VideoSummary; deletable: b
     );
   }
 
-  return (
-    <div className="mt-2 flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <label htmlFor={selectId} className="text-sm text-muted-foreground">
-          Status<span className="sr-only"> of {video.title}</span>
-        </label>
-        <NativeSelect
-          id={selectId}
-          className={statusTone[video.status]}
-          value={video.status}
-          onChange={(event) => changeStatus(event.target.value as VideoStatus)}
+  const actions = (
+    <div className="-mr-2.5 -mt-1.5 flex shrink-0 flex-wrap items-center justify-end gap-2">
+      {video.latestRevisionState === "errored" && (
+        <UploadSheet
+          open={sheet === "retry-video"}
+          onOpenChange={(next) => onSheetChange(next ? "retry-video" : undefined)}
+          destination={{ kind: "existing", videoId: video.id, title: video.title }}
+          trigger={
+            <Button variant="secondary" aria-label={`Retry ${video.title} with a new upload`}>
+              <RotateCcw aria-hidden /> Retry
+            </Button>
+          }
+        />
+      )}
+      <Menu>
+        <MenuTrigger
+          render={
+            <Button
+              ref={more}
+              variant="ghost"
+              size="icon"
+              aria-label={`More actions for ${video.title}`}
+            />
+          }
         >
-          {videoStatuses.map((value) => (
-            <option key={value} value={value}>
-              {statusLabels[value]}
-            </option>
-          ))}
-        </NativeSelect>
-        {video.latestRevisionState === "errored" && (
-          <UploadSheet
-            destination={{ kind: "existing", videoId: video.id, title: video.title }}
-            trigger={
-              <Button variant="secondary" aria-label={`Retry ${video.title} with a new upload`}>
-                <RotateCcw aria-hidden /> Retry
-              </Button>
-            }
-          />
-        )}
-        <Menu>
-          <MenuTrigger
-            render={
-              <Button
-                ref={more}
-                variant="ghost"
-                size="icon"
-                aria-label={`More actions for ${video.title}`}
-              />
-            }
-          >
-            <Ellipsis aria-hidden />
-          </MenuTrigger>
-          <MenuPopup>
-            <MenuItem onClick={() => setSheet("rename")}>Rename</MenuItem>
-            {deletable && (
-              <MenuItem variant="destructive" onClick={() => setSheet("delete")}>
-                Delete
-              </MenuItem>
-            )}
-          </MenuPopup>
-        </Menu>
+          <Ellipsis aria-hidden />
+        </MenuTrigger>
+        <MenuPopup>
+          <MenuItem onSelect={() => onSheetChange("rename-video")}>Rename</MenuItem>
+          {deletable && (
+            <MenuItem variant="destructive" onSelect={() => onSheetChange("delete-video")}>
+              Delete
+            </MenuItem>
+          )}
+        </MenuPopup>
+      </Menu>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="block min-[400px]:flex min-[400px]:gap-3 sm:block">
+        <VideoCard
+          video={video}
+          editableTitle={<EditableVideoTitle video={video} />}
+          actions={actions}
+        />
       </div>
-      {sheet === "rename" && (
+      {sheet === "rename-video" && (
         <ProjectNameSheet
           title="Rename Video"
           submitLabel="Save title"
@@ -231,7 +219,7 @@ function VideoControls({ video, deletable }: { video: VideoSummary; deletable: b
           onClosed={closeSheet}
         />
       )}
-      {sheet === "delete" && (
+      {sheet === "delete-video" && (
         <DeleteWork kind="Video" id={video.id} name={video.title} startOpen onClosed={closeSheet} />
       )}
       <WriteFeedback status={status} failure={failure} />
@@ -243,23 +231,26 @@ export function VideoTile({
   video,
   writable,
   deletable = false,
+  sheet,
+  onSheetChange = () => undefined,
 }: {
   video: VideoSummary;
   writable: boolean;
   deletable?: boolean;
+  sheet?: string;
+  onSheetChange?: (sheet?: VideoSheet) => void;
 }) {
   const manageable = writable && video.projectCompletedAt === null;
-  const card = <VideoCard video={video} showStatus={!manageable} />;
+  const card = <VideoCard video={video} />;
   return (
     <>
       {manageable ? (
-        <div className="block min-[400px]:flex min-[400px]:gap-3 sm:block">
-          <VideoCard
-            video={video}
-            showStatus={false}
-            editableTitle={<EditableVideoTitle video={video} />}
-          />
-        </div>
+        <VideoControls
+          video={video}
+          deletable={deletable}
+          sheet={sheet}
+          onSheetChange={onSheetChange}
+        />
       ) : (
         <Link
           to="/videos/$videoId"
@@ -269,7 +260,6 @@ export function VideoTile({
           {card}
         </Link>
       )}
-      {manageable && <VideoControls video={video} deletable={deletable} />}
       {!manageable && deletable && (
         <div className="mt-2">
           <DeleteWork kind="Video" id={video.id} name={video.title} />

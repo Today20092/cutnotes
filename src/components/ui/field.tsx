@@ -1,46 +1,31 @@
 "use client";
 
-import { Field as FieldPrimitive } from "@base-ui/react/field";
+import {
+  Field as FieldPrimitive,
+  FieldDescription as FieldDescriptionPrimitive,
+  FieldError as FieldErrorPrimitive,
+  FieldLabel as FieldLabelPrimitive,
+} from "@ui-sdk/react/field";
 import type React from "react";
 import { cn } from "@/lib/utils";
 
 export function Field({
   className,
   ...props
-}: FieldPrimitive.Root.Props): React.ReactElement {
-  return (
-    <FieldPrimitive.Root
-      className={cn("flex flex-col items-start gap-2", className)}
-      data-slot="field"
-      {...props}
-    />
-  );
+}: React.ComponentProps<typeof FieldPrimitive>): React.ReactElement {
+  return <FieldPrimitive className={cn("flex flex-col items-start gap-2", className)} {...props} />;
 }
 
 export function FieldLabel({
   className,
   ...props
-}: FieldPrimitive.Label.Props): React.ReactElement {
+}: React.ComponentProps<typeof FieldLabelPrimitive>): React.ReactElement {
   return (
-    <FieldPrimitive.Label
+    <FieldLabelPrimitive
       className={cn(
         "inline-flex items-center gap-2 font-medium text-base/4.5 text-foreground data-disabled:opacity-64 sm:text-sm/4",
         className,
       )}
-      data-slot="field-label"
-      {...props}
-    />
-  );
-}
-
-export function FieldItem({
-  className,
-  ...props
-}: FieldPrimitive.Item.Props): React.ReactElement {
-  return (
-    <FieldPrimitive.Item
-      className={cn("flex", className)}
-      data-slot="field-item"
       {...props}
     />
   );
@@ -49,11 +34,10 @@ export function FieldItem({
 export function FieldDescription({
   className,
   ...props
-}: FieldPrimitive.Description.Props): React.ReactElement {
+}: React.ComponentProps<typeof FieldDescriptionPrimitive>): React.ReactElement {
   return (
-    <FieldPrimitive.Description
+    <FieldDescriptionPrimitive
       className={cn("text-muted-foreground text-xs", className)}
-      data-slot="field-description"
       {...props}
     />
   );
@@ -62,19 +46,11 @@ export function FieldDescription({
 export function FieldError({
   className,
   ...props
-}: FieldPrimitive.Error.Props): React.ReactElement {
+}: React.ComponentProps<typeof FieldErrorPrimitive>): React.ReactElement {
   return (
-    <FieldPrimitive.Error
+    <FieldErrorPrimitive
       className={cn("text-destructive-foreground text-xs", className)}
-      data-slot="field-error"
       {...props}
     />
   );
 }
-
-export const FieldControl: typeof FieldPrimitive.Control =
-  FieldPrimitive.Control;
-export const FieldValidity: typeof FieldPrimitive.Validity =
-  FieldPrimitive.Validity;
-
-export { FieldPrimitive };

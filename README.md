@@ -14,6 +14,10 @@ Parts of this project will be adapted from [Lawn](https://github.com/pingdotgg/l
 
 Projects are private to assigned members and Team Owners. Editors can create their own projects; Owners manage project roles, single-use invitation links, and guest sharing. See [project access and rollout](docs/project-access.md).
 
+## For agents
+
+Every screen's state is in its URL (sheets, filters, Revision, moment, selected Comment), and `/llms.txt` lists each route, its search params, who can open it and its main actions, with no data. It is built from [`src/lib/route-index.ts`](src/lib/route-index.ts) and linked from every page's `<head>`. See [the decision](docs/adr/0001-project-is-the-unit.md).
+
 ## Self-hosting
 
 Follow [docs/setup.md](docs/setup.md).
@@ -26,7 +30,7 @@ Requires [Bun](https://bun.sh). Tools that need Node use the pinned binary insta
 
 - `bun install`
 - `bun run db:migrate:local`, then `bun run dev`, with values from `.dev.vars.example` in `.dev.vars`
-- `bun run check` runs type checks, lint (Oxlint), a format check (Oxfmt; `bun run fmt` fixes it) and the browser-free tests, including Seam 1 (Workers runtime and local D1). `bun run check:full` adds Seam 2 (Playwright at phone and desktop widths). Seam 2's first run needs `bun scripts/node.ts node_modules/@playwright/test/cli.js install chromium`. It serves on port 5199; set `E2E_PORT` to use another.
+- `bun run check` runs type checks, lint (Oxlint), a format check (Oxfmt; `bun run fmt` fixes it) and the browser-free tests, including Seam 1 (Workers runtime and local D1). `bun run check:full` adds Seam 2 (Playwright at phone and desktop widths). Seam 2's first run needs `bun scripts/node.ts node_modules/@playwright/test/cli.js install chromium`. It serves on port 5199; set `E2E_PORT` to use another. A run on its own port also keeps its database in `.wrangler/e2e-<port>`, so it neither resets nor clashes with the preview.
 
 Clerk's session token must include `email` and `email_verified`, or no first Owner can be created. See `.dev.vars.example`.
 

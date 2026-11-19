@@ -20,7 +20,7 @@ function GateLayout({ team, children }: { team: Team; children: ReactNode }) {
 export function SignInScreen({ team }: { team: Team }) {
   return (
     <GateLayout team={team}>
-      <h1 className="text-xl font-semibold">Sign in</h1>
+      <h1 className="text-title">Sign in</h1>
       <SignInForm returnTo={location.href} />
     </GateLayout>
   );
@@ -38,7 +38,7 @@ export function InviteSignInScreen({
   return (
     <GateLayout team={team}>
       <div className="max-w-sm space-y-2">
-        <h1 className="text-xl font-semibold">You have been invited</h1>
+        <h1 className="text-title">You have been invited</h1>
         <p className="text-muted-foreground">
           {description ?? `Sign in to join ${team.name}. No password is needed.`}
         </p>
@@ -63,11 +63,7 @@ export function InviteOutcomeScreen({
   return (
     <GateLayout team={team}>
       <div className="max-w-sm space-y-2">
-        <h1
-          tabIndex={-1}
-          ref={(heading) => heading?.focus()}
-          className="text-xl font-semibold outline-none"
-        >
+        <h1 tabIndex={-1} ref={(heading) => heading?.focus()} className="text-title outline-none">
           {title}
         </h1>
         <p className="text-muted-foreground">{children}</p>
@@ -82,7 +78,7 @@ export function NotAMemberScreen({ team }: { team: Team }) {
   return (
     <GateLayout team={team}>
       <div className="max-w-sm space-y-2">
-        <h1 className="text-xl font-semibold">You need an Invite</h1>
+        <h1 className="text-title">You need an Invite</h1>
         <p className="text-muted-foreground">
           You are signed in, but you are not on this Team yet. Ask an Owner to send you an Invite.
         </p>

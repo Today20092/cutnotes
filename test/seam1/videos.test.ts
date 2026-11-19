@@ -12,7 +12,7 @@ import {
 } from "./support/seed";
 import { resultOf, serverFunctionIds } from "./support/worker";
 
-const { listProjects, getProject, renameVideo, setVideoStatus } = serverFunctionIds;
+const { listProjects, getProject, renameVideo, approveVideo, requestChanges } = serverFunctionIds;
 
 type VideoRow = {
   id: string;
@@ -173,15 +173,16 @@ describe("processing and failed states", () => {
   });
 });
 
-describe("permission matrix: rename a Video, change Status", () => {
+describe("permission matrix: rename a Video, decide its Status", () => {
   it.each(["owner", "editor"])("lets a %s do both", async (role) => {
     const owner = await seedVideoInProject();
+    await seedRevision({ id: "r1", videoId: "v1", state: "ready" });
     const caller = role === "owner" ? owner : await seedMember(role);
 
     expect((await call(renameVideo, caller, { videoId: "v1", title: "New title" })).status).toBe(
       200,
     );
-    expect((await call(setVideoStatus, caller, { videoId: "v1", status: "done" })).status).toBe(
+    expect((await call(approveVideo, caller, { videoId: "v1", revisionId: "r1" })).status).toBe(
       200,
     );
 
@@ -198,7 +199,7 @@ describe("permission matrix: rename a Video, change Status", () => {
       "not-found",
     );
     await expectRefused(
-      await call(setVideoStatus, viewer, { videoId: "v1", status: "done" }),
+      await call(approveVideo, viewer, { videoId: "v1", revisionId: "r1" }),
       404,
       "not-found",
     );
@@ -215,14 +216,14 @@ describe("permission matrix: rename a Video, change Status", () => {
       "not-a-member",
     );
     await expectRefused(
-      await call(setVideoStatus, removed, { videoId: "v1", status: "done" }),
+      await call(approveVideo, removed, { videoId: "v1", revisionId: "r1" }),
       403,
       "not-a-member",
     );
   });
 });
 
-describe("renaming a Video and changing Status", () => {
+describe("renaming a Video and deciding its Status", () => {
   it("trims the title and updates the Video's last update", async () => {
     const owner = await seedVideoInProject();
 
@@ -246,23 +247,14 @@ describe("renaming a Video and changing Status", () => {
     );
   });
 
-  it.each(["review", "rework", "done"])("accepts Status %s", async (status) => {
+  it("Request changes sets Rework and Approve sets Done", async () => {
     const owner = await seedVideoInProject();
+    await seedRevision({ id: "r1", videoId: "v1", state: "ready" });
 
-    await call(setVideoStatus, owner, { videoId: "v1", status });
-
-    expect((await video()).status).toBe(status);
-  });
-
-  it.each([["archived"], [""], [7]])("refuses Status %s", async (status) => {
-    const owner = await seedVideoInProject();
-
-    await expectRefused(
-      await call(setVideoStatus, owner, { videoId: "v1", status }),
-      400,
-      "invalid-status",
-    );
-    expect((await video()).status).toBe("review");
+    await call(requestChanges, owner, { videoId: "v1", revisionId: "r1" });
+    expect((await video()).status).toBe("rework");
+    await call(approveVideo, owner, { videoId: "v1", revisionId: "r1" });
+    expect((await video()).status).toBe("done");
   });
 
   it("changes nothing in a Complete Project", async () => {
@@ -274,7 +266,7 @@ describe("renaming a Video and changing Status", () => {
       "not-found",
     );
     await expectRefused(
-      await call(setVideoStatus, owner, { videoId: "v1", status: "done" }),
+      await call(approveVideo, owner, { videoId: "v1", revisionId: "r1" }),
       404,
       "not-found",
     );
@@ -297,7 +289,7 @@ describe("renaming a Video and changing Status", () => {
     await seedVideo("v1", "p1", 5);
 
     await expectRefused(
-      await call(setVideoStatus, owner, { videoId: "v1", status: "done" }),
+      await call(approveVideo, owner, { videoId: "v1", revisionId: "r1" }),
       404,
       "not-found",
     );

@@ -7,7 +7,7 @@ A self-hosted tool where a production team reviews video cuts before final deliv
 ### Work
 
 **Project**:
-A piece of production work under review, such as one episode.
+A piece of production work under review, such as one episode. Access is given per Project.
 _Avoid_: Folder, workspace
 
 **Video**:
@@ -18,8 +18,12 @@ _Avoid_: Asset, file, stack
 One uploaded cut of a Video.
 _Avoid_: Version, render
 
+**Stage**:
+Where a whole Project stands, shown as its column on the home board: New, Editing, In review or Done. It moves by itself (an Uploader or Editor joins: Editing; a Revision is ready: In review; Request changes: Editing; every Video approved: Done), and an Owner or the Project's Editor can move it by hand.
+_Avoid_: Status, phase, column
+
 **Status**:
-Where a Video stands in review: Review, Rework or Done.
+Where one Video stands in review: Review, Rework or Done. Status is per Video, Stage is per Project. It changes only through **Request changes** (Rework) and **Approve** (Done) on the Video page, and a new ready Revision turns Rework back into Review.
 _Avoid_: Stage, state
 
 **Complete**:
@@ -57,13 +61,20 @@ _Avoid_: User, account
 A Member's level of access: Owner, Editor or Viewer.
 _Avoid_: Permission level
 
+**Project role**:
+A person's assignment on a Project: Reviewer, Uploader or Editor. Separate from the Team Role.
+
+**Uploader**:
+A Project role that can watch and comment, add new Videos, and upload Revisions to Videos they created. An Uploader deletes only Videos they created and cannot rename, Request changes, Approve, move the Stage, Resolve or manage people.
+_Avoid_: Contributor
+
 **Guest**:
 A person using a Share Link who gives only a name and has no sign-in.
 _Avoid_: Anonymous user, reviewer
 
 **Share Link**:
-A named, revocable link to a Video's latest Revision, either view-only or comment-and-draw.
-_Avoid_: Public link
+A named, revocable link to one Revision of a Video, either view-only or comment-and-draw. An Owner makes it with **Send to customer**, and it pins the Revision being viewed. Its Guest sees only that Revision and the Comments made through the same Share Link: never the Team's Comments, another link's Comments, the Project or the Revision history. A link made before pinning has no Revision and follows the latest ready one ("Follows latest").
+_Avoid_: Public link, customer link
 
 **Invite**:
 A single-use link, valid for 7 days, that makes someone a Member with a chosen Role.

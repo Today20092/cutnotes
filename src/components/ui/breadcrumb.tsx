@@ -1,7 +1,6 @@
 "use client";
 
-import { mergeProps } from "@base-ui/react/merge-props";
-import { useRender } from "@base-ui/react/use-render";
+import { mergeProps, renderElement, type PartProps } from "@ui-sdk/react/primitive";
 import { ChevronRight, MoreHorizontal } from "lucide-react";
 import type * as React from "react";
 import { cn } from "@/lib/utils";
@@ -45,7 +44,7 @@ export function BreadcrumbLink({
   className,
   render,
   ...props
-}: useRender.ComponentProps<"a">): React.ReactElement {
+}: PartProps<"a">): React.ReactElement {
   const defaultProps = {
     className: cn(
       "rounded-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
@@ -54,11 +53,7 @@ export function BreadcrumbLink({
     "data-slot": "breadcrumb-link",
   };
 
-  return useRender({
-    defaultTagName: "a",
-    props: mergeProps<"a">(defaultProps, props),
-    render,
-  });
+  return renderElement("a", mergeProps(defaultProps, props), render);
 }
 
 export function BreadcrumbPage({

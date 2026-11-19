@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { Fragment } from "react";
-import { toastManager } from "@/components/ui/toast";
+import { toast } from "@/components/ui/toast";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -27,15 +27,20 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { VideoSummary } from "@/lib/projects";
-import type { Role } from "@/server/db/schema";
+import type { AccessRole } from "@/server/db/schema";
 
 const MAX_NAME_LENGTH = 120;
 
-export const canWrite = (role: Role) => role !== "viewer";
+/** Editor writes: renaming, Status and resolving. Uploaders only add Videos and Revisions. */
+export const canWrite = (role: AccessRole) => role === "editor" || role === "owner";
 
-/** Mirrors the server's deleteVideo guard: Owners delete any Video, Editors only their own. */
-export const canDelete = (member: { id: string; role: Role }, video: { createdBy: string }) =>
-  member.role === "owner" || (member.role === "editor" && video.createdBy === member.id);
+/** Adding Videos and Revisions: Uploaders do it too, on Videos they created. */
+export const canUpload = (role: AccessRole) => role !== "viewer";
+
+/** Mirrors the server's deleteVideo guard: Owners delete any Video, Editors and Uploaders only their own. */
+export const canDelete = (member: { id: string; role: AccessRole }, video: { createdBy: string }) =>
+  member.role === "owner" ||
+  ((member.role === "editor" || member.role === "uploader") && video.createdBy === member.id);
 
 // The first view keeps focus where the browser put it.
 let hasShownAView = false;
@@ -56,7 +61,7 @@ export function PageBreadcrumb({
           <Fragment key={label}>
             <BreadcrumbItem>
               <BreadcrumbLink
-                className="inline-flex min-h-11 items-center wrap-anywhere sm:min-h-0"
+                className="inline-flex min-h-11 min-w-11 items-center wrap-anywhere sm:pointer-fine:min-h-0 sm:pointer-fine:min-w-0"
                 render={link}
               >
                 {label}
@@ -78,7 +83,16 @@ export function PageBreadcrumb({
 export const backLinkClass =
   "inline-flex min-h-11 w-fit items-center gap-1 text-sm underline-offset-4 hover:underline";
 
-export function PageHeading({ title, children }: { title: string; children?: ReactNode }) {
+/** `menu` is a More actions button. It follows `children` in tab order, but on a phone it sits beside the title and `children` wrap below. */
+export function PageHeading({
+  title,
+  children,
+  menu,
+}: {
+  title: string;
+  children?: ReactNode;
+  menu?: ReactNode;
+}) {
   const heading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -90,11 +104,16 @@ export function PageHeading({ title, children }: { title: string; children?: Rea
   }, [title]);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <h1 ref={heading} tabIndex={-1} className="min-w-0 text-xl font-semibold wrap-anywhere">
+    <div className="flex flex-wrap items-center gap-2">
+      <h1 ref={heading} tabIndex={-1} className="text-title min-w-0 flex-[1_1_12rem] wrap-anywhere">
         {title}
       </h1>
-      {children && <div className="flex max-w-full flex-wrap gap-2">{children}</div>}
+      {children && (
+        <div className="order-last flex w-full flex-wrap gap-2 sm:order-none sm:w-auto">
+          {children}
+        </div>
+      )}
+      {menu}
     </div>
   );
 }
@@ -109,10 +128,15 @@ export function ProjectNameSheet({
   onSubmit,
   startOpen = false,
   onClosed,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   trigger?: ReactElement;
   startOpen?: boolean;
   onClosed?: () => void;
+  /** Set both to keep the sheet's open state in the URL. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   title: string;
   submitLabel: string;
   initialName?: string;
@@ -121,19 +145,28 @@ export function ProjectNameSheet({
   onSubmit: (name: string) => void;
 }) {
   const isMobile = useIsMobile();
-  const [open, setOpen] = useState(startOpen);
+  const [ownOpen, setOwnOpen] = useState(startOpen);
+  const open = controlledOpen ?? ownOpen;
+  const setOpen = (next: boolean) => {
+    setOwnOpen(next);
+    onOpenChange?.(next);
+  };
   const [name, setName] = useState(initialName);
   const [error, setError] = useState("");
   const input = useRef<HTMLInputElement>(null);
   const inputId = useId();
   const errorId = useId();
 
+  // A sheet opened from the URL starts with the current name too.
+  useEffect(() => {
+    if (!open) return;
+    setName(initialName);
+    setError("");
+  }, [open, initialName]);
+
   function changeOpen(next: boolean) {
     setOpen(next);
-    if (next) {
-      setName(initialName);
-      setError("");
-    } else onClosed?.();
+    if (!next) onClosed?.();
   }
 
   function submit(event: FormEvent) {
@@ -212,7 +245,7 @@ export function RenameProjectButton({
 /** Shows a confirmation that everyone can see; the status region still speaks it. */
 export function useStatusToast(status: string) {
   useEffect(() => {
-    if (status) toastManager.add({ title: status });
+    if (status) toast({ title: status });
   }, [status]);
 }
 
@@ -292,7 +325,8 @@ export function WriteFeedback({ status, failure }: { status: string; failure: st
 
 export { statusLabels } from "@/components/video-status";
 
-function formatUpdated(timestamp: number) {
+function formatUpdated(timestamp: number | null | undefined) {
+  if (!timestamp) return "";
   const minutes = Math.floor((Date.now() - timestamp) / 60_000);
   if (minutes < 1) return "just now";
   if (minutes < 60) return `${minutes} min ago`;
@@ -324,7 +358,7 @@ function revisionProgress(video: VideoSummary) {
   }
 }
 
-function Poster({ url }: { url: string | null }) {
+export function Poster({ url }: { url: string | null }) {
   const [broken, setBroken] = useState(false);
   if (url && !broken) {
     return (
@@ -332,6 +366,8 @@ function Poster({ url }: { url: string | null }) {
         src={url}
         alt=""
         loading="lazy"
+        // A native image drag would steal the pointer from the board's card drag.
+        draggable={false}
         onError={() => setBroken(true)}
         className="aspect-video w-full rounded-lg bg-muted object-cover"
       />
@@ -346,12 +382,16 @@ function Poster({ url }: { url: string | null }) {
 
 export function VideoCard({
   video,
-  showStatus = true,
   editableTitle,
+  actions,
+  showProject = false,
 }: {
   video: VideoSummary;
-  showStatus?: boolean;
   editableTitle?: ReactNode;
+  /** Controls at the end of the title row, such as a More actions menu. */
+  actions?: ReactNode;
+  /** Off inside the Project itself, where the name is already the page title. */
+  showProject?: boolean;
 }) {
   const progress = revisionProgress(video);
   const revision =
@@ -380,8 +420,13 @@ export function VideoCard({
               Unread activity
             </span>
           )}
-          <div className="text-sm text-muted-foreground">
-            {video.projectName} · {revision} · {formatUpdated(video.updatedAt)}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-meta">
+              {showProject && `${video.projectName} · `}
+              {revision}
+              {video.updatedAt ? ` · ${formatUpdated(video.updatedAt)}` : ""}
+            </span>
+            <VideoStatusBadge status={video.status} />
           </div>
           {progress && (
             <div className={progress.failed ? "text-sm text-destructive" : "text-sm"}>
@@ -389,7 +434,7 @@ export function VideoCard({
             </div>
           )}
         </div>
-        {showStatus && <VideoStatusBadge status={video.status} />}
+        {actions}
       </div>
     </>
   );

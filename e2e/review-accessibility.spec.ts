@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page, type TestInfo } from "@playwrigh
 import { seedComment, seedMember, seedReview, shareTokenFor } from "./support/database";
 import { sampleStream } from "./support/sample-stream";
 import { signInAs } from "./support/session";
+import { appAlert } from "./support/ui-sdk";
 
 async function openReview(page: Page, testInfo: TestInfo) {
   const clerkUserId = `user_a11y_${testInfo.project.name}_${Date.now()}`;
@@ -79,7 +80,7 @@ for (const [screen, read] of [
       release();
     }
     if (screen !== "invite" && screen !== "share")
-      await expect(page.getByRole("alert")).toContainText("Something went wrong");
+      await expect(appAlert(page)).toContainText("Something went wrong");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
       screen === "invite"
         ? "Something went wrong"
@@ -451,9 +452,9 @@ test("a Guest arriving from the welcome screen lands on the heading and hears th
   const { open, videoId } = await openReview(page, testInfo);
   await signInAs(page, { clerkUserId: "user_first_owner", email: "first.owner@example.com" });
   await open();
-  await page.getByRole("button", { name: "Share", exact: true }).click();
+  await page.getByRole("button", { name: "Send to customer" }).click();
   await page.getByLabel("Who is this link for?").fill("Client");
-  await page.getByRole("button", { name: "Create Share Link" }).click();
+  await page.getByRole("button", { name: "Create link" }).click();
   await expect(page.getByRole("button", { name: "Revoke link for Client" })).toBeVisible();
 
   const guest = await (await browser.newContext()).newPage();

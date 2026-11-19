@@ -44,12 +44,17 @@ function Toaster({ children }: { children: ReactNode }) {
   );
   return mounted ? (
     <Suspense fallback={loading}>
-      <ToastProvider position="top-center">{children}</ToastProvider>
+      <ToastProvider>{children}</ToastProvider>
     </Suspense>
   ) : (
     loading
   );
 }
+
+// Dev builds only: production replaces DEV with false and drops the import.
+const AgentPanel = import.meta.env.DEV ? lazy(() => import("@/components/agent-panel")) : null;
+const showAgent = () =>
+  import.meta.env.MODE !== "e2e" || new URLSearchParams(location.search).has("agent");
 
 function Root() {
   const { queryClient } = Route.useRouteContext();
@@ -59,6 +64,11 @@ function Root() {
       <QueryClientProvider client={queryClient}>
         <Toaster>
           <Outlet />
+          {AgentPanel && showAgent() && (
+            <Suspense>
+              <AgentPanel />
+            </Suspense>
+          )}
         </Toaster>
       </QueryClientProvider>
     </AuthProvider>
@@ -73,7 +83,7 @@ function RootError({ error }: ErrorComponentProps) {
     <QueryClientProvider client={queryClient}>
       <Toaster>
         <main className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
-          <h1 className="text-xl font-semibold">Something went wrong</h1>
+          <h1 className="text-title">Something went wrong</h1>
           <p className="text-muted-foreground">Reload the page to try again.</p>
           <div className="flex flex-wrap justify-center gap-2">
             <Button onClick={() => location.reload()}>Reload</Button>
@@ -97,7 +107,11 @@ export const Route = createRootRouteWithContext<{
       { name: "color-scheme", content: "light dark" },
       { title: "Cutnotes" },
     ],
-    links: [{ rel: "stylesheet", href: stylesUrl }],
+    // The route index for agents: every screen's URL, params and purpose.
+    links: [
+      { rel: "stylesheet", href: stylesUrl },
+      { rel: "help", href: "/llms.txt", type: "text/plain" },
+    ],
   }),
   shellComponent: RootShell,
   component: Root,

@@ -46,14 +46,30 @@ export function CompleteBanner({
   );
 }
 
-export function CompleteProject({ name, onComplete }: { name: string; onComplete: () => void }) {
-  const [open, setOpen] = useState(false);
+export function CompleteProject({
+  name,
+  onComplete,
+  startOpen = false,
+  onClosed,
+}: {
+  name: string;
+  onComplete: () => void;
+  startOpen?: boolean;
+  onClosed?: () => void;
+}) {
+  const [open, setOpen] = useState(startOpen);
+  function changeOpen(next: boolean) {
+    setOpen(next);
+    if (!next) onClosed?.();
+  }
   const mobile = useIsMobile();
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<Button variant="secondary" aria-label={`Complete ${name}`} />}>
-        Complete
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={changeOpen}>
+      {!startOpen && (
+        <SheetTrigger render={<Button variant="secondary" aria-label={`Complete ${name}`} />}>
+          Complete
+        </SheetTrigger>
+      )}
       <SheetContent side={mobile ? "bottom" : "right"}>
         <SheetHeader>
           <SheetTitle>Complete Project?</SheetTitle>
@@ -66,7 +82,7 @@ export function CompleteProject({ name, onComplete }: { name: string; onComplete
           <SheetClose render={<Button variant="outline" />}>Keep open</SheetClose>
           <Button
             onClick={() => {
-              setOpen(false);
+              changeOpen(false);
               onComplete();
             }}
           >

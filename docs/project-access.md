@@ -8,24 +8,35 @@ Team Owners can open every project, manage membership and invitations, create or
 
 Project assignments are separate from Team roles:
 
-- **Editor:** watches, comments, uploads videos and revisions, renames projects and videos, changes video status and resolves comments. Existing deletion rules still apply: Editors delete only videos they created; Owners delete any video.
+- **Editor:** watches, comments, uploads videos and revisions, renames projects and videos, moves the project's Stage on the home board, uses **Request changes** and **Approve** on a video, and resolves comments. Existing deletion rules still apply: Editors delete only videos they created; Owners delete any video.
+- **Uploader:** watches and comments, adds new videos, and uploads revisions to videos they created. Uploaders delete only videos they created. They cannot rename the project or other people's videos, move the Stage, request changes, approve, resolve comments or manage people.
 - **Reviewer:** watches and comments, including editing or removing their own comments.
 
-Assigning someone as a project Editor does not grant permission to create projects. Changing their Team Editor/Viewer designation does not change their project assignments. Completed projects retain their existing read-only behavior.
+Assigning someone as a project Editor does not grant permission to create projects. Changing their Team Editor/Viewer designation does not change their project assignments. Completed projects retain their existing read-only behavior, including their Stage. Assigning an Uploader or Editor to a New project, or their accepting a project invitation, moves it to Editing. **Request changes** on any one video moves the whole project back to Editing.
 
 ## Owner workflow
 
-Open a project and find **People**. Add an existing Team member as Editor or Reviewer, change their project role, or remove their access. Owners are listed separately and cannot be removed from an individual project.
+Every project page shows who has access under its title, with avatars, names and project roles; with nobody assigned it says only Team Owners have access. Owners choose **Manage people** to open the **People** sheet (the page address gains `?sheet=people`, so the sheet can be linked; older `#people` links still open it). Assigned people can open the same sheet read-only.
 
-Use **Invite by link** to admit a new person or an existing member to this project. Choose a role and optionally add a private note for Owners. The link works once, expires after seven days, and can be accepted by the first signed-in person holding it. The note is not an email restriction. The token is shown only when created; create a replacement if it is lost.
+The People sheet holds one list: Team Owners (always have access, cannot be removed from an individual project), assigned people with their project role and **Remove**, and pending invitations marked **Pending** with **Revoke**. Use **Add from Team** to assign an existing Team member as Reviewer, Uploader or Editor (Uploader is preselected).
+
+Use **Invite link** to admit a new person or an existing member to this project. Choose a role and, under **More options**, optionally add a private note for Owners. Copy the link or send it on WhatsApp. The link works once, expires after seven days, and can be accepted by the first signed-in person holding it. The note is not an email restriction. The token is shown only when created; create a replacement if it is lost.
 
 A new person accepting a project invitation joins the Team as a Viewer with the chosen project assignment. An existing active member keeps their Team designation. People who already have project access are told so; the invitation stays unused and their role is unchanged. Owners can change an existing assignment in People.
+
+The **Team** page (`/members`) lists each member's projects with their project role, so Owners can see access at a glance.
 
 Invitation history includes project, offered role, note, inviter, creation and expiration dates, and accepted/revoked status with dates. Accepted invitations show the actual accepter and link to membership management. Revoking an unused invitation prevents acceptance; an accepted invitation cannot be revoked to remove a member.
 
 Removing a project member preserves their uploads and comments. Removing a Team member clears all project assignments. A fresh invitation can reinstate their original identity, preserving comment authorship, but does not restore old assignments or an old Team designation.
 
 Guest review links are an explicit exception: anyone holding a valid guest link can review its video without project membership. Removing a member does not revoke guest links. Owners revoke those links separately. Already-issued playback credentials may continue working until expiry; removal prevents new credentials and subsequent authorized actions.
+
+### Guests
+
+An Owner sends a Revision to a customer with **Send to customer** on the Video page (`?sheet=customer`). The sheet shows the exact Revision, then asks who the link is for and whether they can view only or comment and draw. **Create link** makes a Share Link pinned to that Revision; **Copy link** or **Send on WhatsApp** delivers it. The list shows each link's Revision ("Revision 3", or "Follows latest" for a link made before migration `0011`), permission and creation date, with **Revoke**.
+
+A Guest sees the player, the Video title, the Team name and, on a comment link, the Comment composer. A Guest sees only Comments made through their own link: not the Team's Comments, not other links' Comments, and no Project name, navigation or Revision history. Owners and project members see Guest Comments in the internal review with a Guest badge. A pinned link keeps showing its Revision after a newer one is ready. Revoking a link refuses new playback credentials and new Comments at once; the Comment write re-checks the link inside the SQL statement.
 
 ## Migration and release
 

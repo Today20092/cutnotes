@@ -20,6 +20,8 @@ Before provisioning services, changing environment bindings, applying remote mig
 
 ## UI components
 
+Before using ui-sdk (`@ui-sdk/react`, `@ui-sdk/core`), follow the `ui-sdk` skill (`.claude/skills/ui-sdk`) and read `node_modules/@ui-sdk/react/docs/llms.txt`. To build a new component, also search `node_modules/@ui-sdk/react/docs/core.md` by heading and read `rendering.md` next to it.
+
 Use cnippet by default: `npx shadcn@latest add @cnippet/<name>`. Use `@shadcn` only when cnippet has no equivalent. Never overwrite `src/components/ui/button.tsx` or `input.tsx` without checking the diff: they carry local accessibility changes.
 
 ## Testing

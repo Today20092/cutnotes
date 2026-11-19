@@ -1,11 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
+import * as v from "valibot";
+import { and, asc, desc, eq, gt, isNotNull, isNull, ne, sql, type SQLWrapper } from "drizzle-orm";
 import {
   activeMember,
   memberIdForUser,
   projectAccess,
   projectRole,
   id,
+  parse,
   readAsMember,
   refuse,
   requireMember,
@@ -13,19 +15,42 @@ import {
   type ScreenDb,
 } from "@/server/access";
 import { getDb } from "@/server/db";
-import { projectMembers, projects, videos, type RevisionState } from "@/server/db/schema";
+import {
+  members,
+  projectMembers,
+  projects,
+  projectStages,
+  videos,
+  type ProjectStage,
+  type RevisionState,
+} from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
+import { projectCard, projectSummary } from "@/server/project-summary";
 
 const MAX_NAME_LENGTH = 120;
 const COUNTDOWN_MS = 14 * 24 * 60 * 60 * 1000;
 
-const projectSummary = {
-  id: projects.id,
-  name: projects.name,
-  createdAt: projects.createdAt,
-  completedAt: projects.completedAt,
-  deleteAfter: projects.deleteAfter,
-};
+/** Non-Owner Members assigned to Projects the caller can open. Owners have implicit access and are omitted. */
+const selectPeople = (db: ScreenDb, memberId: string | SQLWrapper, projectId?: string) =>
+  db
+    .select({
+      projectId: projectMembers.projectId,
+      id: members.id,
+      displayName: members.displayName,
+      avatarUrl: members.avatarUrl,
+      role: projectMembers.role,
+    })
+    .from(projectMembers)
+    .innerJoin(members, eq(members.id, projectMembers.memberId))
+    .where(
+      and(
+        projectId === undefined ? undefined : eq(projectMembers.projectId, projectId),
+        isNull(members.removedAt),
+        ne(members.role, "owner"),
+        projectAccess(memberId, projectMembers.projectId),
+      ),
+    )
+    .orderBy(asc(projectMembers.createdAt), asc(members.id));
 
 const selectVideos = (db: ScreenDb, clerkUserId: string) =>
   db
@@ -94,17 +119,24 @@ async function withPosters<Video extends { posterPlaybackId: string | null }>(ro
 export const listProjects = createServerFn({ method: "POST" }).handler(async () => {
   const { member, results } = await readAsMember("viewer", (db, clerkUserId) => [
     db
-      .select({ ...projectSummary, role: projectRole(memberIdForUser(clerkUserId), projects.id) })
+      .select({
+        ...projectCard,
+        role: projectRole(memberIdForUser(clerkUserId), projects.id),
+      })
       .from(projects)
       .where(projectAccess(memberIdForUser(clerkUserId), projects.id))
       .orderBy(desc(projects.createdAt)),
     selectVideos(db, clerkUserId)
       .where(and(liveVideo, projectAccess(memberIdForUser(clerkUserId), videos.projectId)))
       .orderBy(desc(videos.updatedAt)),
+    selectPeople(db, memberIdForUser(clerkUserId)),
   ]);
   return {
     member: { id: member.id, displayName: member.displayName, role: member.role },
-    projects: results[0],
+    projects: results[0].map((project) => ({
+      ...project,
+      people: results[2].filter((person) => person.projectId === project.id),
+    })),
     videos: await withPosters(results[1]),
   };
 });
@@ -118,7 +150,7 @@ export const getProject = createServerFn({ method: "POST" })
       return [
         db
           .select({
-            ...projectSummary,
+            ...projectCard,
             role: projectRole(memberIdForUser(clerkUserId), projects.id),
           })
           .from(projects)
@@ -137,13 +169,14 @@ export const getProject = createServerFn({ method: "POST" })
             ),
           )
           .orderBy(desc(videos.updatedAt)),
+        selectPeople(db, memberIdForUser(clerkUserId), projectId),
       ] as const;
     });
     const [project] = results[0];
     if (!project) refuse(404, "not-found");
     return {
       member: { id: member.id, displayName: member.displayName, role: member.role },
-      project,
+      project: { ...project, people: results[2] },
       videos: await withPosters(results[1]),
     };
   });
@@ -152,13 +185,14 @@ export const createProject = createServerFn({ method: "POST" })
   .validator((data: { name: string }) => data)
   .handler(async ({ data }) => {
     const member = await requireMember("editor");
+    const name = text(data, "name", MAX_NAME_LENGTH, "invalid-name");
     const now = Date.now();
     const projectId = crypto.randomUUID();
     const db = getDb();
     const [created] = await db.batch([
       db
         .insert(projects)
-        .select(sql`SELECT ${projectId}, ${text(data, "name", MAX_NAME_LENGTH, "invalid-name")}, ${member.id}, ${now}, ${now}, NULL, NULL, NULL
+        .select(sql`SELECT ${projectId}, ${name}, ${member.id}, ${now}, ${now}, NULL, NULL, NULL, 'new'
         WHERE ${activeMember(member.id, "editor")}`)
         .returning(projectSummary),
       db.insert(projectMembers)
@@ -183,6 +217,33 @@ export const renameProject = createServerFn({ method: "POST" })
           eq(projects.id, id(data, "projectId")),
           isNull(projects.deletedAt),
           // A Complete Project is read-only until it is reopened.
+          isNull(projects.completedAt),
+          projectAccess(member.id, projects.id, "editor"),
+        ),
+      )
+      .returning(projectSummary);
+    if (!project) refuse(404, "not-found");
+    return project;
+  });
+
+const stageSchema = v.object({
+  projectId: v.pipe(v.string(), v.nonEmpty(), v.maxLength(128)),
+  stage: v.picklist(projectStages),
+});
+
+/** Owners and the Project's Editors move it by hand, on the board or a card's menu. */
+export const setProjectStage = createServerFn({ method: "POST" })
+  .validator((data: { projectId: string; stage: ProjectStage }) => data)
+  .handler(async ({ data: raw }) => {
+    const member = await requireMember("viewer");
+    const data = parse(stageSchema, raw);
+    const [project] = await getDb()
+      .update(projects)
+      .set({ stage: data.stage, updatedAt: Date.now() })
+      .where(
+        and(
+          eq(projects.id, data.projectId),
+          isNull(projects.deletedAt),
           isNull(projects.completedAt),
           projectAccess(member.id, projects.id, "editor"),
         ),

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { assignProjectMember, seedMember } from "./support/database";
 import { signInAs } from "./support/session";
+import { appAlert } from "./support/ui-sdk";
 
 const owner = {
   clerkUserId: "user_first_owner",
@@ -38,9 +39,11 @@ test("a created Project appears before the server answers", async ({ page }, tes
 
   await expect(page.getByText(name)).toBeVisible();
   release();
-  await expect(page.getByRole("link", { name })).toBeVisible();
+  // The new Project opens once the server confirms it.
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+  await expect(page).toHaveURL(/\/projects\//);
   await page.reload();
-  await expect(page.getByRole("link", { name })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
 });
 
 test("a failed create rolls back and says so", async ({ page }, testInfo) => {
@@ -50,7 +53,7 @@ test("a failed create rolls back and says so", async ({ page }, testInfo) => {
 
   await createProjectInUi(page, name);
 
-  await expect(page.getByRole("alert")).toContainText("Could not create");
+  await expect(appAlert(page)).toContainText("Could not create");
   await expect(page.getByRole("link", { name })).toHaveCount(0);
 });
 
@@ -64,21 +67,29 @@ test("an empty name is explained and nothing is sent", async ({ page }) => {
   await expect(page.getByLabel("Project name")).toBeFocused();
 });
 
-test("a Project opens, shows the next step, and can be renamed", async ({ page }, testInfo) => {
+test("a created Project opens, shows the next step, and can be renamed", async ({
+  page,
+}, testInfo) => {
   const name = `Open ${testInfo.project.name} ${Date.now()}`;
   const renamed = `${name} renamed`;
   await page.goto("/");
   await createProjectInUi(page, name);
-
-  await page.getByRole("link", { name }).click();
 
   const heading = page.getByRole("heading", { level: 1, name });
   await expect(heading).toBeVisible();
   await expect(heading).toBeFocused();
   await expect(page).toHaveTitle(new RegExp(name));
   await expect(page.getByText(/No Videos yet/)).toBeVisible();
+  // Nobody is on the Project yet, so the next step is adding the editor.
+  await expect(page.getByText("Add your editor so they can upload the first cut.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Upload first cut" })).toBeVisible();
+  await page.getByRole("button", { name: "Add people" }).click();
+  await expect(page).toHaveURL(/sheet=people/);
+  await page.getByRole("button", { name: "Close" }).click();
 
-  await page.getByRole("button", { name: `Rename ${name}` }).click();
+  await page.getByRole("button", { name: `More actions for ${name}` }).click();
+  await page.getByRole("menuitem", { name: "Complete… (deleted in 14 days)" }).waitFor();
+  await page.getByRole("menuitem", { name: "Rename" }).click();
   await page.getByLabel("Project name").fill(renamed);
   await page.getByRole("button", { name: "Save name" }).click();
 
@@ -94,15 +105,16 @@ test("a failed rename rolls back and says so", async ({ page }, testInfo) => {
   const name = `Keep ${testInfo.project.name} ${Date.now()}`;
   await page.goto("/");
   await createProjectInUi(page, name);
-  await expect(page.getByRole("link", { name })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   await page.route(callTo("renameProject"), (route) => route.abort());
 
-  await page.getByRole("button", { name: `Rename ${name}` }).click();
+  await page.getByRole("button", { name: `More actions for ${name}` }).click();
+  await page.getByRole("menuitem", { name: "Rename" }).click();
   await page.getByLabel("Project name").fill("Should not stick");
   await page.getByRole("button", { name: "Save name" }).click();
 
-  await expect(page.getByRole("alert")).toContainText("Could not rename");
-  await expect(page.getByRole("link", { name })).toBeVisible();
+  await expect(appAlert(page)).toContainText("Could not rename");
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   await expect(page.getByText("Should not stick")).toHaveCount(0);
 });
 
@@ -116,15 +128,14 @@ test("a Viewer can browse but gets no create or rename controls", async ({ page 
   const name = `Browse ${testInfo.project.name} ${Date.now()}`;
   await page.goto("/");
   await createProjectInUi(page, name);
-  await expect(page.getByRole("link", { name })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
 
   const viewer = {
     clerkUserId: `user_viewer_${testInfo.project.name}`,
     email: "viewer@example.com",
   };
   seedMember(viewer.clerkUserId, "viewer");
-  const projectPath = await page.getByRole("link", { name, exact: true }).getAttribute("href");
-  assignProjectMember(viewer.clerkUserId, projectPath!.split("/").pop()!);
+  assignProjectMember(viewer.clerkUserId, new URL(page.url()).pathname.split("/").pop()!);
   await signInAs(page, viewer);
   await page.goto("/");
 

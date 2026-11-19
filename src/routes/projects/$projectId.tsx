@@ -7,7 +7,7 @@ import { CopyPageLink } from "@/components/copy-page-link";
 import { createFileRoute, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { CompleteBanner, CompleteProject } from "@/components/complete-project";
 import { DeleteWork } from "@/components/delete-work";
-import { ChevronLeft, Clapperboard, Upload } from "lucide-react";
+import { ChevronLeft, Clapperboard, Upload, Users } from "lucide-react";
 import { useState } from "react";
 import { MemberScreen } from "@/components/member-screen";
 import {
@@ -114,6 +114,8 @@ function ProjectView({ page }: { page: ProjectPage }) {
     void goTo({ search: (prev) => ({ ...prev, sheet, video }), hash: "", replace: true });
   const isOwner = member.role === "owner";
   const isOpen = project.completedAt === null;
+  // An Owner usually hands the first upload to the Project's editor.
+  const needsPeople = isOwner && project.people.length === 0;
 
   function rename(name: string) {
     setFailure("");
@@ -169,7 +171,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
       ? [
           {
             id: "complete" as const,
-            label: "Complete",
+            label: "Complete… (deleted in 14 days)",
             sheet: (onClosed: () => void) => (
               <CompleteProject
                 name={project.name}
@@ -202,7 +204,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
       : []),
   ];
 
-  const uploadSheet = (label: string) => (
+  const uploadSheet = (label: string, variant?: "secondary") => (
     <UploadSheet
       open={search.sheet === "upload"}
       onOpenChange={(next) => setSheet(next ? "upload" : undefined)}
@@ -211,7 +213,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
         projects: [{ id: project.id, name: project.name }],
       }}
       trigger={
-        <Button>
+        <Button variant={variant}>
           <Upload aria-hidden /> {label}
         </Button>
       }
@@ -280,13 +282,22 @@ function ProjectView({ page }: { page: ProjectPage }) {
               </EmptyMedia>
               <EmptyTitle>No Videos yet</EmptyTitle>
               <EmptyDescription>
-                {uploadable
-                  ? "Upload the first cut to start the review."
-                  : "Waiting for the first cut. An Owner or Editor will upload it here."}
+                {needsPeople
+                  ? "Add your editor so they can upload the first cut."
+                  : uploadable
+                    ? "Upload the first cut to start the review."
+                    : "Someone with upload access will add it here."}
               </EmptyDescription>
             </EmptyHeader>
-            {uploadable && project.completedAt === null && (
-              <EmptyContent>{uploadSheet("Upload first cut")}</EmptyContent>
+            {uploadable && isOpen && (
+              <EmptyContent className="flex-row flex-wrap justify-center">
+                {needsPeople && (
+                  <Button onClick={() => setSheet("people")}>
+                    <Users aria-hidden /> Add people
+                  </Button>
+                )}
+                {uploadSheet("Upload first cut", needsPeople ? "secondary" : undefined)}
+              </EmptyContent>
             )}
           </Empty>
         ) : (

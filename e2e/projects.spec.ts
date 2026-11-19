@@ -80,8 +80,15 @@ test("a created Project opens, shows the next step, and can be renamed", async (
   await expect(heading).toBeFocused();
   await expect(page).toHaveTitle(new RegExp(name));
   await expect(page.getByText(/No Videos yet/)).toBeVisible();
+  // Nobody is on the Project yet, so the next step is adding the editor.
+  await expect(page.getByText("Add your editor so they can upload the first cut.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Upload first cut" })).toBeVisible();
+  await page.getByRole("button", { name: "Add people" }).click();
+  await expect(page).toHaveURL(/sheet=people/);
+  await page.getByRole("button", { name: "Close" }).click();
 
   await page.getByRole("button", { name: `More actions for ${name}` }).click();
+  await page.getByRole("menuitem", { name: "Complete… (deleted in 14 days)" }).waitFor();
   await page.getByRole("menuitem", { name: "Rename" }).click();
   await page.getByLabel("Project name").fill(renamed);
   await page.getByRole("button", { name: "Save name" }).click();

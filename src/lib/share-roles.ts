@@ -1,6 +1,6 @@
 import type { AccessRole, ProjectRole } from "@/server/db/schema";
 
-/** The three roles an Owner can give on a Folder or Project, with what each one allows. */
+/** The three roles an Owner can give on a Project, with what each one allows. */
 export const shareRoles: { role: ProjectRole; label: string; description: string }[] = [
   {
     role: "viewer",
@@ -11,7 +11,7 @@ export const shareRoles: { role: ProjectRole; label: string; description: string
     role: "uploader",
     label: "Uploader",
     description:
-      "Can add videos and new versions of their own videos, and comment. Can't change status or see other folders.",
+      "Can add videos and new versions of their own videos, and comment. Can't change status.",
   },
   {
     role: "editor",

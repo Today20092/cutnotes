@@ -19,27 +19,16 @@ export const listProjectMembers = createServerFn({ method: "POST" })
       results: [project, people],
     } = await readAsMember("owner", (db) => [
       db
-        .select({
-          id: projects.id,
-          folderId: projects.folderId,
-          folderName: sql<
-            string | null
-          >`(SELECT named.name FROM folders AS named WHERE named.id = ${projects.folderId})`.as(
-            "folder_name",
-          ),
-        })
+        .select({ id: projects.id })
         .from(projects)
         .where(and(eq(projects.id, projectId), isNull(projects.deletedAt))),
       db
         .select({
           id: members.id,
           displayName: members.displayName,
+          avatarUrl: members.avatarUrl,
           teamRole: sql<typeof members.$inferSelect.role>`${members.role}`.as("team_role"),
           role: sql<ProjectRole | null>`${projectMembers.role}`.as("project_role"),
-          // Access inherited from the Project's Folder, shown as "Editor via Folder X".
-          folderRole: sql<ProjectRole | null>`(SELECT inherited.role FROM folder_members AS inherited
-            JOIN projects AS filed ON filed.folder_id = inherited.folder_id
-            WHERE filed.id = ${projectId} AND inherited.member_id = ${members.id})`,
           addedAt: projectMembers.createdAt,
           addedBy: sql<
             string | null
@@ -53,10 +42,8 @@ export const listProjectMembers = createServerFn({ method: "POST" })
         .where(isNull(members.removedAt))
         .orderBy(asc(members.createdAt), asc(members.id)),
     ]);
-    const [found] = project;
-    if (!found) refuse(404, "not-found");
-    const folder = found.folderId ? { id: found.folderId, name: found.folderName ?? "" } : null;
-    return { folder, members: people };
+    if (!project.length) refuse(404, "not-found");
+    return { members: people };
   });
 
 const assignmentSchema = v.object({

@@ -15,14 +15,14 @@ import {
 export const roles = ["viewer", "editor", "owner"] as const;
 export type Role = (typeof roles)[number];
 
-/** Project and Folder assignments, lowest first: Reviewer, Uploader, Editor. */
+/** Project assignments, lowest first: Reviewer, Uploader, Editor. */
 export const projectRoles = ["viewer", "uploader", "editor"] as const;
 export type ProjectRole = (typeof projectRoles)[number];
 
-/** What a Project or Folder screen grants: an assignment, or an Owner's implicit access. */
+/** What a Project screen grants: an assignment, or an Owner's implicit access. */
 export type AccessRole = ProjectRole | "owner";
 
-/** A Team Invite offers a Role; a Project or Folder Invite offers a ProjectRole. */
+/** A Team Invite offers a Role; a Project Invite offers a ProjectRole. */
 export const inviteRoles = ["viewer", "uploader", "editor", "owner"] as const;
 export type InviteRole = (typeof inviteRoles)[number];
 
@@ -52,18 +52,6 @@ export const invites = sqliteTable("invites", {
   revokedAt: integer("revoked_at"),
   projectId: text("project_id").references(() => projects.id, { onDelete: "cascade" }),
   note: text("note"),
-  folderId: text("folder_id").references(() => folders.id, { onDelete: "cascade" }),
-});
-
-/** A named group of Projects. Deleting one leaves its Projects unfiled. */
-export const folders = sqliteTable("folders", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  createdBy: text("created_by")
-    .notNull()
-    .references(() => members.id),
-  createdAt: integer("created_at").notNull(),
-  updatedAt: integer("updated_at").notNull(),
 });
 
 export const projects = sqliteTable(
@@ -79,12 +67,8 @@ export const projects = sqliteTable(
     completedAt: integer("completed_at"),
     deleteAfter: integer("delete_after"),
     deletedAt: integer("deleted_at"),
-    folderId: text("folder_id").references(() => folders.id, { onDelete: "set null" }),
   },
-  (table) => [
-    index("projects_delete_after_idx").on(table.deleteAfter),
-    index("projects_folder_id_idx").on(table.folderId),
-  ],
+  (table) => [index("projects_delete_after_idx").on(table.deleteAfter)],
 );
 
 export type Project = typeof projects.$inferSelect;
@@ -107,27 +91,6 @@ export const projectMembers = sqliteTable(
   (table) => [
     primaryKey({ columns: [table.projectId, table.memberId] }),
     index("project_members_member_idx").on(table.memberId),
-  ],
-);
-
-export const folderMembers = sqliteTable(
-  "folder_members",
-  {
-    folderId: text("folder_id")
-      .notNull()
-      .references(() => folders.id, { onDelete: "cascade" }),
-    memberId: text("member_id")
-      .notNull()
-      .references(() => members.id, { onDelete: "cascade" }),
-    role: text("role", { enum: projectRoles }).notNull(),
-    addedBy: text("added_by")
-      .notNull()
-      .references(() => members.id),
-    createdAt: integer("created_at").notNull(),
-  },
-  (table) => [
-    primaryKey({ columns: [table.folderId, table.memberId] }),
-    index("folder_members_member_idx").on(table.memberId),
   ],
 );
 

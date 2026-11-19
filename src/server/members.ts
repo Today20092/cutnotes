@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { asc, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import {
   id,
   readAsMember,
@@ -8,7 +8,7 @@ import {
   requireMember,
   setMemberRole,
 } from "@/server/access";
-import { members, roles, type Role } from "@/server/db/schema";
+import { members, projectMembers, projects, roles, type Role } from "@/server/db/schema";
 
 export const listMembers = createServerFn({ method: "POST" }).handler(async () => {
   const { member, results } = await readAsMember("owner", (db) => [
@@ -29,8 +29,27 @@ export const listMembers = createServerFn({ method: "POST" }).handler(async () =
       .from(members)
       .where(isNull(members.removedAt))
       .orderBy(asc(members.createdAt), asc(members.id)),
+    db
+      .select({
+        memberId: projectMembers.memberId,
+        id: projects.id,
+        name: projects.name,
+        role: projectMembers.role,
+      })
+      .from(projectMembers)
+      .innerJoin(
+        projects,
+        and(eq(projects.id, projectMembers.projectId), isNull(projects.deletedAt)),
+      )
+      .orderBy(asc(projects.name), asc(projects.id)),
   ]);
-  return { youId: member.id, members: results[0] };
+  return {
+    youId: member.id,
+    members: results[0].map((person) => ({
+      ...person,
+      projects: results[1].filter((assignment) => assignment.memberId === person.id),
+    })),
+  };
 });
 
 export const changeMemberRole = createServerFn({ method: "POST" })

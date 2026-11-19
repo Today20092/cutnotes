@@ -63,9 +63,7 @@ function Redeem({ team, token }: { team: Team; token: string }) {
       await navigate(
         result.projectId
           ? { to: "/projects/$projectId", params: { projectId: result.projectId }, replace: true }
-          : result.folderId
-            ? { to: "/folders/$folderId", params: { folderId: result.folderId }, replace: true }
-            : { to: "/", replace: true },
+          : { to: "/", replace: true },
       );
     },
   });
@@ -111,9 +109,7 @@ function Redeem({ team, token }: { team: Team; token: string }) {
         title={
           result.projectId
             ? "You already have access to this project"
-            : result.folderId
-              ? "You already have access to this folder"
-              : "You are already on this Team"
+            : "You are already on this Team"
         }
         action={
           result.projectId ? (
@@ -123,14 +119,6 @@ function Redeem({ team, token }: { team: Team; token: string }) {
               className={buttonVariants()}
             >
               Open project
-            </Link>
-          ) : result.folderId ? (
-            <Link
-              to="/folders/$folderId"
-              params={{ folderId: result.folderId }}
-              className={buttonVariants()}
-            >
-              Open folder
             </Link>
           ) : (
             <Link to="/" className={buttonVariants()}>

@@ -79,7 +79,8 @@ test("a Project opens, shows the next step, and can be renamed", async ({ page }
   await expect(page).toHaveTitle(new RegExp(name));
   await expect(page.getByText(/No Videos yet/)).toBeVisible();
 
-  await page.getByRole("button", { name: `Rename ${name}` }).click();
+  await page.getByRole("button", { name: `More actions for ${name}` }).click();
+  await page.getByRole("menuitem", { name: "Rename" }).click();
   await page.getByLabel("Project name").fill(renamed);
   await page.getByRole("button", { name: "Save name" }).click();
 

@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { seedComment, seedMember, seedUploaderFolder } from "./support/database";
+import { seedComment, seedMember, seedUploaderProject } from "./support/database";
 import { sampleStream } from "./support/sample-stream";
 import { signInAs } from "./support/session";
 
-test("an Uploader reviews inside a Folder but manages only the Videos they created", async ({
+test("an Uploader reviews an assigned Project but manages only the Videos they created", async ({
   page,
 }, testInfo) => {
   const suffix = `${testInfo.project.name}_${Date.now()}`;
@@ -11,7 +11,7 @@ test("an Uploader reviews inside a Folder but manages only the Videos they creat
   const other = `editor_${suffix}`;
   seedMember(uploader.clerkUserId, "viewer", uploader.email);
   seedMember(other, "editor", "Another editor");
-  const seeded = seedUploaderFolder(uploader.clerkUserId, other, suffix);
+  const seeded = seedUploaderProject(uploader.clerkUserId, other, suffix);
   seedComment(seeded.others, other, `Needs a cut ${suffix}`);
   await page.route("https://image.mux.com/**", (route) =>
     route.fulfill({
@@ -34,7 +34,6 @@ test("an Uploader reviews inside a Folder but manages only the Videos they creat
 
   await signInAs(page, uploader);
   await page.goto("/");
-  await page.getByRole("link", { name: seeded.folderName, exact: true }).click();
   await page.getByRole("link", { name: `Uploader project ${suffix}`, exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(`Uploader project ${suffix}`);
   // An Uploader gets no Status control or rename on the project tiles either.

@@ -1,6 +1,6 @@
 # Project access
 
-Projects are private to assigned people and active Team Owners. A person is assigned on the Project itself or on the Folder that holds it. An ordinary project or video URL never grants access. Sign-in returns to the requested page; someone without access sees an unavailable page without project details.
+Projects are private to assigned people and active Team Owners. An ordinary project or video URL never grants access. Sign-in returns to the requested page; someone without access sees an unavailable page without project details.
 
 ## Team and project roles
 
@@ -14,29 +14,21 @@ Project assignments are separate from Team roles:
 
 Assigning someone as a project Editor does not grant permission to create projects. Changing their Team Editor/Viewer designation does not change their project assignments. Completed projects retain their existing read-only behavior.
 
-## Folders
-
-A Folder is a named group of projects. Owners create, rename and delete Folders, and move a project into a Folder or out of it. A project is in at most one Folder.
-
-An assignment on a Folder (Reviewer, Uploader or Editor) covers every project in it, including projects moved in later. Moving a project out of the Folder ends access that came only from the Folder. A person's role on a project is the higher of their project assignment and their Folder assignment. People see only the Folders they are assigned to; a project they reach through a direct assignment shows as unfiled when they cannot open its Folder.
-
-Deleting a Folder leaves its projects unfiled and removes its assignments and unused Folder invitations. People who had access only through the Folder lose it. Projects, videos and comments are not deleted.
-
-A Team Editor can create a project unfiled, or inside a Folder where their Folder role is Editor. Owners can create projects in any Folder.
-
-Folder invitations work like project invitations: the new person joins the Team as a Viewer with the chosen Folder assignment. People who already have a Folder assignment, and Owners, are told they already have access.
-
 ## Owner workflow
 
-Open a project and find **People**. Add an existing Team member as Editor or Reviewer, change their project role, or remove their access. Owners are listed separately and cannot be removed from an individual project.
+Every project page shows who has access under its title, with avatars, names and project roles; with nobody assigned it says only Team Owners have access. Owners choose **Manage people** to open the **People** sheet (the page address gains `?sheet=people`, so the sheet can be linked; older `#people` links still open it). Assigned people can open the same sheet read-only.
 
-Use **Invite by link** to admit a new person or an existing member to this project. Choose a role and optionally add a private note for Owners. The link works once, expires after seven days, and can be accepted by the first signed-in person holding it. The note is not an email restriction. The token is shown only when created; create a replacement if it is lost.
+The People sheet holds one list: Team Owners (always have access, cannot be removed from an individual project), assigned people with their project role and **Remove**, and pending invitations marked **Pending** with **Revoke**. Use **Add from Team** to assign an existing Team member as Reviewer, Uploader or Editor (Uploader is preselected).
+
+Use **Invite link** to admit a new person or an existing member to this project. Choose a role and, under **More options**, optionally add a private note for Owners. Copy the link or send it on WhatsApp. The link works once, expires after seven days, and can be accepted by the first signed-in person holding it. The note is not an email restriction. The token is shown only when created; create a replacement if it is lost.
 
 A new person accepting a project invitation joins the Team as a Viewer with the chosen project assignment. An existing active member keeps their Team designation. People who already have project access are told so; the invitation stays unused and their role is unchanged. Owners can change an existing assignment in People.
 
+The **Team** page (`/members`) lists each member's projects with their project role, so Owners can see access at a glance.
+
 Invitation history includes project, offered role, note, inviter, creation and expiration dates, and accepted/revoked status with dates. Accepted invitations show the actual accepter and link to membership management. Revoking an unused invitation prevents acceptance; an accepted invitation cannot be revoked to remove a member.
 
-Removing a project member preserves their uploads and comments. Removing a Team member clears all project and Folder assignments. A fresh invitation can reinstate their original identity, preserving comment authorship, but does not restore old assignments or an old Team designation.
+Removing a project member preserves their uploads and comments. Removing a Team member clears all project assignments. A fresh invitation can reinstate their original identity, preserving comment authorship, but does not restore old assignments or an old Team designation.
 
 Guest review links are an explicit exception: anyone holding a valid guest link can review its video without project membership. Removing a member does not revoke guest links. Owners revoke those links separately. Already-issued playback credentials may continue working until expiry; removal prevents new credentials and subsequent authorized actions.
 
@@ -47,5 +39,3 @@ Migration `0008_mature_adam_warlock.sql` creates project assignments and adds pr
 Before rollout, record the intended assignments for existing projects and review active guest links and pending Team invitations. Apply the recorded assignments using People when the new version is available. Collaborators not assigned at rollout will lose access until an Owner adds them. Keep this review on the intended install; never copy production membership data into repository fixtures.
 
 Apply the migration before running this Worker version, following the setup and release guide. Validate the migration on staging and retain the standard D1 recovery point. The schema change is additive, but rolling back the Worker to the old version restores its team-wide access behavior; prefer a forward fix for an access-control regression. This feature does not deploy itself or change remote data during development.
-
-Migration `0010_marvelous_scalphunter.sql` adds Folders, Folder assignments, and the Folder column on projects and invitations. It is additive: existing projects stay unfiled, existing assignments and roles are unchanged, and the Uploader role needs no schema change because roles are stored as text. Apply it before running the Worker version that reads Folders.

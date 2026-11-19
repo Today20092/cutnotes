@@ -109,7 +109,6 @@ export async function expectRefused(response: Response, status: number, code: st
 }
 
 export async function clearDatabase() {
-  await env.DB.exec("DELETE FROM folders");
   await env.DB.exec("DELETE FROM projects");
   await env.DB.exec("DELETE FROM members");
 }

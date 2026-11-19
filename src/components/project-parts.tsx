@@ -114,9 +114,7 @@ export function ProjectNameSheet({
   onSubmit,
   startOpen = false,
   onClosed,
-  extra,
 }: {
-  extra?: ReactNode;
   trigger?: ReactElement;
   startOpen?: boolean;
   onClosed?: () => void;
@@ -180,7 +178,6 @@ export function ProjectNameSheet({
               </p>
             )}
           </Field>
-          {extra}
           <Button type="submit">{submitLabel}</Button>
         </form>
       </SheetContent>

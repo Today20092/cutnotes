@@ -1,5 +1,7 @@
-import { MoveProject } from "@/components/move-project";
-import { ShareSheet } from "@/components/share-sheet";
+import * as v from "valibot";
+import { ActionMenu, type Action } from "@/components/action-menu";
+import { PeopleStrip } from "@/components/people";
+import { PeopleSheet } from "@/components/people-sheet";
 import { CopyPageLink } from "@/components/copy-page-link";
 import { createFileRoute, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { CompleteBanner, CompleteProject } from "@/components/complete-project";
@@ -15,7 +17,7 @@ import {
   unreadFirst,
   PageBreadcrumb,
   PageHeading,
-  RenameProjectButton,
+  ProjectNameSheet,
   videoGridClass,
   VideoGridSkeleton,
   WriteFeedback,
@@ -39,7 +41,11 @@ import {
   type ProjectPage,
 } from "@/lib/projects";
 
+// An unknown value is dropped rather than shown as an error page.
+const searchSchema = v.object({ sheet: v.fallback(v.optional(v.picklist(["people"])), undefined) });
+
 export const Route = createFileRoute("/projects/$projectId")({
+  validateSearch: (search) => v.parse(searchSchema, search),
   head: () => ({ meta: [{ title: "Project · Cutnotes" }] }),
   // Only on intent: a first page load has no session token yet.
   loader: ({ context, params, preload }) => {
@@ -86,7 +92,12 @@ function ProjectView({ page }: { page: ProjectPage }) {
   const { project, videos, member } = page;
   const writable = canWrite(project.role);
   const uploadable = canUpload(project.role);
-  const startShareOpen = useLocation({ select: (location) => location.hash === "people" });
+  const search = Route.useSearch();
+  // `#people` is the older link form, still sent in Invite history and old messages.
+  const hashPeople = useLocation({ select: (location) => location.hash === "people" });
+  const peopleOpen = search.sheet === "people" || hashPeople;
+  const isOwner = member.role === "owner";
+  const isOpen = project.completedAt === null;
 
   function rename(name: string) {
     setFailure("");
@@ -119,6 +130,59 @@ function ProjectView({ page }: { page: ProjectPage }) {
     );
   }
 
+  const actions: Action[] = [
+    ...(writable && isOpen
+      ? [
+          {
+            label: "Rename",
+            sheet: (onClosed: () => void) => (
+              <ProjectNameSheet
+                title="Rename Project"
+                submitLabel="Save name"
+                initialName={project.name}
+                onSubmit={rename}
+                startOpen
+                onClosed={onClosed}
+              />
+            ),
+          },
+        ]
+      : []),
+    ...(isOwner && isOpen
+      ? [
+          {
+            label: "Complete",
+            sheet: (onClosed: () => void) => (
+              <CompleteProject
+                name={project.name}
+                onComplete={() => changeComplete(true)}
+                startOpen
+                onClosed={onClosed}
+              />
+            ),
+          },
+        ]
+      : []),
+    ...(isOwner
+      ? [
+          {
+            label: "Delete",
+            destructive: true,
+            sheet: (onClosed: () => void) => (
+              <DeleteWork
+                kind="Project"
+                id={project.id}
+                name={project.name}
+                startOpen
+                onClosed={onClosed}
+                onDeleted={() => void navigate({ to: "/" })}
+              />
+            ),
+          },
+        ]
+      : []),
+  ];
+
   const uploadSheet = (
     <UploadSheet
       destination={{
@@ -136,31 +200,30 @@ function ProjectView({ page }: { page: ProjectPage }) {
   return (
     <div className="flex flex-col gap-4">
       <PageBreadcrumb
-        trail={[
-          { label: "Projects", link: <Link to="/" /> },
-          ...(project.folderId
-            ? [
-                {
-                  label: project.folderName ?? "Folder",
-                  link: <Link to="/folders/$folderId" params={{ folderId: project.folderId }} />,
-                },
-              ]
-            : []),
-        ]}
+        trail={[{ label: "Projects", link: <Link to="/" /> }]}
         current={project.name}
       />
       <PageHeading title={project.name}>
         <CopyPageLink kind="project" path={`/projects/${project.id}`} />
-        {member.role === "owner" && (
-          <ShareSheet
-            kind="project"
-            id={project.id}
-            name={project.name}
-            startOpen={startShareOpen}
-          />
-        )}
-        {uploadable && project.completedAt === null && videos.length > 0 && uploadSheet}
+        {uploadable && isOpen && videos.length > 0 && uploadSheet}
+        <ActionMenu label={`More actions for ${project.name}`} actions={actions} />
       </PageHeading>
+      <PeopleStrip projectId={project.id} people={project.people} canManage={isOwner} />
+      <PeopleSheet
+        projectId={project.id}
+        name={project.name}
+        people={project.people}
+        canManage={isOwner}
+        open={peopleOpen}
+        onOpenChange={(next) =>
+          void navigate({
+            to: ".",
+            search: { sheet: next ? "people" : undefined },
+            hash: "",
+            replace: true,
+          })
+        }
+      />
       <WriteFeedback status={status} failure={failure} />
       {project.deleteAfter !== null && (
         <CompleteBanner
@@ -208,42 +271,6 @@ function ProjectView({ page }: { page: ProjectPage }) {
       )}
       {writable && project.completedAt === null && videos.length > 0 && (
         <ReviewBoard videos={videos} />
-      )}
-      {(member.role === "owner" || (writable && project.completedAt === null)) && (
-        <section
-          aria-labelledby="manage-project-heading"
-          className="mt-8 flex flex-col gap-4 border-t pt-6"
-        >
-          <h2 id="manage-project-heading" className="text-lg font-semibold">
-            Manage Project
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {writable && project.completedAt === null && (
-              <RenameProjectButton name={project.name} onRename={rename} labeled />
-            )}
-            {member.role === "owner" && (
-              <MoveProject
-                projectId={project.id}
-                name={project.name}
-                folderId={project.folderId}
-                onMoved={setStatus}
-              />
-            )}
-            {member.role === "owner" && project.completedAt === null && (
-              <CompleteProject name={project.name} onComplete={() => changeComplete(true)} />
-            )}
-            {member.role === "owner" && (
-              <DeleteWork
-                kind="Project"
-                id={project.id}
-                name={project.name}
-                onDeleted={() => {
-                  void navigate({ to: "/" });
-                }}
-              />
-            )}
-          </div>
-        </section>
       )}
     </div>
   );

@@ -6,7 +6,7 @@ import { PageBreadcrumb, PageHeading } from "@/components/project-parts";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/members")({
-  head: () => ({ meta: [{ title: "Members · Cutnotes" }] }),
+  head: () => ({ meta: [{ title: "Team · Cutnotes" }] }),
   component: MembersPage,
 });
 
@@ -21,14 +21,14 @@ function MembersPage() {
                 { label: "Projects", link: <Link to="/" /> },
                 { label: "Settings", link: <Link to="/settings" /> },
               ]}
-              current="Members"
+              current="Team"
             />
             <MembersManager />
           </SettingsLayout>
         ) : (
           <SettingsLayout>
-            <PageHeading title="Members" />
-            <p>Only an Owner can manage Members.</p>
+            <PageHeading title="Team" />
+            <p>Only an Owner can manage the Team.</p>
           </SettingsLayout>
         )
       }

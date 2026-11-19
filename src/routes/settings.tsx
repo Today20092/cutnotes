@@ -16,7 +16,7 @@ export const Route = createFileRoute("/settings")({
 });
 
 const teamLinks = [
-  { to: "/members", label: "Members", detail: "Change Roles or remove people", icon: Users },
+  { to: "/members", label: "Team", detail: "Roles, Project access, or remove people", icon: Users },
   { to: "/invites", label: "Invites", detail: "Invite someone to the Team", icon: UserPlus },
   {
     to: "/feedback",

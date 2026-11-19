@@ -5,6 +5,8 @@ import { Fragment, useRef, useState, type RefObject } from "react";
 import { roleChoices } from "@/components/invites-manager";
 import { PageHeading, WriteFeedback } from "@/components/project-parts";
 import { PersonAvatar } from "@/components/person-avatar";
+import { Badge } from "@/components/ui/badge";
+import { roleLabel } from "@/lib/share-roles";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
 import {
@@ -112,7 +114,7 @@ export function MembersManager() {
 
   return (
     <div className="w-full max-w-xl space-y-6">
-      <PageHeading title="Members">
+      <PageHeading title="Team">
         <Link to="/invites" className={buttonVariants({ variant: "secondary" })}>
           Invite someone
         </Link>
@@ -124,9 +126,9 @@ export function MembersManager() {
           People on the Team
         </h2>
         {list.isPending && <Skeleton className="h-16" />}
-        {hasStatus(list.error, 403) && <p>Only an Owner can manage Members.</p>}
+        {hasStatus(list.error, 403) && <p>Only an Owner can manage the Team.</p>}
         {list.isError && !hasStatus(list.error, 403) && (
-          <p role="alert">Could not load Members. Please reload the page.</p>
+          <p role="alert">Could not load the Team. Please reload the page.</p>
         )}
         {list.data && (
           <ul className="divide-y">
@@ -191,6 +193,26 @@ function MemberRow({
         </p>
         {member.invitationNote && (
           <p className="text-sm text-muted-foreground">Invitation note: {member.invitationNote}</p>
+        )}
+        {member.role === "owner" ? (
+          <p className="text-sm text-muted-foreground">Can open every Project</p>
+        ) : member.projects.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No Projects yet</p>
+        ) : (
+          <ul aria-label={`Projects for ${name}`} className="mt-1 flex flex-wrap gap-1.5">
+            {member.projects.map((project) => (
+              <li key={project.id}>
+                <Link
+                  to="/projects/$projectId"
+                  params={{ projectId: project.id }}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-md text-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring sm:min-h-0"
+                >
+                  <span className="wrap-anywhere">{project.name}</span>
+                  <Badge variant="secondary">{roleLabel(project.role)}</Badge>
+                </Link>
+              </li>
+            ))}
+          </ul>
         )}
       </ItemContent>
       {/* Phone: actions go on their own line, under the name. */}

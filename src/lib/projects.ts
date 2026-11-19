@@ -50,9 +50,9 @@ export const isPendingProject = (project: ProjectSummary) => project.id.startsWi
 export function useCreateProject() {
   const client = useQueryClient();
   return useMutation(
-    projectWrite<ProjectList | ProjectPage, { name: string; folderId: string | null }>(client, {
+    projectWrite<ProjectList | ProjectPage, { name: string }>(client, {
       mutationFn: (input) => createProject({ data: input }),
-      apply: ({ name, folderId }) =>
+      apply: ({ name }) =>
         client.setQueryData(
           projectListQuery.queryKey,
           (list) =>
@@ -66,8 +66,7 @@ export function useCreateProject() {
                   createdAt: Date.now(),
                   completedAt: null,
                   deleteAfter: null,
-                  folderId,
-                  folderName: list.folders.find((folder) => folder.id === folderId)?.name ?? null,
+                  people: [],
                 },
                 ...list.projects,
               ],

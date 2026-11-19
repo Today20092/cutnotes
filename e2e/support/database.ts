@@ -1,11 +1,10 @@
 import { spawnSync } from "node:child_process";
 import {
   comments,
-  folderMembers,
-  folders,
   insertRow,
   insertRowIfMissing,
   members,
+  projectMembers,
   projects,
   revisions,
   shareTokenQuery,
@@ -169,11 +168,10 @@ export function assignProjectMember(
 }
 
 /**
- * A Folder the Uploader belongs to, holding one Project with two ready Videos:
+ * A Project the Uploader is assigned to, holding two ready Videos:
  * one created by `otherId` and one by the Uploader. Returns the IDs to open.
  */
-export function seedUploaderFolder(uploaderId: string, otherId: string, suffix: string) {
-  const folderId = crypto.randomUUID();
+export function seedUploaderProject(uploaderId: string, otherId: string, suffix: string) {
   const projectId = crypto.randomUUID();
   const videoIds = { others: crypto.randomUUID(), own: crypto.randomUUID() };
   const video = (id: string, title: string, createdBy: string) => [
@@ -200,30 +198,22 @@ export function seedUploaderFolder(uploaderId: string, otherId: string, suffix: 
     }),
   ];
   executeSql(
-    insertRow(folders, {
-      id: folderId,
-      name: `Uploader folder ${suffix}`,
-      createdBy: otherId,
-      createdAt: 1,
-      updatedAt: 1,
-    }),
-    insertRow(folderMembers, {
-      folderId,
-      memberId: uploaderId,
-      role: "uploader",
-      addedBy: otherId,
-      createdAt: 1,
-    }),
     insertRow(projects, {
       id: projectId,
       name: `Uploader project ${suffix}`,
       createdBy: otherId,
       createdAt: 1,
       updatedAt: 1,
-      folderId,
+    }),
+    insertRow(projectMembers, {
+      projectId,
+      memberId: uploaderId,
+      role: "uploader",
+      addedBy: otherId,
+      createdAt: 1,
     }),
     ...video(videoIds.others, `Their cut ${suffix}`, otherId),
     ...video(videoIds.own, `My cut ${suffix}`, uploaderId),
   );
-  return { folderId, projectId, ...videoIds, folderName: `Uploader folder ${suffix}` };
+  return { projectId, ...videoIds };
 }

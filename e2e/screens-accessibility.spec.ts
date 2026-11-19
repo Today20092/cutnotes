@@ -190,10 +190,9 @@ test("the Project screen", async ({ page }, testInfo) => {
   await expect(page.getByText(/No Videos yet/)).toBeVisible();
   await expectAccessible(page, "empty Project");
 
-  await page
-    .getByRole("button", { name: /^Rename/ })
-    .first()
-    .click();
+  await page.getByRole("button", { name: /^More actions for/ }).click();
+  await expectAccessible(page, "Project actions menu");
+  await page.getByRole("menuitem", { name: "Rename" }).click();
   await expectAccessible(page, "renaming a Project");
   await page.reload();
 
@@ -308,13 +307,13 @@ test("a Video whose send or processing failed", async ({ page }, testInfo) => {
   await expectAccessible(page, "failed processing");
 });
 
-test("the Members screen", async ({ page }, testInfo) => {
+test("the Team screen", async ({ page }, testInfo) => {
   const name = uniqueName("Axe member", testInfo);
   seedMember(`user_axe_member_${testInfo.project.name}_${Date.now()}`, "viewer", name);
   await signInAs(page, owner);
   await page.goto("/members");
   await expect(page.getByRole("button", { name: `Remove ${name}` })).toBeVisible();
-  await expectAccessible(page, "Members");
+  await expectAccessible(page, "Team");
 
   await page.getByRole("combobox", { name: `Role for ${name}` }).click();
   await expectAccessible(page, "choosing a Member role");
@@ -332,8 +331,8 @@ test("the Members screen", async ({ page }, testInfo) => {
 
   await signInAs(page, seededViewer("member_viewer", testInfo));
   await page.goto("/members");
-  await expect(page.getByText("Only an Owner can manage Members.")).toBeVisible();
-  await expectAccessible(page, "Members as a Viewer");
+  await expect(page.getByText("Only an Owner can manage the Team.")).toBeVisible();
+  await expectAccessible(page, "Team as a Viewer");
 });
 
 test("deleting a Project: confirmation, cancellation, failure and disappearance", async ({
@@ -341,8 +340,12 @@ test("deleting a Project: confirmation, cancellation, failure and disappearance"
 }, testInfo) => {
   await signInAs(page, owner);
   const name = await openNewProject(page, testInfo);
-  const trigger = page.getByRole("button", { name: `Delete ${name}`, exact: true });
-  await trigger.click();
+  const trigger = page.getByRole("button", { name: `More actions for ${name}`, exact: true });
+  const openDelete = async () => {
+    await trigger.click();
+    await page.getByRole("menuitem", { name: "Delete" }).click();
+  };
+  await openDelete();
   await expect(page.getByRole("dialog", { name: "Delete Project?" })).toBeVisible();
   await expectAccessible(page, "confirm Project deletion");
   await page.getByRole("button", { name: "Keep Project" }).click();
@@ -350,7 +353,7 @@ test("deleting a Project: confirmation, cancellation, failure and disappearance"
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
 
   await page.route(callTo("deleteProject"), (route) => route.abort());
-  await trigger.click();
+  await openDelete();
   await page.getByRole("button", { name: `Delete ${name} permanently` }).click();
   await expect(appAlert(page)).toContainText("Could not delete");
   await expectAccessible(page, "failed Project deletion");
@@ -371,7 +374,9 @@ test("completing and reopening a Project", async ({ page }, testInfo) => {
   await signInAs(page, owner);
   await page.goto(`/projects/${id}`);
   const heading = page.getByRole("heading", { level: 1, name: "Playback project" });
-  await page.getByRole("button", { name: "Complete Playback project" }).click();
+  const actions = page.getByRole("button", { name: "More actions for Playback project" });
+  await actions.click();
+  await page.getByRole("menuitem", { name: "Complete" }).click();
   await expect(page.getByRole("dialog", { name: "Complete Project?" })).toBeVisible();
   await expectAccessible(page, "confirm Complete");
   await page
@@ -398,7 +403,9 @@ test("completing and reopening a Project", async ({ page }, testInfo) => {
   await page.goto(`/projects/${id}`);
   await page.getByRole("button", { name: "Reopen Playback project" }).click();
   await expect(countdown).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Complete Playback project" })).toBeVisible();
+  await actions.click();
+  await expect(page.getByRole("menuitem", { name: "Complete" })).toBeVisible();
+  await page.keyboard.press("Escape");
   await expectAccessible(page, "Project reopened");
 });
 

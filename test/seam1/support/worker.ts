@@ -2,7 +2,6 @@ import { env, exports } from "cloudflare:workers";
 import { fromCrossJSON, toJSON } from "seroval";
 // Start only registers a server function once its module is compiled.
 import "@/server/app-shell";
-import "@/server/folders";
 import "@/server/invites";
 import "@/server/members";
 import "@/server/projects";
@@ -39,7 +38,6 @@ const serverFnId = (file: string, exportName: string) =>
 const invitesFile = "/src/server/invites.ts";
 const videosFile = "/src/server/videos.ts";
 const membersFile = "/src/server/members.ts";
-const foldersFile = "/src/server/folders.ts";
 
 const sharingFile = "/src/server/sharing.ts";
 
@@ -56,13 +54,6 @@ export const ownerServerFunctionIds = {
   listProjectMembers: serverFnId("/src/server/project-members.ts", "listProjectMembers"),
   setProjectMember: serverFnId("/src/server/project-members.ts", "setProjectMember"),
   removeProjectMember: serverFnId("/src/server/project-members.ts", "removeProjectMember"),
-  createFolder: serverFnId(foldersFile, "createFolder"),
-  renameFolder: serverFnId(foldersFile, "renameFolder"),
-  deleteFolder: serverFnId(foldersFile, "deleteFolder"),
-  listFolderMembers: serverFnId(foldersFile, "listFolderMembers"),
-  setFolderMember: serverFnId(foldersFile, "setFolderMember"),
-  removeFolderMember: serverFnId(foldersFile, "removeFolderMember"),
-  moveProject: serverFnId("/src/server/projects.ts", "moveProject"),
   createShareLink: serverFnId(sharingFile, "createShareLink"),
   listShareLinks: serverFnId(sharingFile, "listShareLinks"),
   revokeShareLink: serverFnId(sharingFile, "revokeShareLink"),
@@ -91,7 +82,6 @@ export const memberServerFunctionIds = {
   getAppShell: serverFnId("/src/server/app-shell.ts", "getAppShell"),
   listProjects: serverFnId("/src/server/projects.ts", "listProjects"),
   getProject: serverFnId("/src/server/projects.ts", "getProject"),
-  getFolder: serverFnId(foldersFile, "getFolder"),
   createProject: serverFnId("/src/server/projects.ts", "createProject"),
   renameProject: serverFnId("/src/server/projects.ts", "renameProject"),
   startUpload: serverFnId(videosFile, "startUpload"),

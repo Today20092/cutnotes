@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeSignature } from "./support/fake-mux";
 import { sessionToken } from "./support/clerk";
 import {
@@ -223,6 +223,29 @@ describe("automatic Stages", () => {
     // A repeated ready event for the same cut reopens nothing.
     expect((await ready("u2")).status).toBe(200);
     expect(await status("v")).toBe("done");
+  });
+
+  it("a repeated ready event with the same timestamp does not undo Request changes", async () => {
+    await seedVideo("v", projectId);
+    await seedRevision({ id: "r1", videoId: "v", uploadId: "u1", state: "processing" });
+    const at = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(at);
+    expect((await ready("u1")).status).toBe(200);
+    clock.mockRestore();
+    expect(await status("v")).toBe("review");
+    expect(await stage()).toBe("in_review");
+
+    expect((await call(fn.requestChanges, owner, { videoId: "v", revisionId: "r1" })).status).toBe(
+      200,
+    );
+    expect(await stage()).toBe("editing");
+    // Mux redelivers the event within the same millisecond as the first ready write.
+    vi.spyOn(Date, "now").mockReturnValue(at);
+    expect((await ready("u1")).status).toBe(200);
+    vi.restoreAllMocks();
+
+    expect(await status("v")).toBe("rework");
+    expect(await stage()).toBe("editing");
   });
 
   it("an older cut that finishes late changes nothing", async () => {

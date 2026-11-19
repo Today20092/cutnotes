@@ -100,12 +100,10 @@ async function markReady(revisionId: string, data: Partial<MuxAsset>) {
   const now = Date.now();
   const db = getDb();
   const videoId = sql`(SELECT video_id FROM revisions WHERE id = ${revisionId})`;
-  // Only the write that made this Revision ready, and only when it is the newest ready cut:
-  // a late older cut neither reopens the Video nor moves the Stage.
-  const newest = and(
-    sql`EXISTS (SELECT 1 FROM revisions WHERE id = ${revisionId} AND ready_at = ${now})`,
-    latestReadyRevision(revisionId),
-  );
+  // D1 runs a batch in order on one connection, so `changes()` is the previous statement's
+  // row count: only the write that made this Revision ready reopens the Video, and only a
+  // reopened Video moves the Stage. A late older cut is not the newest and changes neither.
+  const changedOne = sql`changes() = 1`;
   // One batch, so a failure leaves the Revision unfinished and a retry transitions again.
   await db.batch([
     db
@@ -126,17 +124,18 @@ async function markReady(revisionId: string, data: Partial<MuxAsset>) {
       .set({ updatedAt: now, status: "review" })
       .where(
         and(
+          changedOne,
           eq(videos.id, videoId),
           isNull(videos.deletedAt),
           openProject(videos.projectId),
-          newest,
+          latestReadyRevision(revisionId),
         ),
       ),
     moveStage(
       db,
       sql`(SELECT project_id FROM videos WHERE id = ${videoId})`,
       "in_review",
-      and(sql`EXISTS (SELECT 1 FROM videos WHERE id = ${videoId} AND deleted_at IS NULL)`, newest),
+      changedOne,
       now,
     ),
   ]);

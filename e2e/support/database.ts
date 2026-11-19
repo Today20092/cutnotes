@@ -11,6 +11,7 @@ import {
   videos,
   type Statement,
 } from "../../test/support/rows";
+import { e2eState } from "./port";
 
 /** Adds a Member to the Seam 2 database, for Roles no screen can create yet. */
 export function seedMember(
@@ -146,7 +147,7 @@ function wrangler(...args: string[]) {
       "DB",
       "--local",
       "--persist-to",
-      ".wrangler/e2e",
+      e2eState,
       ...args,
     ],
     { encoding: "utf8" },

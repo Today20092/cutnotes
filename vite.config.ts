@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process";
 import path from "node:path";
+import { e2eState } from "./e2e/support/port";
 import { localPreview } from "./scripts/preview/plugin";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
@@ -56,7 +57,7 @@ export default defineConfig(({ mode }) => {
       ...(preview ? [localPreview()] : []),
       cloudflare({
         viteEnvironment: { name: "ssr" },
-        ...(e2e ? { persistState: { path: ".wrangler/e2e" } } : {}),
+        ...(e2e ? { persistState: { path: e2eState } } : {}),
       }),
       tanstackStart(),
       viteReact(),

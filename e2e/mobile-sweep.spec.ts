@@ -45,6 +45,15 @@ test("on a phone every screen fits the width, logs nothing and keeps touch targe
   });
   page.on("pageerror", (error) => problems.push(`pageerror: ${error.message}`));
 
+  // Other specs seed Members whose photo URLs point nowhere; answer those so the console shows only the app's own output.
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (route) =>
+    route.request().resourceType() === "image"
+      ? route.fulfill({
+          contentType: "image/gif",
+          body: Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64"),
+        })
+      : route.fallback(),
+  );
   await routeMux(page);
   await signInAs(page, owner);
   await page.goto("/");

@@ -160,16 +160,23 @@ export function StageBoard({
         <ToggleGroup
           aria-label="Show Stage"
           variant="outline"
-          className="flex-wrap"
+          // One row that scrolls sideways on a phone: a wrapped segmented control breaks apart.
+          className="-m-1 max-w-[calc(100%+0.5rem)] flex-nowrap overflow-x-auto p-1 [scrollbar-width:none]"
           value={[stage ?? "all"]}
           onValueChange={(next: string[]) => {
             if (next[0]) onStageChange(next[0] === "all" ? undefined : (next[0] as ProjectStage));
           }}
         >
           {(["all", ...projectStages] as const).map((value) => (
-            <ToggleGroupItem key={value} value={value} className="h-11 sm:pointer-fine:h-9">
+            <ToggleGroupItem
+              key={value}
+              value={value}
+              className="h-11 shrink-0 sm:pointer-fine:h-9"
+            >
               {value === "all" ? "All" : stageLabels[value]}{" "}
-              {value === "all" ? projects.length : lists[value]!.length}
+              <span className="tabular-nums opacity-70">
+                {value === "all" ? projects.length : lists[value]!.length}
+              </span>
             </ToggleGroupItem>
           ))}
         </ToggleGroup>

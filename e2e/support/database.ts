@@ -1,6 +1,8 @@
 import { spawnSync } from "node:child_process";
 import {
   comments,
+  folderMembers,
+  folders,
   insertRow,
   insertRowIfMissing,
   members,
@@ -164,4 +166,64 @@ export function assignProjectMember(
     sql: "INSERT INTO project_members (project_id, member_id, role, added_by, created_at) SELECT id, ?, ?, created_by, 1 FROM projects WHERE id = ? ON CONFLICT (project_id, member_id) DO UPDATE SET role = excluded.role",
     params: [memberId, role, projectId],
   });
+}
+
+/**
+ * A Folder the Uploader belongs to, holding one Project with two ready Videos:
+ * one created by `otherId` and one by the Uploader. Returns the IDs to open.
+ */
+export function seedUploaderFolder(uploaderId: string, otherId: string, suffix: string) {
+  const folderId = crypto.randomUUID();
+  const projectId = crypto.randomUUID();
+  const videoIds = { others: crypto.randomUUID(), own: crypto.randomUUID() };
+  const video = (id: string, title: string, createdBy: string) => [
+    insertRow(videos, {
+      id,
+      projectId,
+      title,
+      status: "review",
+      createdBy,
+      createdAt: 1,
+      updatedAt: 1,
+    }),
+    insertRow(revisions, {
+      id,
+      videoId: id,
+      number: 1,
+      state: "ready",
+      uploadedBy: createdBy,
+      muxPlaybackId: "sample",
+      durationMs: 8000,
+      frameRate: 25,
+      createdAt: 1,
+      readyAt: 1,
+    }),
+  ];
+  executeSql(
+    insertRow(folders, {
+      id: folderId,
+      name: `Uploader folder ${suffix}`,
+      createdBy: otherId,
+      createdAt: 1,
+      updatedAt: 1,
+    }),
+    insertRow(folderMembers, {
+      folderId,
+      memberId: uploaderId,
+      role: "uploader",
+      addedBy: otherId,
+      createdAt: 1,
+    }),
+    insertRow(projects, {
+      id: projectId,
+      name: `Uploader project ${suffix}`,
+      createdBy: otherId,
+      createdAt: 1,
+      updatedAt: 1,
+      folderId,
+    }),
+    ...video(videoIds.others, `Their cut ${suffix}`, otherId),
+    ...video(videoIds.own, `My cut ${suffix}`, uploaderId),
+  );
+  return { folderId, projectId, ...videoIds, folderName: `Uploader folder ${suffix}` };
 }

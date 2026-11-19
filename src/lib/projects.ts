@@ -20,6 +20,7 @@ import {
 } from "@/lib/writes";
 
 const FOLLOW_PROCESSING_MS = 5000;
+const BOARD_REFRESH_MS = 30_000;
 
 /** Keeps a screen current while one of its Revisions is on its way to ready. */
 const followProcessing = (query: {
@@ -35,7 +36,8 @@ export const projectListQuery = queryOptions({
   queryKey: projectsKey,
   queryFn: () => listProjects(),
   retry: false,
-  refetchInterval: followProcessing,
+  // The board also learns of a new cut while the Owner leaves it open; React Query pauses this in a hidden tab.
+  refetchInterval: (query) => followProcessing(query) || BOARD_REFRESH_MS,
 });
 
 export const projectQuery = (projectId: string) =>

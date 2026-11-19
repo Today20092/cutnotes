@@ -263,7 +263,7 @@ function useGuestActor(
       isRateLimited(error)
         ? "Too many Comments right now. Your text is kept; wait a minute and try again."
         : isRevisionChanged(error)
-          ? "A newer cut is available. Reopen the link to watch it."
+          ? "A newer cut is available. Reload this page to watch it."
           : "Could not send Comment. Your text is kept; try again.",
   };
 }

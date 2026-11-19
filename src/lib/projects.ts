@@ -20,7 +20,7 @@ import {
 } from "@/lib/writes";
 
 const FOLLOW_PROCESSING_MS = 5000;
-const BOARD_REFRESH_MS = 30_000;
+const SCREEN_REFRESH_MS = 30_000;
 
 /** Keeps a screen current while one of its Revisions is on its way to ready. */
 const followProcessing = (query: {
@@ -37,7 +37,7 @@ export const projectListQuery = queryOptions({
   queryFn: () => listProjects(),
   retry: false,
   // The board also learns of a new cut while the Owner leaves it open; React Query pauses this in a hidden tab.
-  refetchInterval: (query) => followProcessing(query) || BOARD_REFRESH_MS,
+  refetchInterval: (query) => followProcessing(query) || SCREEN_REFRESH_MS,
 });
 
 export const projectQuery = (projectId: string) =>
@@ -45,7 +45,8 @@ export const projectQuery = (projectId: string) =>
     queryKey: [...projectsKey, projectId],
     queryFn: () => getProject({ data: { projectId } }),
     retry: false,
-    refetchInterval: followProcessing,
+    // An Owner waiting on an empty Project sees the first cut arrive.
+    refetchInterval: (query) => followProcessing(query) || SCREEN_REFRESH_MS,
   });
 
 export type ProjectList = Awaited<ReturnType<typeof listProjects>>;

@@ -100,6 +100,7 @@ it("serves cached author photos to members and guests without revealing identity
       await callServerFn(fn.createGuestComment, {
         data: {
           token,
+          revisionId: "r",
           id: crypto.randomUUID(),
           name: "Client",
           body: "Looks good",

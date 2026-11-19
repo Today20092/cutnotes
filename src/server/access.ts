@@ -32,7 +32,8 @@ export type RefusalCode =
   | "invalid-title"
   | "already-sent"
   | "upload-unavailable"
-  | "not-latest-revision";
+  | "not-latest-revision"
+  | "revision-changed";
 
 type BatchResults<Reads extends readonly unknown[]> = {
   -readonly [Index in keyof Reads]: Awaited<Reads[Index]>;

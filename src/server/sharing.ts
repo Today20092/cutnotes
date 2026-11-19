@@ -1,9 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
+import * as v from "valibot";
 import { env } from "cloudflare:workers";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import {
   activeMember,
   id,
+  parse,
   readAsMember,
   readShareLink,
   refuse,
@@ -158,10 +160,14 @@ export const getGuestReview = createServerFn({ method: "POST" })
     };
   });
 
+/** The Revision the Guest is watching, so a Comment never lands on a cut they have not seen. */
+const shownRevision = v.pipe(v.string(), v.nonEmpty(), v.maxLength(128));
+
 export const createGuestComment = createServerFn({ method: "POST" })
   .validator(
     (data: {
       token: string;
+      revisionId: string;
       id: string;
       name: string;
       body: string;
@@ -174,6 +180,10 @@ export const createGuestComment = createServerFn({ method: "POST" })
     if (link.permission !== "comment") refuse(403, "insufficient-role");
     if (!(await env.SHARE_LINK_COMMENT_LIMIT.limit({ key: link.id })).success)
       refuse(429, "rate-limited");
+    // A link made before pinning follows the latest cut, which may have moved since the Guest
+    // opened it. A pinned link always resolves to the Revision it shows.
+    const revisionId = parse(shownRevision, data.revisionId);
+    if (revisionId !== link.revisionId) refuse(409, "revision-changed");
     const commentId = id(data, "id");
     const name = text(data, "name", 60);
     const drawing = data.drawing ?? null;
@@ -186,14 +196,18 @@ export const createGuestComment = createServerFn({ method: "POST" })
     )
       refuse(400, "invalid-request");
     const db = getDb();
-    // Repeats the link check inside the write, so a revoke landing after the read still wins.
+    // Repeats the link check inside the write, so a revoke or a newer cut landing after the
+    // read still wins.
     const [inserted, existing] = await db.batch([
       db
         .insert(comments)
-        .select(sql`SELECT ${commentId}, ${link.revisionId}, NULL, s.id, ${name}, ${data.timecodeMs}, ${body}, ${drawing && JSON.stringify(drawing)}, NULL, NULL, ${Date.now()}, NULL
+        .select(sql`SELECT ${commentId}, ${revisionId}, NULL, s.id, ${name}, ${data.timecodeMs}, ${body}, ${drawing && JSON.stringify(drawing)}, NULL, NULL, ${Date.now()}, NULL
         FROM share_links s
         WHERE s.id = ${link.id} AND s.revoked_at IS NULL AND s.permission = 'comment'
-          AND ${writableVideo(sql`s.video_id`)}`)
+          AND ${writableVideo(sql`s.video_id`)}
+          AND ${revisionId} = COALESCE(s.revision_id, (SELECT latest.id FROM revisions AS latest
+            WHERE latest.video_id = s.video_id AND latest.state = 'ready'
+            ORDER BY latest.number DESC LIMIT 1))`)
         .onConflictDoNothing()
         .returning({ id: comments.id }),
       db

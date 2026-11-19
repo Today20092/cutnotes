@@ -94,6 +94,7 @@ const comment = (token: string, extra: object = {}, address?: string) =>
     address,
     data: {
       token,
+      revisionId: "r1",
       id: crypto.randomUUID(),
       name: "Dana",
       body: "Too dark",
@@ -218,7 +219,16 @@ it("a Revision or Video ID in the request is ignored", async () => {
   const link = await createLink();
   const forged = { videoId: "v2", revisionId: "r1" };
   expect((await page(link.token, forged)).revision.id).toBe("r2");
-  expect((await comment(link.token, { ...forged, id: "c" })).status).toBe(200);
+  // A Comment names the Revision on screen; one the link does not show is refused.
+  for (const revisionId of ["r1", "other-r"])
+    await expectRefused(
+      await comment(link.token, { ...forged, revisionId, id: "c" }),
+      409,
+      "revision-changed",
+    );
+  expect((await comment(link.token, { videoId: "v2", revisionId: "r2", id: "c" })).status).toBe(
+    200,
+  );
   expect(
     await env.DB.prepare("SELECT revision_id FROM comments WHERE id = 'c'").first("revision_id"),
   ).toBe("r2");
@@ -275,6 +285,26 @@ it("a link made before pinning (no Revision) follows the latest ready Revision",
       )
     ).links,
   ).toMatchObject([{ revisionNumber: null }]);
+});
+
+it("a Guest on a link made before pinning cannot comment on a cut they have not seen", async () => {
+  const link = await createLink();
+  await env.DB.prepare("UPDATE share_links SET revision_id = NULL").run();
+  expect((await page(link.token)).revision.id).toBe("r1");
+  // A newer cut becomes ready while the Guest is still watching Revision 1.
+  await readyRevision("r2", 2);
+  await expectRefused(await comment(link.token, { id: "late" }), 409, "revision-changed");
+  await expectRefused(
+    await comment(link.token, { revisionId: undefined, id: "late" }),
+    400,
+    "invalid-request",
+  );
+  expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM comments").first("n")).toBe(0);
+  // After reopening the link, the Guest comments on the cut it now shows.
+  expect((await comment(link.token, { revisionId: "r2", id: "c" })).status).toBe(200);
+  expect(
+    await env.DB.prepare("SELECT revision_id FROM comments WHERE id = 'c'").first("revision_id"),
+  ).toBe("r2");
 });
 
 it("unknown, malformed, not-ready, Complete and deleted links all answer identically, and Reopen restores", async () => {

@@ -41,6 +41,7 @@ const storedName = () => {
   }
 };
 const isRateLimited = (error: unknown) => error instanceof Response && error.status === 429;
+const isRevisionChanged = (error: unknown) => error instanceof Response && error.status === 409;
 const guestQuery = (token: string) =>
   queryOptions({
     queryKey: ["guest", token],
@@ -198,7 +199,7 @@ function Loaded({
   useEffect(() => {
     if (focusHeading) heading.current?.focus();
   }, [focusHeading]); // The Welcome form that held focus is gone.
-  const actor = useGuestActor(token, name, page.permission === "comment");
+  const actor = useGuestActor(token, name, page.revision.id, page.permission === "comment");
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const team = useTeam().data;
@@ -236,11 +237,17 @@ function Loaded({
 }
 
 /** Guest adapter: Guests only send; Resolve, edit and delete stay with Members. */
-function useGuestActor(token: string, name: string, writable: boolean): CommentActor {
+function useGuestActor(
+  token: string,
+  name: string,
+  revisionId: string,
+  writable: boolean,
+): CommentActor {
   const client = useQueryClient();
   const { queryKey } = guestQuery(token);
   const write = useMutation({
-    mutationFn: (draft: Draft) => createGuestComment({ data: { ...draft, token, name } }),
+    mutationFn: (draft: Draft) =>
+      createGuestComment({ data: { ...draft, token, name, revisionId } }),
     onMutate: (draft) =>
       optimisticComment<GuestReview>(client, queryKey, draftComment(draft, name, true)),
     onError: (_error, draft, previous) =>
@@ -255,6 +262,8 @@ function useGuestActor(token: string, name: string, writable: boolean): CommentA
     sendFailure: (error) =>
       isRateLimited(error)
         ? "Too many Comments right now. Your text is kept; wait a minute and try again."
-        : "Could not send Comment. Your text is kept; try again.",
+        : isRevisionChanged(error)
+          ? "A newer cut is available. Reopen the link to watch it."
+          : "Could not send Comment. Your text is kept; try again.",
   };
 }

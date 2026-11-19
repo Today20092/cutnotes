@@ -18,8 +18,12 @@ _Avoid_: Asset, file, stack
 One uploaded cut of a Video.
 _Avoid_: Version, render
 
+**Stage**:
+Where a whole Project stands, shown as its column on the home board: New, Editing, In review or Done. It moves by itself (an Uploader or Editor joins: Editing; a Revision is ready: In review; Request changes: Editing; every Video approved: Done), and an Owner or the Project's Editor can move it by hand.
+_Avoid_: Status, phase, column
+
 **Status**:
-Where a Video stands in review: Review, Rework or Done.
+Where one Video stands in review: Review, Rework or Done. Status is per Video, Stage is per Project. It changes only through **Request changes** (Rework) and **Approve** (Done) on the Video page, and a new ready Revision turns Rework back into Review.
 _Avoid_: Stage, state
 
 **Complete**:
@@ -61,7 +65,7 @@ _Avoid_: Permission level
 A person's assignment on a Project: Reviewer, Uploader or Editor. Separate from the Team Role.
 
 **Uploader**:
-A Project role that can watch and comment, add new Videos, and upload Revisions to Videos they created. An Uploader deletes only Videos they created and cannot rename, change Status, Resolve or manage people.
+A Project role that can watch and comment, add new Videos, and upload Revisions to Videos they created. An Uploader deletes only Videos they created and cannot rename, Request changes, Approve, move the Stage, Resolve or manage people.
 _Avoid_: Contributor
 
 **Guest**:

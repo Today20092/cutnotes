@@ -84,7 +84,10 @@ it("Members watch a Complete Project while Comments and Status changes are refus
     body: "Late note",
   };
   expect((await call(fn.createComment, "user_viewer", comment)).status).toBe(400);
-  expect((await call(fn.setVideoStatus, owner, { videoId: "v", status: "done" })).status).toBe(404);
+  expect((await call(fn.approveVideo, owner, { videoId: "v" })).status).toBe(404);
+  expect((await call(fn.setProjectStage, owner, { projectId: "p", stage: "done" })).status).toBe(
+    404,
+  );
 });
 
 it("Share Links answer as unavailable while Complete and return on Reopen", async () => {

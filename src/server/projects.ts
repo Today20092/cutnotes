@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import * as v from "valibot";
 import { and, asc, desc, eq, gt, isNotNull, isNull, ne, sql, type SQLWrapper } from "drizzle-orm";
 import {
   activeMember,
@@ -6,6 +7,7 @@ import {
   projectAccess,
   projectRole,
   id,
+  parse,
   readAsMember,
   refuse,
   requireMember,
@@ -13,9 +15,17 @@ import {
   type ScreenDb,
 } from "@/server/access";
 import { getDb } from "@/server/db";
-import { members, projectMembers, projects, videos, type RevisionState } from "@/server/db/schema";
+import {
+  members,
+  projectMembers,
+  projects,
+  projectStages,
+  videos,
+  type ProjectStage,
+  type RevisionState,
+} from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
-import { projectSummary } from "@/server/project-summary";
+import { projectCard, projectSummary } from "@/server/project-summary";
 
 const MAX_NAME_LENGTH = 120;
 const COUNTDOWN_MS = 14 * 24 * 60 * 60 * 1000;
@@ -110,7 +120,7 @@ export const listProjects = createServerFn({ method: "POST" }).handler(async () 
   const { member, results } = await readAsMember("viewer", (db, clerkUserId) => [
     db
       .select({
-        ...projectSummary,
+        ...projectCard,
         role: projectRole(memberIdForUser(clerkUserId), projects.id),
       })
       .from(projects)
@@ -140,7 +150,7 @@ export const getProject = createServerFn({ method: "POST" })
       return [
         db
           .select({
-            ...projectSummary,
+            ...projectCard,
             role: projectRole(memberIdForUser(clerkUserId), projects.id),
           })
           .from(projects)
@@ -182,7 +192,7 @@ export const createProject = createServerFn({ method: "POST" })
     const [created] = await db.batch([
       db
         .insert(projects)
-        .select(sql`SELECT ${projectId}, ${name}, ${member.id}, ${now}, ${now}, NULL, NULL, NULL
+        .select(sql`SELECT ${projectId}, ${name}, ${member.id}, ${now}, ${now}, NULL, NULL, NULL, 'new'
         WHERE ${activeMember(member.id, "editor")}`)
         .returning(projectSummary),
       db.insert(projectMembers)
@@ -207,6 +217,33 @@ export const renameProject = createServerFn({ method: "POST" })
           eq(projects.id, id(data, "projectId")),
           isNull(projects.deletedAt),
           // A Complete Project is read-only until it is reopened.
+          isNull(projects.completedAt),
+          projectAccess(member.id, projects.id, "editor"),
+        ),
+      )
+      .returning(projectSummary);
+    if (!project) refuse(404, "not-found");
+    return project;
+  });
+
+const stageSchema = v.object({
+  projectId: v.pipe(v.string(), v.nonEmpty(), v.maxLength(128)),
+  stage: v.picklist(projectStages),
+});
+
+/** Owners and the Project's Editors move it by hand, on the board or a card's menu. */
+export const setProjectStage = createServerFn({ method: "POST" })
+  .validator((data: { projectId: string; stage: ProjectStage }) => data)
+  .handler(async ({ data: raw }) => {
+    const member = await requireMember("viewer");
+    const data = parse(stageSchema, raw);
+    const [project] = await getDb()
+      .update(projects)
+      .set({ stage: data.stage, updatedAt: Date.now() })
+      .where(
+        and(
+          eq(projects.id, data.projectId),
+          isNull(projects.deletedAt),
           isNull(projects.completedAt),
           projectAccess(member.id, projects.id, "editor"),
         ),

@@ -54,6 +54,14 @@
   --color-success: var(--success);
   --color-info-foreground: var(--info-foreground);
   --color-info: var(--info);
+  --color-stage-new: var(--stage-new);
+  --color-stage-new-foreground: var(--stage-new-foreground);
+  --color-stage-editing: var(--stage-editing);
+  --color-stage-editing-foreground: var(--stage-editing-foreground);
+  --color-stage-in-review: var(--stage-in-review);
+  --color-stage-in-review-foreground: var(--stage-in-review-foreground);
+  --color-stage-done: var(--stage-done);
+  --color-stage-done-foreground: var(--stage-done-foreground);
   --color-destructive-foreground: var(--destructive-foreground);
 }
 
@@ -97,6 +105,15 @@
   --success-foreground: var(--color-emerald-700);
   --warning: var(--color-amber-500);
   --warning-foreground: var(--color-amber-700);
+  /* Project Stages. Each foreground keeps 4.5:1 on its own tint at 12%. */
+  --stage-new: var(--color-neutral-500);
+  --stage-new-foreground: var(--color-neutral-700);
+  --stage-editing: var(--color-amber-500);
+  --stage-editing-foreground: var(--color-amber-800);
+  --stage-in-review: var(--color-blue-500);
+  --stage-in-review-foreground: var(--color-blue-700);
+  --stage-done: var(--color-emerald-500);
+  --stage-done-foreground: var(--color-emerald-700);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -136,6 +153,10 @@
     --success-foreground: var(--color-emerald-300);
     --warning-foreground: var(--color-amber-300);
     --destructive-foreground: var(--color-red-300);
+    --stage-new-foreground: var(--color-neutral-300);
+    --stage-editing-foreground: var(--color-amber-300);
+    --stage-in-review-foreground: var(--color-blue-300);
+    --stage-done-foreground: var(--color-emerald-300);
   }
 }
 

@@ -30,7 +30,6 @@ export type RefusalCode =
   | "rate-limited"
   | "invalid-name"
   | "invalid-title"
-  | "invalid-status"
   | "already-sent"
   | "upload-unavailable";
 

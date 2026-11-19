@@ -33,14 +33,12 @@ const scripts: Script[] = [
     },
   },
   {
-    name: "Move the first Review video to Rework",
-    steps: async () => {
-      await agent.act({ steps: [{ ref: "Status board", action: "open" }] });
-      const column = document.querySelector('[data-slot="review-board-column"]');
-      const card = column?.querySelector('[data-slot="review-board-card"]')?.textContent;
+    name: "Move the first Project to In review",
+    steps: () => {
+      const card = document.querySelector('[data-slot="review-board-card"] a')?.textContent;
       return card
-        ? [{ ref: "review-board", action: "setStatus", args: [card, "Rework"] }]
-        : "No Review video on this page. Open a Project.";
+        ? [{ ref: "review-board", action: "setStage", args: [card, "In review"] }]
+        : "No Project on this page. Open Projects.";
     },
   },
 ];

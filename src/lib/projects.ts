@@ -7,10 +7,17 @@ import {
   listProjects,
   renameProject,
   reopenProject,
+  setProjectStage,
 } from "@/server/projects";
-import { deleteVideo, renameVideo, setVideoStatus } from "@/server/videos";
-import type { VideoStatus } from "@/server/db/schema";
-import { confirmedProjectWrite, projectsKey, projectWrite, videoWrite } from "@/lib/writes";
+import { approveVideo, deleteVideo, renameVideo, requestChanges } from "@/server/videos";
+import type { ProjectStage } from "@/lib/project-stage";
+import {
+  confirmedProjectWrite,
+  projectsKey,
+  projectWrite,
+  reviewKey,
+  videoWrite,
+} from "@/lib/writes";
 
 const FOLLOW_PROCESSING_MS = 5000;
 
@@ -66,6 +73,10 @@ export function useCreateProject() {
                   createdAt: Date.now(),
                   completedAt: null,
                   deleteAfter: null,
+                  stage: "new" as const,
+                  openNotes: 0,
+                  latestRevision: null,
+                  changesRequested: false,
                   people: [],
                 },
                 ...list.projects,
@@ -137,10 +148,36 @@ export function useSetProjectComplete() {
   );
 }
 
+/** Shown at once on the board and the Project page, undone if it fails. */
+export function useSetProjectStage() {
+  const client = useQueryClient();
+  return useMutation(
+    projectWrite<ProjectList | ProjectPage, { projectId: string; stage: ProjectStage }>(client, {
+      mutationFn: (input) => setProjectStage({ data: input }),
+      apply: ({ projectId, stage }) =>
+        client.setQueriesData<ProjectList | ProjectPage>(
+          { queryKey: projectListQuery.queryKey },
+          (data) =>
+            data &&
+            ("projects" in data
+              ? {
+                  ...data,
+                  projects: data.projects.map((project) =>
+                    project.id === projectId ? { ...project, stage } : project,
+                  ),
+                }
+              : data.project.id === projectId
+                ? { ...data, project: { ...data.project, stage } }
+                : data),
+        ),
+    }),
+  );
+}
+
 /** A write shown at once on every screen holding this Video, undone if it fails. */
 function useVideoWrite<Input extends { videoId: string }>(
   videoId: string,
-  field: "title" | "status",
+  field: "title",
   mutationFn: (input: Input) => Promise<unknown>,
   apply: (video: VideoSummary, input: Input) => VideoSummary,
 ) {
@@ -163,13 +200,19 @@ export const useRenameVideo = (videoId: string) =>
     (video, { title }) => ({ ...video, title }),
   );
 
-export const useSetVideoStatus = (videoId: string) =>
-  useVideoWrite(
-    videoId,
-    "status",
-    (input: { videoId: string; status: VideoStatus }) => setVideoStatus({ data: input }),
-    (video, { status }) => ({ ...video, status }),
-  );
+/** A review decision on the Video page: it changes the Video's Status and may move its Project. */
+export function useReviewDecision(videoId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (decision: "requestChanges" | "approve") =>
+      (decision === "approve" ? approveVideo : requestChanges)({ data: { videoId } }),
+    onSettled: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: reviewKey(videoId) }),
+        client.invalidateQueries({ queryKey: projectsKey }),
+      ]),
+  });
+}
 
 export function useDeleteWork(kind: "Project" | "Video", id: string) {
   const client = useQueryClient();

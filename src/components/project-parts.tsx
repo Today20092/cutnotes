@@ -329,7 +329,7 @@ function revisionProgress(video: VideoSummary) {
   }
 }
 
-function Poster({ url }: { url: string | null }) {
+export function Poster({ url }: { url: string | null }) {
   const [broken, setBroken] = useState(false);
   if (url && !broken) {
     return (
@@ -337,6 +337,8 @@ function Poster({ url }: { url: string | null }) {
         src={url}
         alt=""
         loading="lazy"
+        // A native image drag would steal the pointer from the board's card drag.
+        draggable={false}
         onError={() => setBroken(true)}
         className="aspect-video w-full rounded-lg bg-muted object-cover"
       />
@@ -351,11 +353,9 @@ function Poster({ url }: { url: string | null }) {
 
 export function VideoCard({
   video,
-  showStatus = true,
   editableTitle,
 }: {
   video: VideoSummary;
-  showStatus?: boolean;
   editableTitle?: ReactNode;
 }) {
   const progress = revisionProgress(video);
@@ -394,7 +394,7 @@ export function VideoCard({
             </div>
           )}
         </div>
-        {showStatus && <VideoStatusBadge status={video.status} />}
+        <VideoStatusBadge status={video.status} />
       </div>
     </>
   );

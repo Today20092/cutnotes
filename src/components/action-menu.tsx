@@ -7,10 +7,12 @@ export type Action = {
   label: string;
   destructive?: boolean;
   /** The sheet the item opens, already open; call `onClosed` when it closes. */
-  sheet: (onClosed: () => void) => ReactNode;
+  sheet?: (onClosed: () => void) => ReactNode;
+  /** Runs at once instead, for an item that needs no sheet. */
+  onSelect?: () => void;
 };
 
-/** A `⋯` button whose items each open a sheet. Focus returns to the button when the sheet closes. */
+/** A `⋯` button whose items run at once or open a sheet. Focus returns to the button when the sheet closes. */
 export function ActionMenu({ label, actions }: { label: string; actions: Action[] }) {
   const [open, setOpen] = useState<Action | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -33,14 +35,14 @@ export function ActionMenu({ label, actions }: { label: string; actions: Action[
               key={action.label}
               className="min-h-11"
               variant={action.destructive ? "destructive" : "default"}
-              onSelect={() => setOpen(action)}
+              onSelect={() => (action.sheet ? setOpen(action) : action.onSelect?.())}
             >
               {action.label}
             </MenuItem>
           ))}
         </MenuPopup>
       </Menu>
-      {open?.sheet(closed)}
+      {open?.sheet?.(closed)}
     </>
   );
 }

@@ -14,8 +14,9 @@ import {
   writableVideo,
 } from "@/server/access";
 import { getDb, type Db } from "@/server/db";
-import { members, revisions, videos, videoStatuses, type VideoStatus } from "@/server/db/schema";
+import { members, revisions, videos, type VideoStatus } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
+import { moveStage } from "@/server/project-stage";
 import { discardRevision } from "@/server/revision-lifecycle";
 
 const MAX_TITLE_LENGTH = 120;
@@ -188,43 +189,73 @@ export const cancelUpload = createServerFn({ method: "POST" })
     return { cancelled: true };
   });
 
-async function updateVideo(
-  memberId: string,
-  videoId: string,
-  changes: { title: string } | { status: VideoStatus },
-) {
-  const db = getDb();
-  const [video] = await db
-    .update(videos)
-    .set({ ...changes, updatedAt: Date.now() })
-    .where(
-      and(eq(videos.id, videoId), writableVideo(videoId), videoAccess(memberId, videoId, "editor")),
-    )
-    .returning({
-      id: videos.id,
-      title: videos.title,
-      status: videos.status,
-    });
-  if (!video) refuse(404, "not-found");
-  return video;
-}
-
 export const renameVideo = createServerFn({ method: "POST" })
   .validator((data: { videoId: string; title: string }) => data)
   .handler(async ({ data }) => {
     const member = await requireMember("viewer");
-    return updateVideo(member.id, id(data, "videoId"), {
-      title: text(data, "title", MAX_TITLE_LENGTH, "invalid-title"),
-    });
+    const videoId = id(data, "videoId");
+    const [video] = await getDb()
+      .update(videos)
+      .set({ title: text(data, "title", MAX_TITLE_LENGTH, "invalid-title"), updatedAt: Date.now() })
+      .where(
+        and(
+          eq(videos.id, videoId),
+          writableVideo(videoId),
+          videoAccess(member.id, videoId, "editor"),
+        ),
+      )
+      .returning({ id: videos.id, title: videos.title, status: videos.status });
+    if (!video) refuse(404, "not-found");
+    return video;
   });
 
-export const setVideoStatus = createServerFn({ method: "POST" })
-  .validator((data: { videoId: string; status: VideoStatus }) => data)
+/**
+ * A review decision by an Owner or the Project's Editor: the Video's Status, then its
+ * Project's Stage, in one batch that re-checks Access in each statement.
+ */
+async function decide(memberId: string, videoId: string, status: VideoStatus) {
+  const db = getDb();
+  const now = Date.now();
+  const projectId = sql`(SELECT project_id FROM videos WHERE id = ${videoId})`;
+  const allowed = videoAccess(memberId, videoId, "editor");
+  const [decided] = await db.batch([
+    db
+      .update(videos)
+      .set({ status, updatedAt: now })
+      .where(and(eq(videos.id, videoId), writableVideo(videoId), allowed))
+      .returning({ id: videos.id, title: videos.title, status: videos.status }),
+    status === "rework"
+      ? moveStage(db, projectId, "editing", allowed, now)
+      : // Done only once every live Video in the Project is done.
+        moveStage(
+          db,
+          projectId,
+          "done",
+          and(
+            allowed,
+            sql`NOT EXISTS (SELECT 1 FROM videos AS other WHERE other.project_id = ${projectId}
+              AND other.deleted_at IS NULL AND other.status <> 'done')`,
+          ),
+          now,
+        ),
+  ]);
+  const [video] = decided;
+  if (!video) refuse(404, "not-found");
+  return video;
+}
+
+export const requestChanges = createServerFn({ method: "POST" })
+  .validator((data: { videoId: string }) => data)
   .handler(async ({ data }) => {
     const member = await requireMember("viewer");
-    const status = (data as { status?: unknown } | undefined)?.status as VideoStatus;
-    if (!videoStatuses.includes(status)) refuse(400, "invalid-status");
-    return updateVideo(member.id, id(data, "videoId"), { status });
+    return decide(member.id, id(data, "videoId"), "rework");
+  });
+
+export const approveVideo = createServerFn({ method: "POST" })
+  .validator((data: { videoId: string }) => data)
+  .handler(async ({ data }) => {
+    const member = await requireMember("viewer");
+    return decide(member.id, id(data, "videoId"), "done");
   });
 
 export const deleteVideo = createServerFn({ method: "POST" })

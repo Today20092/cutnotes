@@ -15,11 +15,14 @@ export type ReviewBoardOptions = {
   columns?: Record<string, string>;
   /** Card key to its name. */
   titles?: Record<string, string>;
+  /** Cards that can't be picked up, and that `setStage` refuses to move. */
+  locked?: string[];
 };
 
 /**
- * Cards in status columns. Drag a card, or focus it and press Space to pick it up,
+ * Cards in Stage columns. Drag a card, or focus it and press Space to pick it up,
  * Left and Right to change column, Up and Down to place it, and Space to drop.
+ * Columns are plain lists and cards are articles, so a card can hold a link and a menu.
  */
 export const reviewBoard = definePrimitive({
   name: "review-board",
@@ -29,6 +32,7 @@ export const reviewBoard = definePrimitive({
     onListsChange: "callback",
     columns: "value",
     titles: "value",
+    locked: "value",
   },
   controlled: ["lists"],
   state: (options: ReviewBoardOptions) => ({
@@ -46,6 +50,7 @@ export const reviewBoard = definePrimitive({
       draft: "moving",
       set: (value, details) => change("lists", value, details),
       order: () => Object.keys(columns()),
+      disabled: (key) => (context.options().locked ?? []).includes(key),
       label: (key) => titles()[key],
       listLabel: (list) => columns()[list],
       createAutoScroll: false,
@@ -65,10 +70,10 @@ export const reviewBoard = definePrimitive({
       transfer,
       roving,
       /** Moves a card, named by key or title, to the end of a column, named by key or name. */
-      setStatus(card: string, column: string) {
+      setStage(card: string, column: string) {
         const key = pick(titles(), card);
         const list = pick(columns(), column);
-        if (!key || !list) return false;
+        if (!key || !list || (context.options().locked ?? []).includes(key)) return false;
         return transfer.move(key, list, (context.store.get().lists[list] ?? []).length);
       },
     };
@@ -79,25 +84,21 @@ export const reviewBoard = definePrimitive({
     }),
     column: slot<{ value: string }>({
       props: { value: "string" },
-      role: "listbox",
-      keys: { none: "Each card handles its own keys." },
       bind: (el, { api, key }) => api.transfer.bindList(el, key),
     }),
     card: slot<{ value: string }>({
       props: { value: "string" },
-      role: "option",
-      focus: "roving",
-      press: { none: "Space and Enter pick a card up through keydown." },
       attrs: (state, part) => ({
         tabindex: part.api.roving.tabIndex(state, part),
-        "aria-selected": String(part.api.transfer.moving(state, part.key)),
         "aria-roledescription": "card",
         "data-grabbed": part.api.transfer.moving(state, part.key) ? "" : undefined,
       }),
       on: {
+        // Keys pressed on the card's own link or menu keep their usual meaning.
         keydown: (event, { el, api, key }) =>
-          api.transfer.keydown(event as KeyboardEvent, key) ||
-          api.roving.keydown(event as KeyboardEvent, el!),
+          event.target === el &&
+          (api.transfer.keydown(event as KeyboardEvent, key) ||
+            api.roving.keydown(event as KeyboardEvent, el!)),
         pointerdown: (event, { api, key }) => api.transfer.pointerdown(event as PointerEvent, key),
       },
       bind: (el, part) => {
@@ -106,5 +107,5 @@ export const reviewBoard = definePrimitive({
       },
     }),
   }),
-  agent: { actions: ["setStatus"] },
+  agent: { actions: ["setStage"] },
 });

@@ -5,7 +5,7 @@ import { openQueue, openVideo, signInWithReview } from "./support/review-page";
 
 /**
  * One review task done two ways, as an agent's tool calls:
- * add a note at 0:05, resolve "Lift the shadows", then move the Video to Rework.
+ * add a note at 0:05, resolve "Lift the shadows", then send the Project back to Editing.
  * "Reads" are what the agent receives: an ARIA snapshot for browser tools, JSON for the bridge.
  */
 type Run = { calls: number; reads: number; actions: number; bytes: number; ms: number };
@@ -56,8 +56,8 @@ async function expectTaskDone(page: Page, id: string) {
   await expect(queue.getByRole("button", { name: /^0:05 Agent note/ })).toBeVisible();
   await expect(queue.getByRole("button", { name: /Lift the shadows/ })).toHaveCount(0);
   await expect(queue.getByRole("button", { name: /Trim the intro/ })).toBeVisible();
-  await page.goto(`/projects/${id}`);
-  await expect(page.getByLabel("Status of Playback cut")).toHaveValue("rework");
+  await page.goto("/");
+  await expect(page.getByRole("article", { name: "Playback project, Editing" })).toBeVisible();
 }
 
 const results: Record<string, Run> = {};
@@ -96,10 +96,7 @@ test("browser-style tools: read the ARIA tree, then click and type", async ({ pa
     page.getByRole("checkbox", { name: "Resolve Comment by Other reviewer at 0:01" }).click(),
   );
   await look();
-  await m.act(page.getByRole("link", { name: "Playback project" }).click());
-  await expect(page.getByLabel("Status of Playback cut")).toBeVisible();
-  await look();
-  await m.act(page.getByLabel("Status of Playback cut").selectOption("rework"));
+  await m.act(page.getByRole("button", { name: "Request changes" }).click());
   await look();
   results.browser = m.done();
 
@@ -126,16 +123,12 @@ test("ui-sdk agent bridge: snapshot, then act on components by name", async ({ p
   );
   expect(done.ok).toBe(true);
   // The bridge has no navigation; an agent follows the link like any browser agent.
-  await m.act(page.getByRole("link", { name: "Playback project" }).click());
-  await expect(page.getByRole("button", { name: /^Status board/ })).toBeVisible();
-  const project = m.read(await agent.snapshot()) as { component: string; label?: string }[];
-  // The board is behind a closed Collapsible too; the next act opens it first.
-  expect(project.some((entry) => entry.label?.startsWith("Status board"))).toBe(true);
+  await m.act(page.getByRole("link", { name: "Projects" }).first().click());
+  await expect(page.getByRole("region", { name: "Board" })).toBeVisible();
+  const home = m.read(await agent.snapshot()) as { component: string; actions?: string[] }[];
+  expect(home.some((entry) => entry.actions?.includes("setStage"))).toBe(true);
   const moved = await m.act(
-    agent.act([
-      { ref: "Status board", action: "open" },
-      { ref: "review-board", action: "setStatus", args: ["Playback cut", "Rework"] },
-    ]),
+    agent.act([{ ref: "review-board", action: "setStage", args: ["Playback project", "Editing"] }]),
     null,
   );
   expect(moved.ok).toBe(true);
@@ -145,7 +138,7 @@ test("ui-sdk agent bridge: snapshot, then act on components by name", async ({ p
 });
 
 test("the dev Agent panel shows the snapshot and runs scripted steps", async ({ page }) => {
-  const id = await setUp(page);
+  await setUp(page);
   await page.getByRole("button", { name: "Read the page" }).click();
   await expect(page.getByLabel("Agent output")).toContainText('"component": "collapsible"');
   await page.getByRole("button", { name: "Resolve the first open note" }).click();
@@ -155,10 +148,10 @@ test("the dev Agent panel shows the snapshot and runs scripted steps", async ({ 
       .getByRole("list", { name: "Open notes" })
       .getByRole("button", { name: /Lift the shadows/ }),
   ).toHaveCount(0);
-  await page.goto(`/projects/${id}?agent`);
-  await page.getByRole("button", { name: "Move the first Review video to Rework" }).click();
-  await expect(page.getByLabel("Agent log")).toContainText("Rework: ok");
-  await expect(page.getByLabel("Status of Playback cut")).toHaveValue("rework");
+  await page.goto("/?agent");
+  await page.getByRole("button", { name: "Move the first Project to In review" }).click();
+  await expect(page.getByLabel("Agent log")).toContainText("In review: ok");
+  await expect(page.getByRole("article", { name: "Playback project, In review" })).toBeVisible();
 });
 
 test.afterAll(() => {

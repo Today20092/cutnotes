@@ -11,13 +11,13 @@ An evaluation of Vercel's ui-sdk (`@ui-sdk/react` and `@ui-sdk/core` `0.1.0-beta
 | Setup | Installed both packages (exact versions). Added the `ui-sdk` agent skill in `.claude/skills/ui-sdk`, an AGENTS.md note that points to the bundled docs, and `@layer ui-sdk;` at the top of `src/styles.css`. |
 | Components | Every Base UI wrapper in `src/components/ui/` now uses ui-sdk: button, input, textarea, checkbox, radio group, field, fieldset, avatar, progress, separator, slider, collapsible, toggle, toggle group, tooltip, menu, select, sheet (ui-sdk Dialog) and toast. Badge, breadcrumb, card, group and item use ui-sdk `renderElement`. `@base-ui/react` is removed. Banner, empty, frame, native select, skeleton and spinner never used Base UI and stay as they are. |
 | Swipe review queue | `src/lib/review-queue.ts` (primitive) and `src/components/review-queue.tsx`. On a video page, open **Review queue (N open)** below the player. Swipe a note right to resolve it or left to delete it (with Undo). With a keyboard: Up and Down move, Right resolves, Left or Delete deletes. Each result is announced. Built from `createSwipeActions`, `createRovingFocus` and `announce`. |
-| Status board | `src/lib/review-board.ts` and `src/components/review-board.tsx`. On a Project page, open **Status board (N Videos)** below the video grid. Drag a Video card to Review, Rework or Done, or pick it up with Space, move it with the arrow keys and drop it with Space. Moves are announced and saved through the existing optimistic Status write. Built from `createTransfer`, `createChange` and `createRovingFocus`. The order inside a column is local only, because the server stores only the Status. |
+| Stage board | `src/lib/review-board.ts` and `src/components/stage-board.tsx`, on the home page. Projects sit in New, Editing, In review and Done columns. Drag a card, pick it up with Space and move it with the arrow keys, or use its **Move to…** menu items. Moves are announced, saved through an optimistic Stage write, and can be undone. Columns are plain lists and cards are articles, so a card can hold its link and menu. Built from `createTransfer`, `createChange` and `createRovingFocus`. The order inside a column is local only, because the server stores only the Stage. |
 | Agent bridge | `src/lib/agent.ts` calls `createAgent()` and `registerTools()` (WebMCP). A browser that has `document.modelContext` gets `snapshot`, `act` and `query` tools; a delete asks the person first. The bridge exists in development builds only. |
-| Agent panel | `src/components/agent-panel.tsx`, the **Agent** button at the bottom right in `bun run dev` and `bun run dev:preview`. **Read the page** shows `agent.snapshot()`. The scripted buttons add a note at 0:05, resolve the first open note and move the first Review Video to Rework, through `agent.act()`. It needs no model and no key. In e2e mode it shows only with `?agent` in the URL. |
+| Agent panel | `src/components/agent-panel.tsx`, the **Agent** button at the bottom right in `bun run dev` and `bun run dev:preview`. **Read the page** shows `agent.snapshot()`. The scripted buttons add a note at 0:05, resolve the first open note and move the first Project to In review, through `agent.act()`. It needs no model and no key. In e2e mode it shows only with `?agent` in the URL. |
 | Tests | `e2e/review-queue.spec.ts`, `e2e/review-board.spec.ts` and `e2e/review-agent.spec.ts`. The bridge spec drives the UI only through `agent.act()` and checks the result in the UI. |
 | Measurement | `scripts/bundle-size.ts` prints client JS and CSS sizes after `bun run build`. |
 
-The queue and the board each expose actions to the bridge through the primitive's `agent` key: `resolve`, `remove` and `addNote` on the queue, `setStatus` on the board. Any app that renders them gets these agent actions without writing a tool schema.
+The queue and the board each expose actions to the bridge through the primitive's `agent` key: `resolve`, `remove` and `addNote` on the queue, `setStage` on the board. Any app that renders them gets these agent actions without writing a tool schema.
 
 ## Agent bridge compared with browser tools
 
@@ -25,10 +25,10 @@ The queue and the board each expose actions to the bridge through the primitive'
 
 1. Add a note at 0:05.
 2. Resolve the note "Lift the shadows".
-3. Open the Project and move the Video to Rework.
+3. Send the Project back to Editing.
 
-- **Browser-style run:** reads the page as an ARIA snapshot (what browser MCP tools return), then clicks and types. To set 0:05, it clicks the scrub track by position and corrects with arrow keys until the composer says 0:05.
-- **Bridge run:** reads `agent.snapshot()`, then sends `act()` steps that name components by label: open the "Review queue" collapsible, then `addNote` and `resolve` on "Open notes"; open the "Status board" collapsible, then `setStatus` on the board. Both runs follow the breadcrumb link with a click, because the bridge has no navigation.
+- **Browser-style run:** reads the page as an ARIA snapshot (what browser MCP tools return), then clicks and types, ending with **Request changes**. To set 0:05, it clicks the scrub track by position and corrects with arrow keys until the composer says 0:05.
+- **Bridge run:** reads `agent.snapshot()`, then sends `act()` steps that name components by label: open the "Review queue" collapsible, then `addNote` and `resolve` on "Open notes"; then follows the breadcrumb to the home board with a click, because the bridge has no navigation, and calls `setStage` on the board.
 
 Both runs check the result in the UI. "Bytes" is the size of everything the agent reads, as a token proxy (about 4 bytes per token). "Time" is the script's wall time; it doesn't include model thinking time, which scales with calls and tokens.
 

@@ -1,9 +1,10 @@
 import { and, eq, inArray, notExists, or, sql } from "drizzle-orm";
-import { uploadAccess } from "@/server/access";
+import { openProject, uploadAccess } from "@/server/access";
 import { getDb, type Db } from "@/server/db";
 import { revisions, videos } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
 import type { MuxAsset } from "@/server/mux/gateway";
+import { moveStage } from "@/server/project-stage";
 
 const MAX_DURATION_SECONDS = 12 * 60 * 60;
 
@@ -113,7 +114,26 @@ async function markReady(revisionId: string, data: Partial<MuxAsset>) {
     .returning({ videoId: revisions.videoId });
 
   if (ready[0]) {
-    await db.update(videos).set({ updatedAt: now }).where(eq(videos.id, ready[0].videoId));
+    const videoId = ready[0].videoId;
+    const live = sql`EXISTS (SELECT 1 FROM videos WHERE id = ${videoId} AND deleted_at IS NULL)`;
+    // A new cut answers a change request, so the Video and its open Project are in review again.
+    await db.batch([
+      db
+        .update(videos)
+        .set({
+          updatedAt: now,
+          status: sql`CASE WHEN ${videos.status} = 'rework' AND ${openProject(videos.projectId)}
+            THEN 'review' ELSE ${videos.status} END`,
+        })
+        .where(eq(videos.id, videoId)),
+      moveStage(
+        db,
+        sql`(SELECT project_id FROM videos WHERE id = ${videoId})`,
+        "in_review",
+        live,
+        now,
+      ),
+    ]);
   }
 }
 

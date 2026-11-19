@@ -36,7 +36,7 @@ it("allocates distinct consecutive numbers under concurrent uploads without chan
   await seedProject("p");
   await seedVideo("v", "p");
   await seedRevision({ id: "first", videoId: "v", state: "ready" });
-  await call(serverFunctionIds.setVideoStatus, owner, { videoId: "v", status: "done" });
+  await call(serverFunctionIds.approveVideo, owner, { videoId: "v" });
   const answers = await Promise.all(
     Array.from({ length: 4 }, () => call(serverFunctionIds.startUpload, owner, { videoId: "v" })),
   );

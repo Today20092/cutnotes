@@ -97,14 +97,16 @@ test("a failed rename rolls back and says so", async ({ page }, testInfo) => {
   await page.goto("/");
   await createProjectInUi(page, name);
   await expect(page.getByRole("link", { name })).toBeVisible();
+  await page.getByRole("link", { name }).click();
   await page.route(callTo("renameProject"), (route) => route.abort());
 
-  await page.getByRole("button", { name: `Rename ${name}` }).click();
+  await page.getByRole("button", { name: `More actions for ${name}` }).click();
+  await page.getByRole("menuitem", { name: "Rename" }).click();
   await page.getByLabel("Project name").fill("Should not stick");
   await page.getByRole("button", { name: "Save name" }).click();
 
   await expect(appAlert(page)).toContainText("Could not rename");
-  await expect(page.getByRole("link", { name })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   await expect(page.getByText("Should not stick")).toHaveCount(0);
 });
 

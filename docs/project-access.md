@@ -8,11 +8,11 @@ Team Owners can open every project, manage membership and invitations, create or
 
 Project assignments are separate from Team roles:
 
-- **Editor:** watches, comments, uploads videos and revisions, renames projects and videos, changes video status and resolves comments. Existing deletion rules still apply: Editors delete only videos they created; Owners delete any video.
-- **Uploader:** watches and comments, adds new videos, and uploads revisions to videos they created. Uploaders delete only videos they created. They cannot rename the project or other people's videos, change status, resolve comments or manage people.
+- **Editor:** watches, comments, uploads videos and revisions, renames projects and videos, moves the project's Stage on the home board, uses **Request changes** and **Approve** on a video, and resolves comments. Existing deletion rules still apply: Editors delete only videos they created; Owners delete any video.
+- **Uploader:** watches and comments, adds new videos, and uploads revisions to videos they created. Uploaders delete only videos they created. They cannot rename the project or other people's videos, move the Stage, request changes, approve, resolve comments or manage people.
 - **Reviewer:** watches and comments, including editing or removing their own comments.
 
-Assigning someone as a project Editor does not grant permission to create projects. Changing their Team Editor/Viewer designation does not change their project assignments. Completed projects retain their existing read-only behavior.
+Assigning someone as a project Editor does not grant permission to create projects. Changing their Team Editor/Viewer designation does not change their project assignments. Completed projects retain their existing read-only behavior, including their Stage. Assigning an Uploader or Editor to a New project, or their accepting a project invitation, moves it to Editing.
 
 ## Owner workflow
 

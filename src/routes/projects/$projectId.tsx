@@ -24,7 +24,7 @@ import {
 } from "@/components/project-parts";
 import { UploadSheet } from "@/components/upload-parts";
 import { VideoTile } from "@/components/video-tile";
-import { ReviewBoard } from "@/components/review-board";
+import { StageBadge } from "@/components/stage-badge";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -208,7 +208,13 @@ function ProjectView({ page }: { page: ProjectPage }) {
         {uploadable && isOpen && videos.length > 0 && uploadSheet}
         <ActionMenu label={`More actions for ${project.name}`} actions={actions} />
       </PageHeading>
-      <PeopleStrip projectId={project.id} people={project.people} canManage={isOwner} />
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <p className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Stage</span>
+          <StageBadge stage={project.stage} />
+        </p>
+        <PeopleStrip projectId={project.id} people={project.people} canManage={isOwner} />
+      </div>
       <PeopleSheet
         projectId={project.id}
         name={project.name}
@@ -268,9 +274,6 @@ function ProjectView({ page }: { page: ProjectPage }) {
             </li>
           ))}
         </ul>
-      )}
-      {writable && project.completedAt === null && videos.length > 0 && (
-        <ReviewBoard videos={videos} />
       )}
     </div>
   );

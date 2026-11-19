@@ -2,7 +2,6 @@ import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { fakeSignature } from "../test/seam1/support/fake-mux";
 import { assignProjectMember, seedMember } from "./support/database";
 import { signInAs } from "./support/session";
-import { appAlert } from "./support/ui-sdk";
 
 const owner = {
   clerkUserId: "user_first_owner",
@@ -359,126 +358,35 @@ test("failed processing is explained and can be sent again", async ({ page }, te
   await expect(page.getByText("Revision 2")).toBeVisible({ timeout: 15_000 });
 });
 
-test("a Status change and a rename appear before the server answers", async ({
+test("a rename appears before the server answers and the Status is read-only", async ({
   page,
 }, testInfo) => {
   await routeMux(page);
   await openNewProject(page, "Manage", testInfo);
   await startUpload(page, "Rough cut");
-  const status = page.getByLabel("Status of Rough cut");
-  await expect(status).toHaveValue("review");
+  await expect(page.getByLabel(/^Status of/)).toHaveCount(0);
 
   const gate = held();
-  await page.route(callTo("setVideoStatus"), async (route) => {
+  await page.route(callTo("renameVideo"), async (route) => {
     await gate.gate;
     await route.continue();
   });
-  await status.selectOption("rework");
-  await expect(status).toHaveValue("rework");
-  gate.release();
-
   await page.getByRole("button", { name: "More actions for Rough cut" }).click();
   await page.getByRole("menuitem", { name: "Rename" }).click();
   await page.getByLabel("Video title").fill("Fine cut");
   await page.getByRole("button", { name: "Save title" }).click();
-  await expect(page.getByLabel("Status of Fine cut")).toHaveValue("rework");
+  await expect(page.getByRole("button", { name: "Rename Fine cut" })).toBeVisible();
+  gate.release();
 
   await page.reload();
-  await expect(page.getByLabel("Status of Fine cut")).toHaveValue("rework");
-});
-
-test("a failed Status change rolls back and says so", async ({ page }, testInfo) => {
-  await routeMux(page);
-  await openNewProject(page, "Rollback", testInfo);
-  await startUpload(page, "Steady cut");
-  const status = page.getByLabel("Status of Steady cut");
-  await expect(status).toHaveValue("review");
-  await page.route(callTo("setVideoStatus"), (route) => route.abort());
-
-  await status.selectOption("done");
-
-  await expect(appAlert(page)).toContainText("Could not change");
-  await expect(status).toHaveValue("review");
-});
-
-test("a failed Status write preserves a concurrent optimistic rename", async ({
-  page,
-}, testInfo) => {
-  await routeMux(page);
-  await openNewProject(page, "Concurrent edits", testInfo);
-  await startUpload(page, "Original cut");
-  await expect(
-    page.getByRole("region", { name: "Notifications" }).getByText(/ready for review/),
-  ).toBeVisible();
-  const statusGate = held();
-  const renameGate = held();
-  let renameStarted = false;
-  await page.route(callTo("setVideoStatus"), async (route) => {
-    await statusGate.gate;
-    await route.abort();
-  });
-  await page.route(callTo("renameVideo"), async (route) => {
-    renameStarted = true;
-    await renameGate.gate;
-    await route.continue();
-  });
-  await page.getByLabel("Status of Original cut").selectOption("done");
-  await page.getByRole("button", { name: "More actions for Original cut" }).click();
-  await page.getByRole("menuitem", { name: "Rename" }).click();
-  await page.getByLabel("Video title").fill("Kept cut");
-  await page.getByRole("button", { name: "Save title" }).click();
-  await expect(page.getByLabel("Status of Kept cut")).toHaveValue("done");
-  expect(renameStarted).toBe(false);
-  statusGate.release();
-  await expect(page.getByLabel("Status of Kept cut")).toHaveValue("review");
-  renameGate.release();
-  await expect(
-    page.getByRole("status").filter({ hasText: "Video renamed to Kept cut" }),
-  ).toBeAttached();
-  await page.reload();
-  await expect(page.getByLabel("Status of Kept cut")).toHaveValue("review");
-});
-
-test("two failed queued Status edits restore the saved Status", async ({ page }, testInfo) => {
-  await routeMux(page);
-  await openNewProject(page, "Queued rollback", testInfo);
-  await startUpload(page, "Queued cut");
-  await expect(
-    page.getByRole("region", { name: "Notifications" }).getByText(/ready for review/),
-  ).toBeVisible();
-  const first = held();
-  const second = held();
-  const refetch = held();
-  let requests = 0;
-  await page.route(callTo("setVideoStatus"), async (route) => {
-    const gate = ++requests === 1 ? first : second;
-    await gate.gate;
-    await route.abort();
-  });
-  await page.route(callTo("getProject"), async (route) => {
-    await refetch.gate;
-    await route.continue();
-  });
-  const status = page.getByLabel("Status of Queued cut");
-  await status.selectOption("done");
-  await expect.poll(() => requests).toBe(1);
-  await status.selectOption("rework");
-  await expect(status).toHaveValue("rework");
-  first.release();
-  await expect.poll(() => requests).toBe(2);
-  await expect(status).toHaveValue("rework");
-  second.release();
-  await expect(status).toHaveValue("review");
-  refetch.release();
-  await page.reload();
-  await expect(status).toHaveValue("review");
+  await expect(page.getByRole("button", { name: "Rename Fine cut" })).toBeVisible();
 });
 
 test("a Viewer sees the grid but no upload or management controls", async ({ page }, testInfo) => {
   await routeMux(page);
   await openNewProject(page, "Viewer", testInfo);
   await startUpload(page, "Watch only");
-  await expect(page.getByLabel("Status of Watch only")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Rename Watch only" })).toBeVisible();
 
   const viewer = {
     clerkUserId: `user_upload_viewer_${testInfo.project.name}`,

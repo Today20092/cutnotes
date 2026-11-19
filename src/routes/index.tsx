@@ -1,24 +1,18 @@
-import { Card, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import * as v from "valibot";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { FolderOpen, Plus, Upload } from "lucide-react";
 import { useState } from "react";
 import { MemberScreen } from "@/components/member-screen";
 import {
-  canDelete,
   canUpload,
   canWrite,
-  unreadFirst,
   PageHeading,
   ProjectNameSheet,
-  RenameProjectButton,
-  videoGridClass,
   VideoGridSkeleton,
   WriteFeedback,
 } from "@/components/project-parts";
+import { StageBoard } from "@/components/stage-board";
 import { UploadSheet } from "@/components/upload-parts";
-import { VideoTile } from "@/components/video-tile";
-import { AvatarStack } from "@/components/people";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -28,15 +22,21 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { projectStages } from "@/lib/project-stage";
 import {
   isPendingProject,
   projectListQuery,
   useCreateProject,
-  useRenameProject,
   type ProjectList,
 } from "@/lib/projects";
 
+// An unknown value is dropped rather than shown as an error page.
+const searchSchema = v.object({
+  stage: v.fallback(v.optional(v.picklist(projectStages)), undefined),
+});
+
 export const Route = createFileRoute("/")({
+  validateSearch: (search) => v.parse(searchSchema, search),
   head: () => ({ meta: [{ title: "Projects · Cutnotes" }] }),
   component: Home,
 });
@@ -44,17 +44,23 @@ export const Route = createFileRoute("/")({
 function Home() {
   return (
     <MemberScreen query={projectListQuery} skeleton={<VideoGridSkeleton />}>
-      {(list) => <ProjectListView list={list} />}
+      {(list) => <ProjectBoard list={list} />}
     </MemberScreen>
   );
 }
 
-function ProjectListView({ list }: { list: ProjectList }) {
+// Recent videos left this screen: each card already shows its Project's latest cut, notes and unread activity.
+function ProjectBoard({ list }: { list: ProjectList }) {
+  const navigate = useNavigate();
+  const { stage } = Route.useSearch();
   const createProject = useCreateProject();
-  const renameProject = useRenameProject();
   const [status, setStatus] = useState("");
   const [failure, setFailure] = useState("");
   const writable = canWrite(list.member.role);
+  const uploadTargets = list.projects.filter(
+    (project) =>
+      project.completedAt === null && canUpload(project.role) && !isPendingProject(project),
+  );
 
   function create(name: string) {
     setFailure("");
@@ -67,24 +73,13 @@ function ProjectListView({ list }: { list: ProjectList }) {
     );
   }
 
-  function rename(projectId: string, previous: string, name: string) {
-    setFailure("");
-    renameProject.mutate(
-      { projectId, name },
-      {
-        onSuccess: () => setStatus(`Project renamed to ${name}`),
-        onError: () => setFailure(`Could not rename ${previous}. Nothing changed. Try again.`),
-      },
-    );
-  }
-
   const newProjectSheet = (
     <ProjectNameSheet
       title="New project"
       submitLabel="Create Project"
       onSubmit={create}
       trigger={
-        <Button variant="secondary">
+        <Button>
           <Plus aria-hidden /> New project
         </Button>
       }
@@ -96,23 +91,15 @@ function ProjectListView({ list }: { list: ProjectList }) {
       <PageHeading title="Projects">
         {(writable || list.projects.some((project) => canUpload(project.role))) && (
           <>
-            {writable && list.projects.length > 0 && newProjectSheet}
             <UploadSheet
-              destination={{
-                kind: "new",
-                projects: list.projects.filter(
-                  (project) =>
-                    project.completedAt === null &&
-                    canUpload(project.role) &&
-                    !isPendingProject(project),
-                ),
-              }}
+              destination={{ kind: "new", projects: uploadTargets }}
               trigger={
-                <Button>
+                <Button variant="secondary">
                   <Upload aria-hidden /> Upload
                 </Button>
               }
             />
+            {writable && list.projects.length > 0 && newProjectSheet}
           </>
         )}
       </PageHeading>
@@ -134,80 +121,13 @@ function ProjectListView({ list }: { list: ProjectList }) {
           {writable && <EmptyContent>{newProjectSheet}</EmptyContent>}
         </Empty>
       ) : (
-        <section aria-labelledby="projects-heading" className="flex flex-col gap-2">
-          <h2 id="projects-heading" className="text-lg font-semibold">
-            Projects
-          </h2>
-          <ul className={videoGridClass}>
-            {list.projects.map((project) => (
-              <li key={project.id} className="min-w-0">
-                <Card className="h-full">
-                  <CardHeader className="p-4">
-                    <CardTitle>
-                      <FolderOpen className="mb-3 size-5 text-muted-foreground" aria-hidden />
-                      {isPendingProject(project) ? (
-                        <span className="min-w-0 font-medium wrap-anywhere">{project.name}</span>
-                      ) : (
-                        <Link
-                          to="/projects/$projectId"
-                          params={{ projectId: project.id }}
-                          className="inline-flex min-h-11 items-center rounded font-medium wrap-anywhere underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-                        >
-                          {project.name}
-                        </Link>
-                      )}
-                    </CardTitle>
-                    <CardDescription>
-                      {list.videos.filter((video) => video.projectId === project.id).length}{" "}
-                      {list.videos.filter((video) => video.projectId === project.id).length === 1
-                        ? "video"
-                        : "videos"}
-                    </CardDescription>
-                    <AvatarStack
-                      people={project.people}
-                      label="People with access"
-                      className="col-span-full mt-2"
-                    />
-                    <CardAction>
-                      {project.completedAt !== null ? (
-                        <Badge variant="secondary" className="shrink-0">
-                          Complete
-                        </Badge>
-                      ) : (
-                        canWrite(project.role) &&
-                        !isPendingProject(project) && (
-                          <RenameProjectButton
-                            name={project.name}
-                            onRename={(name) => rename(project.id, project.name, name)}
-                          />
-                        )
-                      )}
-                    </CardAction>
-                  </CardHeader>
-                </Card>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {list.videos.length > 0 && (
-        <section aria-labelledby="videos-heading" className="flex flex-col gap-2">
-          <h2 id="videos-heading" className="text-lg font-semibold">
-            Recent videos
-          </h2>
-          <ul className={videoGridClass}>
-            {unreadFirst(list.videos).map((video) => (
-              <li key={video.id} className="min-w-0">
-                <VideoTile
-                  video={video}
-                  writable={canWrite(video.role)}
-                  deletable={canDelete({ ...list.member, role: video.role }, video)}
-                />
-              </li>
-            ))}
-          </ul>
-        </section>
+        <StageBoard
+          list={list}
+          stage={stage}
+          onStageChange={(next) =>
+            void navigate({ to: "/", search: { stage: next }, replace: true })
+          }
+        />
       )}
     </div>
   );

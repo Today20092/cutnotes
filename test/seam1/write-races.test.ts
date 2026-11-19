@@ -31,7 +31,9 @@ it.each(["removed_at = 1", "role = 'viewer'"])(
       [ids.startUpload, { projectId: "p", title: "Forbidden" }],
       [ids.startUpload, { videoId: "v" }],
       [ids.renameVideo, { videoId: "v", title: "Forbidden" }],
-      [ids.setVideoStatus, { videoId: "v", status: "done" }],
+      [ids.requestChanges, { videoId: "v" }],
+      [ids.approveVideo, { videoId: "v" }],
+      [ids.setProjectStage, { projectId: "p", stage: "done" }],
       [ids.createProject, { name: "Forbidden" }],
       [ids.renameProject, { projectId: "p", name: "Forbidden" }],
       [ids.cancelUpload, { revisionId: "r" }],
@@ -64,9 +66,9 @@ it.each(["removed_at = 1", "role = 'viewer'"])(
     expect(pending.invites.map((row) => row.id)).toEqual([invite.invite.id]);
     const page = await resultOf<{
       videos: { title: string; status: string; latestRevision: number | null }[];
-      projects: unknown[];
+      projects: { stage: string }[];
     }>(await call(ids.listProjects, owner));
-    expect(page.projects).toHaveLength(1);
+    expect(page.projects).toMatchObject([{ stage: "new" }]);
     expect(page.videos).toMatchObject([{ title: "Video v", status: "review", latestRevision: 1 }]);
   },
 );

@@ -9,6 +9,7 @@ import { canUpload, canWrite, PageBreadcrumb, PageHeading } from "@/components/p
 import { Skeleton } from "@/components/ui/skeleton";
 import { Review as ReviewPanel } from "@/components/comments";
 import { ReviewQueue } from "@/components/review-queue";
+import { ReviewDecisionBar } from "@/components/review-decision-bar";
 import { ShareLinksSheet } from "@/components/share-links";
 import { reviewQuery, useMemberActor, type ReviewPage } from "@/lib/review";
 import { Button } from "@/components/ui/button";
@@ -87,6 +88,13 @@ function Review() {
             </a>
             {page.video.deleteAfter !== null && (
               <CompleteBanner deleteAfter={page.video.deleteAfter} />
+            )}
+            {canWrite(page.video.role) && page.video.completedAt === null && page.revision && (
+              <ReviewDecisionBar
+                videoId={videoId}
+                title={page.video.title}
+                status={page.video.status}
+              />
             )}
             {page.history.length === 1 ? (
               <p className="text-sm text-muted-foreground">Revision {page.history[0]!.number}</p>

@@ -1,23 +1,15 @@
-import { NativeSelect } from "@/components/ui/native-select";
-import { statusTone } from "@/components/video-status";
 import { PendingButton } from "@/components/pending-button";
 import { toast } from "@/components/ui/toast";
 import { Input } from "@/components/ui/input";
 import { Link } from "@tanstack/react-router";
 import { DeleteWork } from "@/components/delete-work";
 import { Check, Ellipsis, Pencil, RotateCcw, X } from "lucide-react";
-import { useCallback, useId, useRef, useState } from "react";
-import {
-  ProjectNameSheet,
-  statusLabels,
-  VideoCard,
-  WriteFeedback,
-} from "@/components/project-parts";
+import { useCallback, useRef, useState } from "react";
+import { ProjectNameSheet, VideoCard, WriteFeedback } from "@/components/project-parts";
 import { UploadSheet } from "@/components/upload-parts";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
-import { useRenameVideo, useSetVideoStatus, type VideoSummary } from "@/lib/projects";
-import { videoStatuses, type VideoStatus } from "@/lib/video-status";
+import { useRenameVideo, type VideoSummary } from "@/lib/projects";
 
 function EditableVideoTitle({ video }: { video: VideoSummary }) {
   const rename = useRenameVideo(video.id);
@@ -140,21 +132,8 @@ function VideoControls({ video, deletable }: { video: VideoSummary; deletable: b
     requestAnimationFrame(() => more.current?.focus());
   }
   const renameVideo = useRenameVideo(video.id);
-  const setVideoStatus = useSetVideoStatus(video.id);
   const [status, setStatus] = useState("");
   const [failure, setFailure] = useState("");
-  const selectId = useId();
-
-  function changeStatus(next: VideoStatus) {
-    setFailure("");
-    setVideoStatus.mutate(
-      { videoId: video.id, status: next },
-      {
-        onSuccess: () => setStatus(`${video.title} is now ${statusLabels[next]}`),
-        onError: () => setFailure(`Could not change the Status of ${video.title}. Try again.`),
-      },
-    );
-  }
 
   function rename(title: string) {
     setFailure("");
@@ -171,21 +150,6 @@ function VideoControls({ video, deletable }: { video: VideoSummary; deletable: b
   return (
     <div className="mt-2 flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <label htmlFor={selectId} className="text-sm text-muted-foreground">
-          Status<span className="sr-only"> of {video.title}</span>
-        </label>
-        <NativeSelect
-          id={selectId}
-          className={statusTone[video.status]}
-          value={video.status}
-          onChange={(event) => changeStatus(event.target.value as VideoStatus)}
-        >
-          {videoStatuses.map((value) => (
-            <option key={value} value={value}>
-              {statusLabels[value]}
-            </option>
-          ))}
-        </NativeSelect>
         {video.latestRevisionState === "errored" && (
           <UploadSheet
             destination={{ kind: "existing", videoId: video.id, title: video.title }}
@@ -249,16 +213,12 @@ export function VideoTile({
   deletable?: boolean;
 }) {
   const manageable = writable && video.projectCompletedAt === null;
-  const card = <VideoCard video={video} showStatus={!manageable} />;
+  const card = <VideoCard video={video} />;
   return (
     <>
       {manageable ? (
         <div className="block min-[400px]:flex min-[400px]:gap-3 sm:block">
-          <VideoCard
-            video={video}
-            showStatus={false}
-            editableTitle={<EditableVideoTitle video={video} />}
-          />
+          <VideoCard video={video} editableTitle={<EditableVideoTitle video={video} />} />
         </div>
       ) : (
         <Link

@@ -87,7 +87,9 @@ export const memberServerFunctionIds = {
   startUpload: serverFnId(videosFile, "startUpload"),
   cancelUpload: serverFnId(videosFile, "cancelUpload"),
   renameVideo: serverFnId(videosFile, "renameVideo"),
-  setVideoStatus: serverFnId(videosFile, "setVideoStatus"),
+  requestChanges: serverFnId(videosFile, "requestChanges"),
+  approveVideo: serverFnId(videosFile, "approveVideo"),
+  setProjectStage: serverFnId("/src/server/projects.ts", "setProjectStage"),
   ...ownerServerFunctionIds,
 } as const;
 

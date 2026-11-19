@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 // Relative path: drizzle-kit loads this file without the "@/" alias.
 import { videoStatuses, type VideoStatus } from "../../lib/video-status";
+import { projectStages, type ProjectStage } from "../../lib/project-stage";
 import {
   check,
   index,
@@ -67,11 +68,13 @@ export const projects = sqliteTable(
     completedAt: integer("completed_at"),
     deleteAfter: integer("delete_after"),
     deletedAt: integer("deleted_at"),
+    stage: text("stage", { enum: projectStages }).notNull().default("new"),
   },
   (table) => [index("projects_delete_after_idx").on(table.deleteAfter)],
 );
 
 export type Project = typeof projects.$inferSelect;
+export { projectStages, type ProjectStage };
 
 export const projectMembers = sqliteTable(
   "project_members",

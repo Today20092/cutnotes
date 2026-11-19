@@ -11,6 +11,7 @@ import {
   type SignedInPerson,
 } from "@/server/access";
 import { getDb } from "@/server/db";
+import { startEditing } from "@/server/project-stage";
 import {
   invites,
   members,
@@ -271,7 +272,7 @@ async function redeemProject(
     sql`EXISTS (SELECT 1 FROM projects WHERE id = ${projectId} AND deleted_at IS NULL)`,
   );
   const isCaller = eq(members.clerkUserId, person.clerkUserId);
-  const [, marked, , , callerRows, inviteRows, assignmentRows] = await db.batch([
+  const [, marked, , , , callerRows, inviteRows, assignmentRows] = await db.batch([
     db.insert(members)
       .select(sql`SELECT ${newMemberId}, ${person.clerkUserId}, ${person.displayName}, 'viewer', ${now}, NULL, NULL
       FROM invites WHERE ${redeemable} AND NOT EXISTS (SELECT 1 FROM members WHERE ${isCaller})`),
@@ -301,6 +302,16 @@ async function redeemProject(
           sql`EXISTS (SELECT 1 FROM invites WHERE token_hash = ${tokenHash} AND used_at = ${now} AND used_by = members.id)`,
         ),
       ),
+    // Last write: the statements above chain on changes().
+    startEditing(
+      db,
+      projectId,
+      sql`EXISTS (SELECT 1 FROM invites AS used JOIN members AS joiner ON joiner.id = used.used_by
+        AND joiner.removed_at IS NULL
+        JOIN project_members AS crew ON crew.member_id = joiner.id AND crew.project_id = ${projectId}
+        WHERE used.token_hash = ${tokenHash} AND used.used_at = ${now}
+          AND crew.role IN ('uploader', 'editor'))`,
+    ),
     db.select().from(members).where(isCaller),
     db.select().from(invites).where(eq(invites.tokenHash, tokenHash)),
     db

@@ -52,7 +52,8 @@ it("an Uploader adds Videos and Revisions to their own Videos, and nothing else"
 
   for (const videoId of [own.videoId, "theirs"]) {
     expect((await call(fn.renameVideo, viewer, { videoId, title: "Renamed" })).status).toBe(404);
-    expect((await call(fn.setVideoStatus, viewer, { videoId, status: "done" })).status).toBe(404);
+    expect((await call(fn.approveVideo, viewer, { videoId })).status).toBe(404);
+    expect((await call(fn.requestChanges, viewer, { videoId })).status).toBe(404);
   }
   expect((await call(fn.renameProject, viewer, { projectId: assigned, name: "Mine" })).status).toBe(
     404,

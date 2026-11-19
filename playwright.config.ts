@@ -28,7 +28,8 @@ export default defineConfig({
       CLERK_PUBLISHABLE_KEY: `pk_live_${btoa("clerk.example.test$")}`,
       APP_ORIGIN: baseURL,
       TEAM_NAME: "Haithem Studio",
-      TEAM_LOGO_URL: "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
+      TEAM_LOGO_URL:
+        "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
       FIRST_OWNER_EMAIL: "first.owner@example.com",
     },
   },

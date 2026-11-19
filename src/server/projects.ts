@@ -17,17 +17,10 @@ import {
 import { getDb } from "@/server/db";
 import { folders, projectMembers, projects, videos, type RevisionState } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
+import { projectSummary } from "@/server/project-summary";
 
 const MAX_NAME_LENGTH = 120;
 const COUNTDOWN_MS = 14 * 24 * 60 * 60 * 1000;
-
-export const projectSummary = {
-  id: projects.id,
-  name: projects.name,
-  createdAt: projects.createdAt,
-  completedAt: projects.completedAt,
-  deleteAfter: projects.deleteAfter,
-};
 
 /**
  * The Project's Folder, only when the caller can open that Folder, so every
@@ -47,7 +40,7 @@ const visibleFolder = (memberId: string | SQLWrapper) => ({
 });
 
 /** Folders the caller can open: an Owner's are all of them. */
-export const selectFolders = (db: ScreenDb, memberId: string | SQLWrapper) =>
+const selectFolders = (db: ScreenDb, memberId: string | SQLWrapper) =>
   db
     .select({
       id: folders.id,

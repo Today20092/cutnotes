@@ -24,7 +24,7 @@ import {
   projects,
   type ProjectRole,
 } from "@/server/db/schema";
-import { projectSummary } from "@/server/projects";
+import { projectSummary } from "@/server/project-summary";
 
 const MAX_NAME_LENGTH = 120;
 

@@ -201,6 +201,7 @@ function Review() {
             ) : (
               <ToggleGroup
                 aria-label="Revision history"
+                variant="outline"
                 className="flex-wrap"
                 value={page.revision ? [page.revision.id] : []}
                 onValueChange={(next: string[]) => {

@@ -16,7 +16,7 @@ export const shareRoles: { role: ProjectRole; label: string; description: string
   {
     role: "editor",
     label: "Editor",
-    description: "Can upload, rename, change status and resolve comments.",
+    description: "Can upload, rename, approve or request changes, and resolve comments.",
   },
 ];
 

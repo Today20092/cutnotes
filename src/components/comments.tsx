@@ -30,7 +30,7 @@ export const timeLabel = (ms: number) =>
 export const selectedRowClass =
   "aria-[current=true]:border-l-4 aria-[current=true]:border-current aria-[current=true]:pl-2 aria-[current=true]:font-semibold";
 
-/** Shared by the Member and Guest lists; the underline survives forced colours. */
+/** Shared by the Member and Guest lists; the underline marks the choice without relying on colour. */
 const segmentClass =
   "h-11 aria-pressed:underline aria-pressed:decoration-2 aria-pressed:underline-offset-4 sm:pointer-fine:h-8";
 
@@ -121,6 +121,7 @@ export function CommentFilter({
   return (
     <ToggleGroup
       aria-label="Comment filters"
+      variant="outline"
       className="mt-6 mb-1"
       value={[resolved ? "resolved" : "todo"]}
       onValueChange={(next: string[]) => {

@@ -168,7 +168,6 @@ function CustomerLinks({
           create.mutate();
         }}
       >
-        <p className="font-medium">Revision {revision.number}</p>
         <Field className="items-stretch">
           <FieldLabel htmlFor="share-name">Who is this link for?</FieldLabel>
           <Input
@@ -181,7 +180,9 @@ function CustomerLinks({
         </Field>
         <Fieldset className="max-w-none gap-3">
           <FieldsetLegend className="text-sm">What can they do?</FieldsetLegend>
+          {/* Each row is already a 44px target, so the rows need no gap between them. */}
           <RadioGroup
+            className="gap-0"
             value={permission}
             onValueChange={(next) => setPermission(next as SharePermission)}
           >

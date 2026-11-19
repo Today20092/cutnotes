@@ -12,7 +12,7 @@ Project assignments are separate from Team roles:
 - **Uploader:** watches and comments, adds new videos, and uploads revisions to videos they created. Uploaders delete only videos they created. They cannot rename the project or other people's videos, move the Stage, request changes, approve, resolve comments or manage people.
 - **Reviewer:** watches and comments, including editing or removing their own comments.
 
-Assigning someone as a project Editor does not grant permission to create projects. Changing their Team Editor/Viewer designation does not change their project assignments. Completed projects retain their existing read-only behavior, including their Stage. Assigning an Uploader or Editor to a New project, or their accepting a project invitation, moves it to Editing.
+Assigning someone as a project Editor does not grant permission to create projects. Changing their Team Editor/Viewer designation does not change their project assignments. Completed projects retain their existing read-only behavior, including their Stage. Assigning an Uploader or Editor to a New project, or their accepting a project invitation, moves it to Editing. **Request changes** on any one video moves the whole project back to Editing.
 
 ## Owner workflow
 

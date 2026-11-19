@@ -403,10 +403,13 @@ export function VideoCard({
               Unread activity
             </span>
           )}
-          <div className="text-meta">
-            {showProject && `${video.projectName} · `}
-            {revision}
-            {video.updatedAt ? ` · ${formatUpdated(video.updatedAt)}` : ""}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-meta">
+              {showProject && `${video.projectName} · `}
+              {revision}
+              {video.updatedAt ? ` · ${formatUpdated(video.updatedAt)}` : ""}
+            </span>
+            <VideoStatusBadge status={video.status} />
           </div>
           {progress && (
             <div className={progress.failed ? "text-sm text-destructive" : "text-sm"}>
@@ -414,7 +417,6 @@ export function VideoCard({
             </div>
           )}
         </div>
-        <VideoStatusBadge status={video.status} />
       </div>
     </>
   );

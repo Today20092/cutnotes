@@ -189,6 +189,7 @@ function Review() {
                 status={page.video.status}
                 revision={page.revision}
                 latest={page.history[0]!}
+                sendable={page.member.role === "owner"}
               />
             )}
             {page.history.length === 1 ? (

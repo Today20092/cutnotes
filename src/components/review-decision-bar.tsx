@@ -1,4 +1,5 @@
 import { createParts } from "@ui-sdk/react/primitive";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { PendingButton } from "@/components/pending-button";
 import { WriteFeedback } from "@/components/project-parts";
@@ -20,6 +21,7 @@ export function ReviewDecisionBar({
   status,
   revision,
   latest,
+  sendable = false,
 }: {
   videoId: string;
   title: string;
@@ -28,6 +30,8 @@ export function ReviewDecisionBar({
   revision: { id: string; number: number };
   /** The newest ready Revision. */
   latest: { id: string; number: number };
+  /** An Owner, who is offered Send to customer once the cut is approved. */
+  sendable?: boolean;
 }) {
   if (revision.id !== latest.id)
     return (
@@ -39,7 +43,13 @@ export function ReviewDecisionBar({
       </section>
     );
   return (
-    <DecisionButtons videoId={videoId} title={title} status={status} revisionId={revision.id} />
+    <DecisionButtons
+      videoId={videoId}
+      title={title}
+      status={status}
+      revision={revision}
+      sendable={sendable}
+    />
   );
 }
 
@@ -47,14 +57,16 @@ function DecisionButtons({
   videoId,
   title,
   status,
-  revisionId,
+  revision,
+  sendable,
 }: {
   videoId: string;
   title: string;
   status: VideoStatus;
-  revisionId: string;
+  revision: { id: string; number: number };
+  sendable: boolean;
 }) {
-  const decision = useReviewDecision(videoId, revisionId);
+  const decision = useReviewDecision(videoId, revision.id);
   const [said, setSaid] = useState("");
   const [failure, setFailure] = useState("");
 
@@ -104,6 +116,20 @@ function DecisionButtons({
           Approve
         </PendingButton>
       </div>
+      {sendable && decision.isSuccess && decision.variables === "approve" && (
+        <p className="w-full text-sm">
+          {title} is approved.{" "}
+          <Link
+            to="/videos/$videoId"
+            params={{ videoId }}
+            search={(prev) => ({ ...prev, sheet: "customer", revision: revision.number })}
+            replace
+            className="font-medium underline underline-offset-4"
+          >
+            Send to customer
+          </Link>
+        </p>
+      )}
       <WriteFeedback status={said} failure={failure} />
     </Decision.Root>
   );

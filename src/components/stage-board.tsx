@@ -249,6 +249,9 @@ export function StageBoard({
                   {state.lists[column]?.length ?? 0}
                 </span>
               </h3>
+              {!state.lists[column]?.length && (
+                <p className="px-2 text-sm text-muted-foreground">No Projects</p>
+              )}
               <Board.Column value={column} className="flex min-h-16 flex-col gap-2">
                 {(state.lists[column] ?? []).map((id) => {
                   const project = projects.find((row) => row.id === id);

@@ -53,6 +53,8 @@ test("a card's menu and, on desktop, a drag move it; the Stage filter is in the 
   await board(page).getByRole("button", { name: "More actions for Playback project" }).click();
   await page.getByRole("menuitem", { name: "Move to In review" }).click();
   await expect(card(page, "In review")).toBeVisible();
+  // The saved move shows a status line above the board, which shifts the cards; measure after it.
+  await expect(board(page).getByRole("status")).toHaveText("Playback project moved to In review");
 
   if (testInfo.project.name === "desktop") {
     const from = (await card(page, "In review").boundingBox())!;
@@ -111,6 +113,8 @@ test("Request changes and Approve on the review page move the Project", async ({
   await openVideo(page, id);
   await decision.getByRole("button", { name: "Approve" }).click();
   await expect(decision.getByText("Approved", { exact: true })).toBeVisible();
+  // Only an Owner is offered Send to customer next.
+  await expect(decision.getByRole("link", { name: "Send to customer" })).toHaveCount(0);
   await page.goto("/");
   await expect(card(page, "Done")).toBeVisible();
 });

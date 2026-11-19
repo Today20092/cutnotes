@@ -349,7 +349,7 @@ test("deleting a Project: confirmation, cancellation, failure and disappearance"
   const trigger = page.getByRole("button", { name: `More actions for ${name}`, exact: true });
   const openDelete = async () => {
     await trigger.click();
-    await page.getByRole("menuitem", { name: "Delete" }).click();
+    await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
   };
   await openDelete();
   await expect(page.getByRole("dialog", { name: "Delete Project?" })).toBeVisible();
@@ -487,10 +487,19 @@ test("Send to customer sheet and Guest pages", async ({ page, browser }, testInf
   const videoId = seedReview(person.clerkUserId);
   seedComment(videoId, person.clerkUserId, "Internal team note");
   await signInAs(page, owner);
+  // Approving offers an Owner the next step, sending that cut.
+  await page.goto(`/videos/${videoId}`);
+  const decision = page.getByRole("region", { name: "Review decision" });
+  await decision.getByRole("button", { name: "Approve" }).click();
+  await decision.getByRole("link", { name: "Send to customer" }).click();
+  await expect(page).toHaveURL(/sheet=customer/);
+  await expect(page.getByRole("dialog", { name: "Send to customer" })).toContainText(
+    "Sends Revision 1 of",
+  );
   // The sheet opens from its URL, so an agent or a shared link can land on it.
   await page.goto(`/videos/${videoId}?sheet=customer`);
   const sheet = page.getByRole("dialog", { name: "Send to customer" });
-  await expect(sheet.getByText("Revision 1", { exact: true })).toBeVisible();
+  await expect(sheet).toContainText("Sends Revision 1 of");
   await page.getByLabel("Who is this link for?").fill("Client");
   await page.getByRole("button", { name: "Create link" }).click();
   await expect(page.getByRole("button", { name: "Revoke link for Client" })).toBeVisible();

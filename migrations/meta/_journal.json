@@ -71,6 +71,13 @@
       "when": 1794517489819,
       "tag": "0009_skinny_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1795068913420,
+      "tag": "0010_marvelous_scalphunter",
+      "breakpoints": true
     }
   ]
 }

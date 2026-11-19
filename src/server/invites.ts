@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
-import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, sql, type SQL } from "drizzle-orm";
 import {
   activeMember,
   id,
@@ -10,8 +10,19 @@ import {
   requireSignedIn,
   type SignedInPerson,
 } from "@/server/access";
-import { getDb } from "@/server/db";
-import { invites, members, projects, projectMembers, roles, type Role } from "@/server/db/schema";
+import type { BatchItem } from "drizzle-orm/batch";
+import { getDb, type Db } from "@/server/db";
+import {
+  folderMembers,
+  folders,
+  invites,
+  members,
+  projectMembers,
+  projectRoles,
+  projects,
+  roles,
+  type InviteRole,
+} from "@/server/db/schema";
 
 const inviteLifetimeMs = 7 * 24 * 60 * 60 * 1000;
 
@@ -31,23 +42,37 @@ async function sha256(token: string) {
 const isPending = (now: number) =>
   and(isNull(invites.usedAt), isNull(invites.revokedAt), gt(invites.expiresAt, now));
 
+const roleLabels: Record<InviteRole, string> = {
+  viewer: "a Reviewer",
+  uploader: "an Uploader",
+  editor: "an Editor",
+  owner: "an Owner",
+};
+
 /** Reading a preview must never redeem the Invite. */
 export const getInvitePreview = createServerFn({ method: "POST" })
   .validator((data: { token: string }) => data)
   .handler(async ({ data }) => {
     if (typeof data?.token !== "string" || !/^[\w-]{43}$/.test(data.token)) return null;
     const [invite] = await getDb()
-      .select({ role: invites.role, projectId: invites.projectId, projectName: projects.name })
+      .select({
+        role: invites.role,
+        projectId: invites.projectId,
+        projectName: projects.name,
+        folderId: invites.folderId,
+        folderName: sql<string | null>`${folders.name}`.as("folder_name"),
+      })
       .from(invites)
       .leftJoin(projects, and(eq(projects.id, invites.projectId), isNull(projects.deletedAt)))
+      .leftJoin(folders, eq(folders.id, invites.folderId))
       .where(and(eq(invites.tokenHash, await sha256(data.token)), isPending(Date.now())));
     if (!invite || (invite.projectId && !invite.projectName)) return null;
+    if (invite.folderId && !invite.folderName) return null;
+    const scope = invite.projectName ?? (invite.folderName && `the ${invite.folderName} folder`);
     return {
-      title: invite.projectId
-        ? `You're invited to ${invite.projectName}`
-        : `You're invited to join ${env.TEAM_NAME}`,
-      description: invite.projectId
-        ? `Join ${invite.projectName} as ${invite.role === "editor" ? "an Editor" : "a Reviewer"}. Sign in to accept. This invitation works once and expires after 7 days.`
+      title: scope ? `You're invited to ${scope}` : `You're invited to join ${env.TEAM_NAME}`,
+      description: scope
+        ? `Join ${scope} as ${roleLabels[invite.role]}. Sign in to accept. This invitation works once and expires after 7 days.`
         : `Join ${env.TEAM_NAME} as ${invite.role === "owner" ? "an" : "a"} ${invite.role} on Cutnotes. Sign in to accept. This invitation works once and expires after 7 days.`,
       image: env.TEAM_LOGO_URL,
     };
@@ -55,6 +80,7 @@ export const getInvitePreview = createServerFn({ method: "POST" })
 
 const pendingFields = {
   projectId: invites.projectId,
+  folderId: invites.folderId,
   note: invites.note,
   usedAt: invites.usedAt,
   revokedAt: invites.revokedAt,
@@ -67,22 +93,28 @@ const pendingFields = {
 
 export type PendingInvite = {
   id: string;
-  role: Role;
+  role: InviteRole;
   createdAt: number;
   expiresAt: number;
   projectId: string | null;
+  folderId: string | null;
   note: string | null;
 };
 
 /** The token exists only in this response. Afterwards the server holds just its hash. */
 export const createInvite = createServerFn({ method: "POST" })
-  .validator((data: { role: Role; projectId?: string; note?: string }) => data)
+  .validator(
+    (data: { role: InviteRole; projectId?: string; folderId?: string; note?: string }) => data,
+  )
   .handler(async ({ data }): Promise<{ url: string; invite: PendingInvite }> => {
     const owner = await requireMember("owner");
-    const role = roles.find((known) => known === (data as { role?: unknown } | undefined)?.role);
+    const projectId = data?.projectId === undefined ? null : id(data, "projectId");
+    const folderId = data?.folderId === undefined ? null : id(data, "folderId");
+    if (projectId && folderId) refuse(400, "invalid-request");
+    // A Project or Folder Invite offers an assignment; a Team Invite offers a Team Role.
+    const offered: readonly InviteRole[] = projectId || folderId ? projectRoles : roles;
+    const role = offered.find((known) => known === (data as { role?: unknown } | undefined)?.role);
     if (!role) refuse(400, "invalid-request");
-    const projectId = data.projectId === undefined ? null : id(data, "projectId");
-    if (projectId && role === "owner") refuse(400, "invalid-request");
     if (data.note !== undefined && (typeof data.note !== "string" || data.note.length > 240))
       refuse(400, "invalid-request");
     const note = data.note?.trim() || null;
@@ -92,6 +124,7 @@ export const createInvite = createServerFn({ method: "POST" })
     const invite = {
       id: crypto.randomUUID(),
       projectId,
+      folderId,
       note,
       role,
       createdAt: now,
@@ -99,18 +132,20 @@ export const createInvite = createServerFn({ method: "POST" })
     };
     const [created] = await getDb()
       .insert(invites)
-      .select(sql`SELECT ${invite.id}, ${await sha256(token)}, ${role}, ${owner.id}, ${now}, ${invite.expiresAt}, NULL, NULL, NULL, ${projectId}, ${note}
+      .select(sql`SELECT ${invite.id}, ${await sha256(token)}, ${role}, ${owner.id}, ${now}, ${invite.expiresAt}, NULL, NULL, NULL, ${projectId}, ${note}, ${folderId}
         WHERE ${activeMember(owner.id, "owner")}
-          AND (${projectId} IS NULL OR EXISTS (SELECT 1 FROM projects WHERE id = ${projectId} AND deleted_at IS NULL))`)
+          AND (${projectId} IS NULL OR EXISTS (SELECT 1 FROM projects WHERE id = ${projectId} AND deleted_at IS NULL))
+          AND (${folderId} IS NULL OR EXISTS (SELECT 1 FROM folders WHERE id = ${folderId}))`)
       .returning({ id: invites.id });
     if (!created) refuse(403, "insufficient-role");
     return { url: `${env.APP_ORIGIN}/invite/${token}`, invite };
   });
 
 export const listInvites = createServerFn({ method: "POST" })
-  .validator((data: { projectId?: string } | undefined) => data)
+  .validator((data: { projectId?: string; folderId?: string } | undefined) => data)
   .handler(async ({ data }) => {
     const projectId = typeof data?.projectId === "string" ? data.projectId : undefined;
+    const folderId = typeof data?.folderId === "string" ? data.folderId : undefined;
     const { results } = await readAsMember("owner", (db) => [
       db
         .select({
@@ -121,10 +156,17 @@ export const listInvites = createServerFn({ method: "POST" })
             string | null
           >`(SELECT display_name FROM members AS accepter WHERE accepter.id = ${invites.usedBy})`,
           projectName: projects.name,
+          folderName: sql<string | null>`${folders.name}`.as("folder_name"),
         })
         .from(invites)
         .leftJoin(projects, eq(projects.id, invites.projectId))
-        .where(projectId ? eq(invites.projectId, projectId) : undefined)
+        .leftJoin(folders, eq(folders.id, invites.folderId))
+        .where(
+          and(
+            projectId ? eq(invites.projectId, projectId) : undefined,
+            folderId ? eq(invites.folderId, folderId) : undefined,
+          ),
+        )
         .orderBy(desc(invites.createdAt)),
     ]);
     return { invites: results[0] };
@@ -153,8 +195,8 @@ export const revokeInvite = createServerFn({ method: "POST" })
   });
 
 export type RedeemResult =
-  | { outcome: "joined"; projectId?: string }
-  | { outcome: "already-member"; projectId?: string }
+  | { outcome: "joined"; projectId?: string; folderId?: string }
+  | { outcome: "already-member"; projectId?: string; folderId?: string }
   | { outcome: "unavailable"; reason: "used" | "expired" | "revoked" | "unknown" };
 
 /**
@@ -229,28 +271,55 @@ export const redeemInvite = createServerFn({ method: "POST" })
     const person = await requireSignedIn();
     const tokenHash = await sha256(id(data, "token"));
     const [invite] = await getDb()
-      .select({ projectId: invites.projectId })
+      .select({ projectId: invites.projectId, folderId: invites.folderId })
       .from(invites)
       .where(eq(invites.tokenHash, tokenHash));
-    return invite?.projectId
-      ? redeemProject(person, tokenHash, invite.projectId)
-      : redeem(person, tokenHash);
+    if (invite?.projectId) return redeemScoped(person, tokenHash, projectScope(invite.projectId));
+    if (invite?.folderId) return redeemScoped(person, tokenHash, folderScope(invite.folderId));
+    return redeem(person, tokenHash);
   });
 
+/** Where a scoped Invite grants its assignment. Table and column names are constants. */
+type Scope = {
+  result: { projectId: string } | { folderId: string };
+  id: string;
+  assignments: "project_members" | "folder_members";
+  column: "project_id" | "folder_id";
+  live: SQL;
+  /** Inserts the assignment rows a SELECT yields: (target id, member, role, added by, created at). */
+  assign: (db: Db, rows: SQL) => BatchItem<"sqlite">;
+};
+
+const projectScope = (projectId: string): Scope => ({
+  result: { projectId },
+  id: projectId,
+  assignments: "project_members",
+  column: "project_id",
+  live: sql`EXISTS (SELECT 1 FROM projects WHERE id = ${projectId} AND deleted_at IS NULL)`,
+  assign: (db, rows) => db.insert(projectMembers).select(rows),
+});
+
+const folderScope = (folderId: string): Scope => ({
+  result: { folderId },
+  id: folderId,
+  assignments: "folder_members",
+  column: "folder_id",
+  live: sql`EXISTS (SELECT 1 FROM folders WHERE id = ${folderId})`,
+  assign: (db, rows) => db.insert(folderMembers).select(rows),
+});
+
 /** Claim and assignment share a batch: only the request that consumes the token grants access. */
-async function redeemProject(
+async function redeemScoped(
   person: SignedInPerson,
   tokenHash: string,
-  projectId: string,
+  scope: Scope,
 ): Promise<RedeemResult> {
   const db = getDb();
   const now = Date.now();
   const newMemberId = crypto.randomUUID();
-  const redeemable = and(
-    eq(invites.tokenHash, tokenHash),
-    isPending(now),
-    sql`EXISTS (SELECT 1 FROM projects WHERE id = ${projectId} AND deleted_at IS NULL)`,
-  );
+  const assignments = sql.raw(scope.assignments);
+  const column = sql.raw(scope.column);
+  const redeemable = and(eq(invites.tokenHash, tokenHash), isPending(now), scope.live);
   const isCaller = eq(members.clerkUserId, person.clerkUserId);
   const [, marked, , , callerRows, inviteRows, assignmentRows] = await db.batch([
     db.insert(members)
@@ -264,13 +333,16 @@ async function redeemProject(
           redeemable,
           sql`EXISTS (SELECT 1 FROM members WHERE ${isCaller}
         AND (removed_at IS NOT NULL OR (role <> 'owner' AND NOT EXISTS (
-          SELECT 1 FROM project_members WHERE member_id = members.id AND project_id = ${projectId}))))`,
+          SELECT 1 FROM ${assignments} WHERE member_id = members.id AND ${column} = ${scope.id}))))`,
         ),
       ),
-    db.insert(projectMembers).select(sql`SELECT ${projectId}, m.id, i.role, i.created_by, ${now}
+    scope.assign(
+      db,
+      sql`SELECT ${scope.id}, m.id, i.role, i.created_by, ${now}
       FROM invites i JOIN members m ON m.id = i.used_by
       WHERE changes() = 1 AND i.token_hash = ${tokenHash} AND i.used_at = ${now} AND m.clerk_user_id = ${person.clerkUserId}
-        AND NOT EXISTS (SELECT 1 FROM project_members WHERE project_id = ${projectId} AND member_id = m.id)`),
+        AND NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${column} = ${scope.id} AND member_id = m.id)`,
+    ),
     db
       .update(members)
       .set({ removedAt: null, role: "viewer" })
@@ -285,16 +357,20 @@ async function redeemProject(
     db.select().from(members).where(isCaller),
     db.select().from(invites).where(eq(invites.tokenHash, tokenHash)),
     db
-      .select({ memberId: projectMembers.memberId })
-      .from(projectMembers)
-      .innerJoin(members, eq(members.id, projectMembers.memberId))
-      .where(and(isCaller, eq(projectMembers.projectId, projectId))),
+      .select({ memberId: members.id })
+      .from(members)
+      .where(
+        and(
+          isCaller,
+          sql`EXISTS (SELECT 1 FROM ${assignments} WHERE member_id = members.id AND ${column} = ${scope.id})`,
+        ),
+      ),
   ]);
-  if (marked.meta.changes === 1) return { outcome: "joined", projectId };
+  if (marked.meta.changes === 1) return { outcome: "joined", ...scope.result };
   const caller = callerRows[0];
   const invite = inviteRows[0];
   if (caller && caller.removedAt === null && (caller.role === "owner" || assignmentRows.length))
-    return { outcome: "already-member", projectId };
+    return { outcome: "already-member", ...scope.result };
   if (!invite) return { outcome: "unavailable", reason: "unknown" };
   if (invite.revokedAt !== null) return { outcome: "unavailable", reason: "revoked" };
   if (invite.usedAt !== null) return { outcome: "unavailable", reason: "used" };

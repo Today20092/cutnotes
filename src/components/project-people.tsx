@@ -110,6 +110,7 @@ export function ProjectPeople({ projectId }: { projectId: string }) {
                   }
                 >
                   <option value="viewer">Reviewer</option>
+                  <option value="uploader">Uploader</option>
                   <option value="editor">Editor</option>
                 </NativeSelect>
                 <ConfirmButton
@@ -155,6 +156,7 @@ export function ProjectPeople({ projectId }: { projectId: string }) {
               onChange={(event) => setRole(event.target.value as ProjectRole)}
             >
               <option value="viewer">Reviewer</option>
+              <option value="uploader">Uploader</option>
               <option value="editor">Editor</option>
             </NativeSelect>
           </div>

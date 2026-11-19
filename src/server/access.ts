@@ -6,14 +6,18 @@ import { and, eq, inArray, isNull, or, sql, type SQL, type SQLWrapper } from "dr
 import type { BatchItem } from "drizzle-orm/batch";
 import { getDb, type Db } from "@/server/db";
 import {
+  folderMembers,
   members,
   projectMembers,
+  projectRoles,
   projects,
   revisions,
   roles,
   shareLinks,
   videos,
+  type AccessRole,
   type Member,
+  type ProjectRole,
   type Role,
 } from "@/server/db/schema";
 
@@ -93,11 +97,23 @@ export const activeMember = (memberId: string, minimumRole: Role) =>
 export const memberIdForUser = (clerkUserId: string) =>
   sql`(SELECT id FROM members WHERE clerk_user_id = ${clerkUserId})`;
 
-/** Team roles control creation; project roles control access to existing work. */
+/** The SQL list of assignment roles at or above `minimumRole`, for an `IN` test. */
+const rolesFrom = (column: SQL, minimumRole: ProjectRole) =>
+  inArray(column, projectRoles.slice(projectRoles.indexOf(minimumRole)));
+
+/** Picks the highest assignment role from a subquery's `role` column. */
+const highestRole = (assignments: SQL) =>
+  sql`(SELECT role FROM (${assignments})
+    ORDER BY CASE role WHEN 'editor' THEN 3 WHEN 'uploader' THEN 2 ELSE 1 END DESC LIMIT 1)`;
+
+/**
+ * Team roles control creation; project roles control access to existing work.
+ * An assignment on the Project's Folder counts as an assignment on the Project.
+ */
 export const projectAccess = (
   memberId: string | SQLWrapper,
   projectId: string | SQLWrapper,
-  minimumRole: "viewer" | "editor" = "viewer",
+  minimumRole: ProjectRole = "viewer",
 ) =>
   sql`EXISTS (SELECT 1 FROM members AS project_actor
     JOIN projects AS accessible ON accessible.id = ${projectId} AND accessible.deleted_at IS NULL
@@ -105,22 +121,57 @@ export const projectAccess = (
       AND (project_actor.role = 'owner' OR EXISTS (
         SELECT 1 FROM project_members AS assignment
         WHERE assignment.member_id = project_actor.id AND assignment.project_id = accessible.id
-          AND ${minimumRole === "editor" ? sql`assignment.role = 'editor'` : sql`1 = 1`}
+          AND ${rolesFrom(sql`assignment.role`, minimumRole)}
+      ) OR EXISTS (
+        SELECT 1 FROM folder_members AS folder_assignment
+        WHERE folder_assignment.member_id = project_actor.id
+          AND folder_assignment.folder_id = accessible.folder_id
+          AND ${rolesFrom(sql`folder_assignment.role`, minimumRole)}
       )))`;
 
+/** Owner, else the higher of the direct and Folder assignments. */
 export const projectRole = (memberId: string | SQLWrapper, projectId: string | SQLWrapper) =>
-  sql<Role>`CASE WHEN EXISTS (SELECT 1 FROM members AS role_actor WHERE role_actor.id = ${memberId}
+  sql<AccessRole>`CASE WHEN EXISTS (SELECT 1 FROM members AS role_actor WHERE role_actor.id = ${memberId}
       AND role_actor.role = 'owner' AND role_actor.removed_at IS NULL) THEN 'owner'
-    ELSE (SELECT assignment.role FROM project_members AS assignment
-      WHERE assignment.member_id = ${memberId} AND assignment.project_id = ${projectId}) END`;
+    ELSE ${highestRole(sql`SELECT assignment.role AS role FROM project_members AS assignment
+        WHERE assignment.member_id = ${memberId} AND assignment.project_id = ${projectId}
+      UNION ALL SELECT folder_assignment.role AS role FROM folder_members AS folder_assignment
+        JOIN projects AS filed ON filed.folder_id = folder_assignment.folder_id
+        WHERE folder_assignment.member_id = ${memberId} AND filed.id = ${projectId}`)} END`;
+
+export const folderAccess = (
+  memberId: string | SQLWrapper,
+  folderId: string | SQLWrapper,
+  minimumRole: ProjectRole = "viewer",
+) =>
+  sql`EXISTS (SELECT 1 FROM members AS folder_actor
+    JOIN folders AS accessible_folder ON accessible_folder.id = ${folderId}
+    WHERE folder_actor.id = ${memberId} AND folder_actor.removed_at IS NULL
+      AND (folder_actor.role = 'owner' OR EXISTS (
+        SELECT 1 FROM folder_members AS folder_assignment
+        WHERE folder_assignment.member_id = folder_actor.id
+          AND folder_assignment.folder_id = accessible_folder.id
+          AND ${rolesFrom(sql`folder_assignment.role`, minimumRole)}
+      )))`;
+
+export const folderRole = (memberId: string | SQLWrapper, folderId: string | SQLWrapper) =>
+  sql<AccessRole>`CASE WHEN EXISTS (SELECT 1 FROM members AS role_actor WHERE role_actor.id = ${memberId}
+      AND role_actor.role = 'owner' AND role_actor.removed_at IS NULL) THEN 'owner'
+    ELSE (SELECT folder_assignment.role FROM folder_members AS folder_assignment
+      WHERE folder_assignment.member_id = ${memberId} AND folder_assignment.folder_id = ${folderId}) END`;
 
 export const videoAccess = (
   memberId: string | SQLWrapper,
   videoId: string | SQLWrapper,
-  minimumRole: "viewer" | "editor" = "viewer",
+  minimumRole: ProjectRole = "viewer",
 ) =>
   sql`EXISTS (SELECT 1 FROM videos AS accessible_video WHERE accessible_video.id = ${videoId}
     AND accessible_video.deleted_at IS NULL AND ${projectAccess(memberId, sql`accessible_video.project_id`, minimumRole)})`;
+
+/** Editors upload to any Video in the Project; Uploaders only to Videos they created. */
+export const uploadAccess = (memberId: string, videoId: string | SQLWrapper) =>
+  sql`(${videoAccess(memberId, videoId, "editor")} OR (${videoAccess(memberId, videoId, "uploader")}
+    AND EXISTS (SELECT 1 FROM videos AS own_video WHERE own_video.id = ${videoId} AND own_video.created_by = ${memberId})))`;
 
 /** The Project still takes writes: live and not Complete. */
 export const openProject = (projectId: string | SQLWrapper) =>
@@ -249,7 +300,7 @@ async function writeActiveMember(
               WHERE other.role = 'owner' AND other.removed_at IS NULL AND other.id <> ${targetId})`,
       );
 
-  const [written, , rows] = await db.batch([
+  const [written, , , rows] = await db.batch([
     db
       .update(members)
       .set(change)
@@ -267,6 +318,14 @@ async function writeActiveMember(
       .where(
         and(
           eq(projectMembers.memberId, targetId),
+          sql`EXISTS (SELECT 1 FROM members WHERE id = ${targetId} AND removed_at IS NOT NULL)`,
+        ),
+      ),
+    db
+      .delete(folderMembers)
+      .where(
+        and(
+          eq(folderMembers.memberId, targetId),
           sql`EXISTS (SELECT 1 FROM members WHERE id = ${targetId} AND removed_at IS NOT NULL)`,
         ),
       ),

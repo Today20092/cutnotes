@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNotNull, isNull, sql, type SQLWrapper } from "drizzle-orm";
 import {
   activeMember,
+  folderAccess,
+  folderRole,
   memberIdForUser,
   projectAccess,
   projectRole,
@@ -13,19 +15,50 @@ import {
   type ScreenDb,
 } from "@/server/access";
 import { getDb } from "@/server/db";
-import { projectMembers, projects, videos, type RevisionState } from "@/server/db/schema";
+import { folders, projectMembers, projects, videos, type RevisionState } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
 
 const MAX_NAME_LENGTH = 120;
 const COUNTDOWN_MS = 14 * 24 * 60 * 60 * 1000;
 
-const projectSummary = {
+export const projectSummary = {
   id: projects.id,
   name: projects.name,
   createdAt: projects.createdAt,
   completedAt: projects.completedAt,
   deleteAfter: projects.deleteAfter,
 };
+
+/**
+ * The Project's Folder, only when the caller can open that Folder, so every
+ * `folderId` a screen gets names a Folder in its `folders` list.
+ */
+const visibleFolder = (memberId: string | SQLWrapper) => ({
+  folderId: sql<
+    string | null
+  >`CASE WHEN ${folderAccess(memberId, projects.folderId)} THEN ${projects.folderId} END`.as(
+    "visible_folder_id",
+  ),
+  folderName: sql<
+    string | null
+  >`CASE WHEN ${folderAccess(memberId, projects.folderId)} THEN (SELECT named.name FROM folders AS named WHERE named.id = ${projects.folderId}) END`.as(
+    "visible_folder_name",
+  ),
+});
+
+/** Folders the caller can open: an Owner's are all of them. */
+export const selectFolders = (db: ScreenDb, memberId: string | SQLWrapper) =>
+  db
+    .select({
+      id: folders.id,
+      name: folders.name,
+      role: folderRole(memberId, folders.id).as("folder_role"),
+      projectCount: sql<number>`(SELECT count(*) FROM projects AS filed
+        WHERE filed.folder_id = folders.id AND filed.deleted_at IS NULL)`.as("project_count"),
+    })
+    .from(folders)
+    .where(folderAccess(memberId, folders.id))
+    .orderBy(asc(folders.name), asc(folders.id));
 
 const selectVideos = (db: ScreenDb, clerkUserId: string) =>
   db
@@ -94,16 +127,22 @@ async function withPosters<Video extends { posterPlaybackId: string | null }>(ro
 export const listProjects = createServerFn({ method: "POST" }).handler(async () => {
   const { member, results } = await readAsMember("viewer", (db, clerkUserId) => [
     db
-      .select({ ...projectSummary, role: projectRole(memberIdForUser(clerkUserId), projects.id) })
+      .select({
+        ...projectSummary,
+        ...visibleFolder(memberIdForUser(clerkUserId)),
+        role: projectRole(memberIdForUser(clerkUserId), projects.id),
+      })
       .from(projects)
       .where(projectAccess(memberIdForUser(clerkUserId), projects.id))
       .orderBy(desc(projects.createdAt)),
     selectVideos(db, clerkUserId)
       .where(and(liveVideo, projectAccess(memberIdForUser(clerkUserId), videos.projectId)))
       .orderBy(desc(videos.updatedAt)),
+    selectFolders(db, memberIdForUser(clerkUserId)),
   ]);
   return {
     member: { id: member.id, displayName: member.displayName, role: member.role },
+    folders: results[2],
     projects: results[0],
     videos: await withPosters(results[1]),
   };
@@ -119,6 +158,7 @@ export const getProject = createServerFn({ method: "POST" })
         db
           .select({
             ...projectSummary,
+            ...visibleFolder(memberIdForUser(clerkUserId)),
             role: projectRole(memberIdForUser(clerkUserId), projects.id),
           })
           .from(projects)
@@ -148,19 +188,23 @@ export const getProject = createServerFn({ method: "POST" })
     };
   });
 
+/** Team Editors file a new Project only in a Folder where they are a Folder Editor; Owners anywhere. */
 export const createProject = createServerFn({ method: "POST" })
-  .validator((data: { name: string }) => data)
+  .validator((data: { name: string; folderId?: string | null }) => data)
   .handler(async ({ data }) => {
     const member = await requireMember("editor");
+    const name = text(data, "name", MAX_NAME_LENGTH, "invalid-name");
+    const folderId = (data?.folderId ?? null) === null ? null : id(data, "folderId");
     const now = Date.now();
     const projectId = crypto.randomUUID();
     const db = getDb();
     const [created] = await db.batch([
       db
         .insert(projects)
-        .select(sql`SELECT ${projectId}, ${text(data, "name", MAX_NAME_LENGTH, "invalid-name")}, ${member.id}, ${now}, ${now}, NULL, NULL, NULL
-        WHERE ${activeMember(member.id, "editor")}`)
-        .returning(projectSummary),
+        .select(sql`SELECT ${projectId}, ${name}, ${member.id}, ${now}, ${now}, NULL, NULL, NULL, ${folderId}
+        WHERE ${activeMember(member.id, "editor")}
+          AND (${folderId} IS NULL OR ${folderAccess(member.id, folderId ?? "", "editor")})`)
+        .returning({ ...projectSummary, folderId: projects.folderId }),
       db.insert(projectMembers)
         .select(sql`SELECT ${projectId}, ${member.id}, 'editor', ${member.id}, ${now}
           WHERE EXISTS (SELECT 1 FROM projects WHERE id = ${projectId} AND created_by = ${member.id})
@@ -188,6 +232,28 @@ export const renameProject = createServerFn({ method: "POST" })
         ),
       )
       .returning(projectSummary);
+    if (!project) refuse(404, "not-found");
+    return project;
+  });
+
+/** Files a Project in a Folder, or with `folderId: null` leaves it unfiled. */
+export const moveProject = createServerFn({ method: "POST" })
+  .validator((data: { projectId: string; folderId: string | null }) => data)
+  .handler(async ({ data }) => {
+    const member = await requireMember("owner");
+    const folderId = data?.folderId === null ? null : id(data, "folderId");
+    const [project] = await getDb()
+      .update(projects)
+      .set({ folderId, updatedAt: Date.now() })
+      .where(
+        and(
+          eq(projects.id, id(data, "projectId")),
+          isNull(projects.deletedAt),
+          activeMember(member.id, "owner"),
+          sql`(${folderId} IS NULL OR EXISTS (SELECT 1 FROM folders WHERE id = ${folderId}))`,
+        ),
+      )
+      .returning({ id: projects.id, folderId: projects.folderId });
     if (!project) refuse(404, "not-found");
     return project;
   });

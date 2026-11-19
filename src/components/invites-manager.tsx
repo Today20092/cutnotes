@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Radio, RadioGroup } from "@/components/ui/radio-group";
 import { ConfirmButton, useStatusToast } from "@/components/project-parts";
-import type { Role } from "@/server/db/schema";
+import type { InviteRole, Role } from "@/server/db/schema";
 import { createInvite, listInvites, revokeInvite } from "@/server/invites";
 
 export const roleChoices: { role: Role; label: string; description: string }[] = [
@@ -65,10 +65,12 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
   useStatusToast(status);
   const linkHeading = useRef<HTMLHeadingElement>(null);
   const historyHeading = useRef<HTMLHeadingElement>(null);
-  const label = (value: Role, isProject = Boolean(projectId)) =>
-    isProject && value === "viewer"
-      ? "Reviewer"
-      : (roleChoices.find((choice) => choice.role === value)?.label ?? value);
+  const label = (value: InviteRole, isProject = Boolean(projectId)) =>
+    value === "uploader"
+      ? "Uploader"
+      : isProject && value === "viewer"
+        ? "Reviewer"
+        : (roleChoices.find((choice) => choice.role === value)?.label ?? value);
   const choices = projectId
     ? roleChoices
         .filter((choice) => choice.role !== "owner")
@@ -225,11 +227,12 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
               <li key={invite.id} className="flex flex-wrap items-start justify-between gap-3 py-4">
                 <div className="flex min-w-0 flex-1 flex-col gap-1 wrap-anywhere">
                   <span className="font-medium">
-                    {invite.note || `${label(invite.role, Boolean(invite.projectId))} invitation`}
+                    {invite.note ||
+                      `${label(invite.role, Boolean(invite.projectId || invite.folderId))} invitation`}
                   </span>
                   <span>
-                    {invite.projectName ?? "Team membership"} ·{" "}
-                    {label(invite.role, Boolean(invite.projectId))}
+                    {invite.projectName ?? invite.folderName ?? "Team membership"} ·{" "}
+                    {label(invite.role, Boolean(invite.projectId || invite.folderId))}
                   </span>
                   <Badge variant="secondary" className="w-fit">
                     {state}
@@ -270,7 +273,7 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
                 </div>
                 {state === "Pending" && (
                   <ConfirmButton
-                    label={`Revoke ${label(invite.role, Boolean(invite.projectId))} Invite${invite.note ? `: ${invite.note}` : ""}, expires ${expiryDate(invite.expiresAt)}`}
+                    label={`Revoke ${label(invite.role, Boolean(invite.projectId || invite.folderId))} Invite${invite.note ? `: ${invite.note}` : ""}, expires ${expiryDate(invite.expiresAt)}`}
                     text="Revoke"
                     onConfirm={() => revoke.mutate(invite.id)}
                   />

@@ -27,15 +27,17 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { VideoSummary } from "@/lib/projects";
-import type { Role } from "@/server/db/schema";
+import type { AccessRole } from "@/server/db/schema";
 
 const MAX_NAME_LENGTH = 120;
 
-export const canWrite = (role: Role) => role !== "viewer";
+/** Editor writes: renaming, Status and resolving. Uploaders only add Videos and Revisions. */
+export const canWrite = (role: AccessRole) => role === "editor" || role === "owner";
 
-/** Mirrors the server's deleteVideo guard: Owners delete any Video, Editors only their own. */
-export const canDelete = (member: { id: string; role: Role }, video: { createdBy: string }) =>
-  member.role === "owner" || (member.role === "editor" && video.createdBy === member.id);
+/** Mirrors the server's deleteVideo guard: Owners delete any Video, Editors and Uploaders only their own. */
+export const canDelete = (member: { id: string; role: AccessRole }, video: { createdBy: string }) =>
+  member.role === "owner" ||
+  ((member.role === "editor" || member.role === "uploader") && video.createdBy === member.id);
 
 // The first view keeps focus where the browser put it.
 let hasShownAView = false;

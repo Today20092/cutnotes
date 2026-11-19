@@ -66,6 +66,8 @@ export function useCreateProject() {
                   createdAt: Date.now(),
                   completedAt: null,
                   deleteAfter: null,
+                  folderId: null,
+                  folderName: null,
                 },
                 ...list.projects,
               ],

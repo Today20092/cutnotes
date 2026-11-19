@@ -4,6 +4,7 @@ import { and, eq, isNull, or, sql } from "drizzle-orm";
 import {
   activeMember,
   projectAccess,
+  uploadAccess,
   videoAccess,
   id,
   openProject,
@@ -41,7 +42,7 @@ async function insertRevision(
       sql`SELECT ${revisionId}, ${videoId},
             COALESCE((SELECT MAX(number) FROM revisions WHERE video_id = ${videoId}), 0) + 1,
             'uploading', ${memberId}, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ${now}, NULL
-          WHERE ${writableVideo(videoId)} AND ${videoAccess(memberId, videoId, "editor")}`,
+          WHERE ${writableVideo(videoId)} AND ${uploadAccess(memberId, videoId)}`,
     )
     .returning({ id: revisions.id });
 
@@ -49,7 +50,7 @@ async function insertRevision(
     const [, inserted] = await db.batch([
       db.insert(videos).select(
         sql`SELECT ${videoId}, ${newVideo.projectId}, ${newVideo.title}, 'review', ${memberId}, ${now}, ${now}, NULL
-              WHERE ${openProject(newVideo.projectId)} AND ${projectAccess(memberId, newVideo.projectId, "editor")}`,
+              WHERE ${openProject(newVideo.projectId)} AND ${projectAccess(memberId, newVideo.projectId, "uploader")}`,
       ),
       insertRow,
     ]);
@@ -65,7 +66,7 @@ async function insertRevision(
         and(
           eq(videos.id, videoId),
           writableVideo(videoId),
-          videoAccess(memberId, videoId, "editor"),
+          uploadAccess(memberId, videoId),
           sql`EXISTS (SELECT 1 FROM revisions WHERE id = ${revisionId})`,
         ),
       ),
@@ -123,7 +124,7 @@ export const startUpload = createServerFn({ method: "POST" })
             eq(revisions.state, "uploading"),
             eq(revisions.videoId, videoId),
             writableVideo(videoId),
-            videoAccess(member.id, videoId, "editor"),
+            uploadAccess(member.id, videoId),
           ),
         ),
     ]);
@@ -150,7 +151,7 @@ export const cancelUpload = createServerFn({ method: "POST" })
           muxUploadId: revisions.muxUploadId,
         })
         .from(revisions)
-        .where(and(eq(revisions.id, revisionId), videoAccess(member.id, videoId, "editor"))),
+        .where(and(eq(revisions.id, revisionId), uploadAccess(member.id, videoId))),
       db
         .select({ id: members.id })
         .from(members)
@@ -159,7 +160,7 @@ export const cancelUpload = createServerFn({ method: "POST" })
             eq(members.id, member.id),
             activeMember(member.id, "viewer"),
             or(
-              videoAccess(member.id, videoId, "editor"),
+              uploadAccess(member.id, videoId),
               sql`NOT EXISTS (SELECT 1 FROM revisions WHERE id = ${revisionId})`,
             ),
           ),
@@ -241,7 +242,8 @@ export const deleteVideo = createServerFn({ method: "POST" })
           sql`EXISTS (SELECT 1 FROM projects WHERE id = ${videos.projectId} AND deleted_at IS NULL)`,
           or(
             activeMember(member.id, "owner"),
-            and(videoAccess(member.id, videos.id, "editor"), eq(videos.createdBy, member.id)),
+            // Editors and Uploaders delete only Videos they created.
+            and(videoAccess(member.id, videos.id, "uploader"), eq(videos.createdBy, member.id)),
           ),
         ),
       )

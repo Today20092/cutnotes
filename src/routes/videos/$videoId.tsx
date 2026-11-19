@@ -1,8 +1,9 @@
+import * as v from "valibot";
 import { CopyPageLink } from "@/components/copy-page-link";
 import { ExportMarkers } from "@/components/export-markers";
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { CompleteBanner } from "@/components/complete-project";
 import { MemberScreen } from "@/components/member-screen";
 import { canUpload, canWrite, PageBreadcrumb, PageHeading } from "@/components/project-parts";
@@ -10,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Review as ReviewPanel } from "@/components/comments";
 import { ReviewQueue } from "@/components/review-queue";
 import { ReviewDecisionBar } from "@/components/review-decision-bar";
-import { ShareLinksSheet } from "@/components/share-links";
+import { CustomerLinkSheet } from "@/components/customer-link-sheet";
 import { reviewQuery, useMemberActor, type ReviewPage } from "@/lib/review";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -18,7 +19,13 @@ import { UploadSheet } from "@/components/upload-parts";
 import { markVideoRead } from "@/server/playback";
 import { refreshProjects } from "@/lib/writes";
 
+// An unknown value is dropped rather than shown as an error page.
+const searchSchema = v.object({
+  sheet: v.fallback(v.optional(v.picklist(["customer"])), undefined),
+});
+
 export const Route = createFileRoute("/videos/$videoId")({
+  validateSearch: (search) => v.parse(searchSchema, search),
   head: () => ({ meta: [{ title: "Review · Cutnotes" }] }),
   component: Review,
 });
@@ -27,6 +34,10 @@ function Review() {
   const { videoId } = Route.useParams();
   const client = useQueryClient();
   const [revisionId, setRevisionId] = useState<string>();
+  const search = Route.useSearch();
+  const navigate = useNavigate();
+  const setCustomerSheet = (open: boolean) =>
+    void navigate({ to: ".", search: { sheet: open ? "customer" : undefined }, replace: true });
   return (
     <MemberScreen
       query={reviewQuery(videoId, client, revisionId)}
@@ -67,12 +78,22 @@ function Review() {
               )}
               {canUpload(page.video.role) && page.video.completedAt === null && (
                 <>
-                  {page.member.role === "owner" && (
-                    <ShareLinksSheet
-                      videoId={videoId}
-                      title={page.video.title}
-                      projectName={page.video.projectName}
-                    />
+                  {page.member.role === "owner" && page.revision && (
+                    <>
+                      <Button variant="secondary" onClick={() => setCustomerSheet(true)}>
+                        Send to customer
+                      </Button>
+                      <CustomerLinkSheet
+                        videoId={videoId}
+                        title={page.video.title}
+                        revision={{
+                          id: page.revision.id,
+                          number: page.history.find((r) => r.id === page.revision?.id)?.number ?? 1,
+                        }}
+                        open={search.sheet === "customer"}
+                        onOpenChange={setCustomerSheet}
+                      />
+                    </>
                   )}
                   {(canWrite(page.video.role) || page.video.createdBy === page.member.id) && (
                     <UploadSheet

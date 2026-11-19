@@ -23,45 +23,67 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { SharePermission } from "@/server/db/schema";
 import { createShareLink, listShareLinks, revokeShareLink } from "@/server/sharing";
 
-export function ShareLinksSheet({
+type Revision = { id: string; number: number };
+
+const permissionLabels: Record<SharePermission, string> = {
+  view: "View only",
+  comment: "Comment and draw",
+};
+const formatDate = (timestamp: number) =>
+  new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(timestamp);
+
+/**
+ * Share Links for one Video: each pins one Revision, so the customer sees exactly that cut.
+ * Opened by `?sheet=customer` on the Video page.
+ */
+export function CustomerLinkSheet({
   videoId,
   title,
-  projectName,
+  revision,
+  open,
+  onOpenChange,
 }: {
   videoId: string;
   title: string;
-  projectName: string;
+  /** The Revision being viewed, which a new link pins. */
+  revision: Revision;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
+  const mobile = useIsMobile();
   return (
-    <Sheet>
-      <SheetTrigger render={<Button variant="secondary" />}>Share</SheetTrigger>
-      <SheetContent className="overflow-y-auto">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side={mobile ? "bottom" : "right"}
+        className="overflow-y-auto sm:max-w-lg data-[side=right]:sm:max-w-lg"
+      >
         <SheetHeader>
-          <SheetTitle>Share Links</SheetTitle>
+          <SheetTitle>Send to customer</SheetTitle>
           <SheetDescription>
-            Anyone with a link can open the latest Revision without an account.
+            The customer opens Revision {revision.number} of {title} without an account. They see
+            only that Revision and their own comments, never your Team's notes.
           </SheetDescription>
         </SheetHeader>
-        <ShareLinks videoId={videoId} title={title} projectName={projectName} />
+        <CustomerLinks videoId={videoId} title={title} revision={revision} />
       </SheetContent>
     </Sheet>
   );
 }
 
-function ShareLinks({
+function CustomerLinks({
   videoId,
   title,
-  projectName,
+  revision,
 }: {
   videoId: string;
   title: string;
-  projectName: string;
+  revision: Revision;
 }) {
   const team = useTeam().data;
   const client = useQueryClient();
@@ -75,10 +97,11 @@ function ShareLinks({
   const links = useQuery({ queryKey, queryFn: () => listShareLinks({ data: { videoId } }) });
   const refresh = () => client.invalidateQueries({ queryKey });
   const create = useMutation({
-    mutationFn: () => createShareLink({ data: { videoId, name, permission } }),
+    mutationFn: () =>
+      createShareLink({ data: { videoId, revisionId: revision.id, name, permission } }),
     onSuccess: (link) => {
       setName("");
-      setStatus(`Share Link ${link.name} created`);
+      setStatus(`Link for ${link.name} created`);
       setCreatedId(link.id);
       return refresh();
     },
@@ -86,7 +109,7 @@ function ShareLinks({
   const revoke = useMutation({
     mutationFn: (id: string) => revokeShareLink({ data: { id } }),
     onSuccess: () => {
-      setStatus("Share Link revoked");
+      setStatus("Link revoked");
       return refresh();
     },
   });
@@ -106,7 +129,7 @@ function ShareLinks({
   }
 
   return (
-    <div className="flex flex-col gap-6 p-4">
+    <div className="flex flex-col gap-6 p-4 pt-0">
       <p role="status" className="sr-only">
         {status}
       </p>
@@ -117,6 +140,7 @@ function ShareLinks({
           create.mutate();
         }}
       >
+        <p className="font-medium">Revision {revision.number}</p>
         <Field className="items-stretch">
           <FieldLabel htmlFor="share-name">Who is this link for?</FieldLabel>
           <Input
@@ -128,49 +152,46 @@ function ShareLinks({
           />
         </Field>
         <Fieldset className="max-w-none gap-3">
-          <FieldsetLegend className="text-sm">Permission</FieldsetLegend>
+          <FieldsetLegend className="text-sm">What can they do?</FieldsetLegend>
           <RadioGroup
             value={permission}
             onValueChange={(next) => setPermission(next as SharePermission)}
           >
-            {(
-              [
-                ["comment", "Can comment and draw"],
-                ["view", "View only"],
-              ] as const
-            ).map(([value, label]) => (
+            {(["comment", "view"] as const).map((value) => (
               <label key={value} className="flex min-h-11 items-center gap-2">
-                <Radio value={value} aria-label={label} />
-                {label}
+                <Radio value={value} aria-label={permissionLabels[value]} />
+                {permissionLabels[value]}
               </label>
             ))}
           </RadioGroup>
         </Fieldset>
         <PendingButton type="submit" pending={create.isPending}>
-          Create Share Link
+          Create link
         </PendingButton>
         {create.isError && (
-          <p role="alert">Could not create the Share Link. Check the name and try again.</p>
+          <p role="alert">Could not create the link. Check the name and try again.</p>
         )}
       </form>
-      <section className="flex flex-col gap-3">
-        <h3 className="font-semibold">Active links</h3>
+      <section className="flex flex-col gap-3" aria-labelledby="customer-links-heading">
+        <h3 id="customer-links-heading" className="font-semibold">
+          Links for this Video
+        </h3>
         <p className="text-sm text-muted-foreground">
           Revoking stops new access at once. A video token already issued keeps working until it
           expires.
         </p>
         {links.isPending && <Skeleton className="h-16" />}
-        {links.isError && <p role="alert">Could not load Share Links. Close this and try again.</p>}
-        {revoke.isError && <p role="alert">Could not revoke the Share Link. Try again.</p>}
+        {links.isError && <p role="alert">Could not load links. Close this and try again.</p>}
+        {revoke.isError && <p role="alert">Could not revoke the link. Try again.</p>}
         {links.data?.links.length === 0 && (
           <Empty className="rounded-xl border border-dashed py-8 md:py-8">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <Link2 aria-hidden />
               </EmptyMedia>
-              <EmptyTitle className="text-base">No Share Links yet.</EmptyTitle>
+              <EmptyTitle className="text-base">No links yet.</EmptyTitle>
               <EmptyDescription>
-                Create a link above to let someone review this Video.
+                Create a link above to send this Video to a customer.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -178,16 +199,20 @@ function ShareLinks({
         <ul className="divide-y">
           {links.data?.links.map((link) => (
             <li key={link.id} className="flex flex-col gap-2 py-3 wrap-anywhere">
-              <p className="font-medium">
-                {link.name}{" "}
+              <p className="font-medium">{link.name}</p>
+              <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 <Badge variant="secondary">
-                  {link.permission === "view" ? "View only" : "Can comment and draw"}
+                  {link.revisionNumber === null
+                    ? "Follows latest"
+                    : `Revision ${link.revisionNumber}`}
                 </Badge>
+                <Badge variant="outline">{permissionLabels[link.permission]}</Badge>
+                <span>Created {formatDate(link.createdAt)}</span>
               </p>
               <div className="flex flex-wrap gap-2">
                 <a
                   className={buttonVariants({ variant: "secondary" })}
-                  href={`https://wa.me/?text=${encodeURIComponent(`${team?.name ?? "The team"} invited you to ${link.permission === "view" ? "view" : "review"} "${title}" in "${projectName}". ${link.permission === "view" ? "View only." : "Leave comments and drawings."} No account needed.\n\n${urlOf(link.token)}`)}`}
+                  href={`https://wa.me/?text=${encodeURIComponent(`${team?.name ?? "The team"} invited you to ${link.permission === "view" ? "view" : "review"} "${title}". ${link.permission === "view" ? "View only." : "Leave comments and drawings."} No account needed.\n\n${urlOf(link.token)}`)}`}
                   target="_blank"
                   rel="noreferrer"
                   aria-label={`Send on WhatsApp for ${link.name}`}

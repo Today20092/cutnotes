@@ -157,7 +157,7 @@ test("a team Editor creates private projects and can reopen a direct video URL",
   await expect(page.getByRole("button", { name: "Copy video link", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Copy video link", exact: true }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(page.url());
-  await expect(page.getByRole("button", { name: /share/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /send to customer/i })).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole("heading", { name: "Playback cut", exact: true })).toBeVisible();
   await page.goto("/");

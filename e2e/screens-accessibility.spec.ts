@@ -1,7 +1,13 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page, type TestInfo } from "@playwright/test";
 import { fakeSignature } from "../test/seam1/support/fake-mux";
-import { assignProjectMember, seedMember, seedReview, shareTokenFor } from "./support/database";
+import {
+  assignProjectMember,
+  seedComment,
+  seedMember,
+  seedReview,
+  shareTokenFor,
+} from "./support/database";
 import { signInAs, type Person } from "./support/session";
 import { appAlert } from "./support/ui-sdk";
 
@@ -397,7 +403,7 @@ test("completing and reopening a Project", async ({ page }, testInfo) => {
 
   await page.goto(`/videos/${id}`);
   await expect(countdown).toBeVisible();
-  await expect(page.getByRole("button", { name: "Share", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Send to customer" })).toHaveCount(0);
   await expectAccessible(page, "Video countdown");
 
   await page.goto(`/projects/${id}`);
@@ -472,23 +478,31 @@ test("the Invites and accept-Invite screens", async ({ page, browser }, testInfo
   await revoked.context().close();
 });
 
-test("Share Links sheet and Guest pages", async ({ page, browser }, testInfo) => {
+test("Send to customer sheet and Guest pages", async ({ page, browser }, testInfo) => {
   const person = {
     clerkUserId: `user_share_${testInfo.project.name}_${Date.now()}`,
     email: "share@example.com",
   };
   seedMember(person.clerkUserId, "editor");
   const videoId = seedReview(person.clerkUserId);
+  seedComment(videoId, person.clerkUserId, "Internal team note");
   await signInAs(page, owner);
-  await page.goto(`/videos/${videoId}`);
-  const share = page.getByRole("button", { name: "Share", exact: true });
-  await share.click();
+  // The sheet opens from its URL, so an agent or a shared link can land on it.
+  await page.goto(`/videos/${videoId}?sheet=customer`);
+  const sheet = page.getByRole("dialog", { name: "Send to customer" });
+  await expect(sheet.getByText("Revision 1", { exact: true })).toBeVisible();
   await page.getByLabel("Who is this link for?").fill("Client");
-  await page.getByRole("button", { name: "Create Share Link" }).click();
+  await page.getByRole("button", { name: "Create link" }).click();
   await expect(page.getByRole("button", { name: "Revoke link for Client" })).toBeVisible();
+  await expect(sheet.getByRole("listitem").getByText("Revision 1")).toBeVisible();
+  await expect(sheet.getByRole("listitem").getByText("Comment and draw")).toBeVisible();
   await expect(page.getByText("already issued keeps working until it expires")).toBeVisible();
   await page.mouse.move(0, 0); // The new row can appear under the pointer on a phone.
-  await expectAccessible(page, "Share Links sheet");
+  await expectAccessible(page, "Send to customer sheet");
+  await page.keyboard.press("Escape");
+  await expect(page).not.toHaveURL(/sheet=customer/);
+  await page.getByRole("button", { name: "Send to customer" }).click();
+  await expect(page).toHaveURL(/sheet=customer/);
 
   const token = shareTokenFor(videoId);
   const guest = await (await browser.newContext()).newPage();
@@ -501,6 +515,11 @@ test("Share Links sheet and Guest pages", async ({ page, browser }, testInfo) =>
   await guest.getByRole("button", { name: "Continue" }).click();
   await expect(guest.getByRole("heading", { name: "Playback cut" })).toBeVisible();
   await expect(guest.getByText(/Resolve Comment/)).toHaveCount(0);
+  // A Guest sees one Revision and their own Comments: no Team notes, Projects or history.
+  await expect(guest.getByText("Internal team note")).toHaveCount(0);
+  await expect(guest.getByText("Playback project")).toHaveCount(0);
+  await expect(guest.getByRole("group", { name: "Revision history" })).toHaveCount(0);
+  await expect(guest.getByRole("navigation")).toHaveCount(0);
   await guest.getByLabel(/^Add a Comment/).fill("Too dark here");
   await guest.getByRole("button", { name: "Send Comment" }).click();
   await expect(guest.getByText("Dana · Guest")).toBeVisible();

@@ -17,6 +17,7 @@ import { getDb } from "@/server/db";
 import {
   comments,
   members,
+  revisions,
   shareLinks,
   sharePermissions,
   type SharePermission,
@@ -32,7 +33,7 @@ export const getSharePreview = createServerFn({ method: "POST" })
       const link = await readShareLink(data?.token);
       return {
         title: `${link.permission === "view" ? "View" : "Review"} ${link.title}`,
-        description: `${env.TEAM_NAME} invited you to ${link.permission === "view" ? "view" : "review"} ${link.title} in ${link.projectName}. ${link.permission === "view" ? "View only." : "Leave timestamped comments and drawings."} No account needed.`,
+        description: `${env.TEAM_NAME} invited you to ${link.permission === "view" ? "view" : "review"} ${link.title}. ${link.permission === "view" ? "View only." : "Leave timestamped comments and drawings."} No account needed.`,
         image: env.TEAM_LOGO_URL,
       };
     } catch (error) {
@@ -60,18 +61,27 @@ const linkFields = {
   createdAt: shareLinks.createdAt,
 };
 
+/** Pins the given ready Revision, or the latest ready one when none is given. */
 export const createShareLink = createServerFn({ method: "POST" })
-  .validator((data: { videoId: string; name: string; permission: SharePermission }) => data)
+  .validator(
+    (data: { videoId: string; revisionId?: string; name: string; permission: SharePermission }) =>
+      data,
+  )
   .handler(async ({ data }) => {
     const member = await requireMember("owner");
     const name = text(data, "name", 60);
     const videoId = id(data, "videoId");
+    const revisionId = data?.revisionId === undefined ? null : id(data, "revisionId");
     if (!sharePermissions.includes(data?.permission)) refuse(400, "invalid-request");
     const [created] = await getDb()
       .insert(shareLinks)
       .select(sql`
-      SELECT ${crypto.randomUUID()}, ${videoId}, ${name}, ${newShareToken()}, ${data.permission}, ${member.id}, ${Date.now()}, NULL
-      WHERE ${writableVideo(videoId)} AND ${activeMember(member.id, "owner")}
+      SELECT ${crypto.randomUUID()}, ${videoId}, ${name}, ${newShareToken()}, ${data.permission}, ${member.id}, ${Date.now()}, NULL, r.id
+      FROM revisions AS r
+      WHERE r.video_id = ${videoId} AND r.state = 'ready'
+        ${revisionId === null ? sql`` : sql`AND r.id = ${revisionId}`}
+        AND ${writableVideo(videoId)} AND ${activeMember(member.id, "owner")}
+      ORDER BY r.number DESC LIMIT 1
     `)
       .returning(linkFields);
     if (!created) refuse(404, "not-found");
@@ -86,8 +96,9 @@ export const listShareLinks = createServerFn({ method: "POST" })
       results: [links],
     } = await readAsMember("owner", (db) => [
       db
-        .select(linkFields)
+        .select({ ...linkFields, revisionNumber: revisions.number })
         .from(shareLinks)
+        .leftJoin(revisions, eq(revisions.id, shareLinks.revisionId))
         .where(and(eq(shareLinks.videoId, videoId), isNull(shareLinks.revokedAt)))
         .orderBy(desc(shareLinks.createdAt)),
     ]);
@@ -113,7 +124,10 @@ export const revokeShareLink = createServerFn({ method: "POST" })
     return written;
   });
 
-/** toComment drops IDs: a Guest must never receive a Clerk or Member ID. */
+/**
+ * A Guest sees one Revision and only the Comments made through their own link: never the
+ * Team's notes or another link's. toComment drops IDs, so no Clerk or Member ID leaves.
+ */
 export const getGuestReview = createServerFn({ method: "POST" })
   .validator((data: { token: string }) => data)
   .handler(async ({ data }) => {
@@ -123,7 +137,7 @@ export const getGuestReview = createServerFn({ method: "POST" })
         .select(commentColumns)
         .from(comments)
         .leftJoin(members, eq(comments.memberId, members.id))
-        .where(eq(comments.revisionId, link.revisionId))
+        .where(and(eq(comments.revisionId, link.revisionId), eq(comments.shareLinkId, link.id)))
         .orderBy(asc(comments.timecodeMs), asc(comments.createdAt), asc(comments.id)),
       getMuxGateway().createPlayback({
         playbackId: link.playbackId,

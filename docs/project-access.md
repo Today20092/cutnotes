@@ -32,6 +32,12 @@ Removing a project member preserves their uploads and comments. Removing a Team 
 
 Guest review links are an explicit exception: anyone holding a valid guest link can review its video without project membership. Removing a member does not revoke guest links. Owners revoke those links separately. Already-issued playback credentials may continue working until expiry; removal prevents new credentials and subsequent authorized actions.
 
+### Guests
+
+An Owner sends a Revision to a customer with **Send to customer** on the Video page (`?sheet=customer`). The sheet shows the exact Revision, then asks who the link is for and whether they can view only or comment and draw. **Create link** makes a Share Link pinned to that Revision; **Copy link** or **Send on WhatsApp** delivers it. The list shows each link's Revision ("Revision 3", or "Follows latest" for a link made before migration `0011`), permission and creation date, with **Revoke**.
+
+A Guest sees the player, the Video title, the Team name and, on a comment link, the Comment composer. A Guest sees only Comments made through their own link: not the Team's Comments, not other links' Comments, and no Project name, navigation or Revision history. Owners and project members see Guest Comments in the internal review with a Guest badge. A pinned link keeps showing its Revision after a newer one is ready. Revoking a link refuses new playback credentials and new Comments at once; the Comment write re-checks the link inside the SQL statement.
+
 ## Migration and release
 
 Migration `0008_mature_adam_warlock.sql` creates project assignments and adds project scope and notes to invitations. Existing projects keep their active creators as project Editors. Owners have implicit access. No other existing members are assigned automatically, and existing guest links remain valid.

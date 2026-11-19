@@ -209,6 +209,8 @@ export const shareLinks = sqliteTable(
       .references(() => members.id),
     createdAt: integer("created_at").notNull(),
     revokedAt: integer("revoked_at"),
+    // The Revision the Guest sees. NULL only on links made before pinning: they follow the latest.
+    revisionId: text("revision_id").references(() => revisions.id, { onDelete: "cascade" }),
   },
   (table) => [index("share_links_video_id_idx").on(table.videoId)],
 );

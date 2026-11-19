@@ -188,7 +188,6 @@ export async function readShareLink(token: unknown) {
       id: shareLinks.id,
       permission: shareLinks.permission,
       title: videos.title,
-      projectName: projects.name,
       revisionId: revisions.id,
       number: revisions.number,
       frameRate: revisions.frameRate,
@@ -198,10 +197,12 @@ export async function readShareLink(token: unknown) {
     .from(shareLinks)
     .innerJoin(videos, eq(videos.id, shareLinks.videoId))
     .innerJoin(projects, eq(projects.id, videos.projectId))
+    // The pinned Revision; a link made before pinning (NULL) follows the latest ready one.
     .innerJoin(
       revisions,
-      sql`${revisions.id} = (SELECT latest.id FROM revisions AS latest
-      WHERE latest.video_id = ${videos.id} AND latest.state = 'ready' ORDER BY latest.number DESC LIMIT 1)`,
+      sql`${revisions.id} = COALESCE(${shareLinks.revisionId}, (SELECT latest.id FROM revisions AS latest
+      WHERE latest.video_id = ${videos.id} AND latest.state = 'ready' ORDER BY latest.number DESC LIMIT 1))
+      AND ${revisions.videoId} = ${videos.id} AND ${revisions.state} = 'ready'`,
     )
     .where(
       and(

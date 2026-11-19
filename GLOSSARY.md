@@ -73,8 +73,8 @@ A person using a Share Link who gives only a name and has no sign-in.
 _Avoid_: Anonymous user, reviewer
 
 **Share Link**:
-A named, revocable link to a Video's latest Revision, either view-only or comment-and-draw.
-_Avoid_: Public link
+A named, revocable link to one Revision of a Video, either view-only or comment-and-draw. An Owner makes it with **Send to customer**, and it pins the Revision being viewed. Its Guest sees only that Revision and the Comments made through the same Share Link: never the Team's Comments, another link's Comments, the Project or the Revision history. A link made before pinning has no Revision and follows the latest ready one ("Follows latest").
+_Avoid_: Public link, customer link
 
 **Invite**:
 A single-use link, valid for 7 days, that makes someone a Member with a chosen Role.

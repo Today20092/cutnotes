@@ -15,6 +15,7 @@ import { Route as InvitesRouteImport } from './routes/invites'
 import { Route as MembersRouteImport } from './routes/members'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ApiTeamRouteImport } from './routes/api/team'
+import { Route as FoldersFolderIdRouteImport } from './routes/folders/$folderId'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
@@ -50,6 +51,11 @@ const ApiTeamRoute = ApiTeamRouteImport.update({
   path: '/api/team',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FoldersFolderIdRoute = FoldersFolderIdRouteImport.update({
+  id: '/folders/$folderId',
+  path: '/folders/$folderId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InviteTokenRoute = InviteTokenRouteImport.update({
   id: '/invite/$token',
   path: '/invite/$token',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/members': typeof MembersRoute
   '/settings': typeof SettingsRoute
   '/api/team': typeof ApiTeamRoute
+  '/folders/$folderId': typeof FoldersFolderIdRoute
   '/invite/$token': typeof InviteTokenRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/share/$token': typeof ShareTokenRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/members': typeof MembersRoute
   '/settings': typeof SettingsRoute
   '/api/team': typeof ApiTeamRoute
+  '/folders/$folderId': typeof FoldersFolderIdRoute
   '/invite/$token': typeof InviteTokenRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/share/$token': typeof ShareTokenRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/members': typeof MembersRoute
   '/settings': typeof SettingsRoute
   '/api/team': typeof ApiTeamRoute
+  '/folders/$folderId': typeof FoldersFolderIdRoute
   '/invite/$token': typeof InviteTokenRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/share/$token': typeof ShareTokenRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/members'
     | '/settings'
     | '/api/team'
+    | '/folders/$folderId'
     | '/invite/$token'
     | '/projects/$projectId'
     | '/share/$token'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/members'
     | '/settings'
     | '/api/team'
+    | '/folders/$folderId'
     | '/invite/$token'
     | '/projects/$projectId'
     | '/share/$token'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/members'
     | '/settings'
     | '/api/team'
+    | '/folders/$folderId'
     | '/invite/$token'
     | '/projects/$projectId'
     | '/share/$token'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   MembersRoute: typeof MembersRoute
   SettingsRoute: typeof SettingsRoute
   ApiTeamRoute: typeof ApiTeamRoute
+  FoldersFolderIdRoute: typeof FoldersFolderIdRoute
   InviteTokenRoute: typeof InviteTokenRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
   ShareTokenRoute: typeof ShareTokenRoute
@@ -204,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTeamRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/folders/$folderId': {
+      id: '/folders/$folderId'
+      path: '/folders/$folderId'
+      fullPath: '/folders/$folderId'
+      preLoaderRoute: typeof FoldersFolderIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/invite/$token': {
       id: '/invite/$token'
       path: '/invite/$token'
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   MembersRoute: MembersRoute,
   SettingsRoute: SettingsRoute,
   ApiTeamRoute: ApiTeamRoute,
+  FoldersFolderIdRoute: FoldersFolderIdRoute,
   InviteTokenRoute: InviteTokenRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
   ShareTokenRoute: ShareTokenRoute,

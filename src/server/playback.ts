@@ -28,6 +28,7 @@ export const getReview = createServerFn({ method: "POST" })
           id: videos.id,
           role: projectRole(memberIdForUser(clerkUserId), videos.projectId),
           title: videos.title,
+          createdBy: videos.createdBy,
           projectId: videos.projectId,
           projectName: projects.name,
           completedAt: projects.completedAt,

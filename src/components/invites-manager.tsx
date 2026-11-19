@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Radio, RadioGroup } from "@/components/ui/radio-group";
 import { ConfirmButton, useStatusToast } from "@/components/project-parts";
+import { roleLabel, shareRoles } from "@/lib/share-roles";
 import type { InviteRole, Role } from "@/server/db/schema";
 import { createInvite, listInvites, revokeInvite } from "@/server/invites";
 
@@ -53,11 +54,23 @@ const inviteStatus = (invite: Invite) =>
         ? "Expired"
         : "Pending";
 
-export function InvitesManager({ projectId }: { projectId?: string }) {
+/** Team Invites, or, with a `projectId` or `folderId`, Invites for that one Project or Folder. */
+export function InvitesManager({
+  projectId,
+  folderId,
+  nested = false,
+}: {
+  projectId?: string;
+  folderId?: string;
+  nested?: boolean;
+}) {
+  const scopeId = projectId ?? folderId;
+  const scoped = Boolean(scopeId);
+  const Heading = nested ? "h3" : "h2";
   const team = useTeam().data;
   const queryClient = useQueryClient();
-  const queryKey = ["invites", projectId ?? "all"];
-  const [role, setRole] = useState<Role>("viewer");
+  const queryKey = ["invites", scopeId ?? "all"];
+  const [role, setRole] = useState<InviteRole>("viewer");
   const [note, setNote] = useState("");
   const [link, setLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -65,33 +78,24 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
   useStatusToast(status);
   const linkHeading = useRef<HTMLHeadingElement>(null);
   const historyHeading = useRef<HTMLHeadingElement>(null);
-  const label = (value: InviteRole, isProject = Boolean(projectId)) =>
-    value === "uploader"
-      ? "Uploader"
-      : isProject && value === "viewer"
-        ? "Reviewer"
-        : (roleChoices.find((choice) => choice.role === value)?.label ?? value);
-  const choices = projectId
-    ? roleChoices
-        .filter((choice) => choice.role !== "owner")
-        .map((choice) => ({
-          ...choice,
-          label: label(choice.role),
-          description:
-            choice.role === "editor"
-              ? "Watches, comments, uploads and manages videos in this project."
-              : "Watches and comments in this project.",
-        }))
-    : roleChoices;
+  const label = (value: InviteRole, isScoped = scoped) =>
+    isScoped
+      ? roleLabel(value)
+      : (roleChoices.find((choice) => choice.role === value)?.label ?? value);
+  const choices = scoped ? shareRoles : roleChoices;
 
   const history = useQuery({
     queryKey,
-    queryFn: () => listInvites({ data: projectId ? { projectId } : undefined }),
+    queryFn: () =>
+      listInvites({ data: projectId ? { projectId } : folderId ? { folderId } : undefined }),
     retry: false,
   });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["invites"] });
   const create = useMutation({
-    mutationFn: () => createInvite({ data: { role, note, ...(projectId ? { projectId } : {}) } }),
+    mutationFn: () =>
+      createInvite({
+        data: { role, note, ...(projectId ? { projectId } : folderId ? { folderId } : {}) },
+      }),
     onSuccess: (created) => {
       setLink(created.url);
       setCopied(false);
@@ -136,17 +140,14 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
       >
         <Fieldset className="max-w-none gap-3">
           <FieldsetLegend>Invite someone as</FieldsetLegend>
-          <RadioGroup value={role} onValueChange={(next) => setRole(next as Role)}>
+          <RadioGroup value={role} onValueChange={(next) => setRole(next as InviteRole)}>
             {choices.map((choice) => (
               <label
                 key={choice.role}
-                htmlFor={`invite-role-${projectId ?? "team"}-${choice.role}`}
+                htmlFor={`invite-role-${scopeId ?? "team"}-${choice.role}`}
                 className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3 has-[[data-checked]]:border-primary has-[[data-checked]]:bg-accent/40"
               >
-                <Radio
-                  id={`invite-role-${projectId ?? "team"}-${choice.role}`}
-                  value={choice.role}
-                />
+                <Radio id={`invite-role-${scopeId ?? "team"}-${choice.role}`} value={choice.role} />
                 <span>
                   <span className="block font-medium">{choice.label}</span>
                   <span className="block text-sm text-muted-foreground">{choice.description}</span>
@@ -175,9 +176,9 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
       </form>
       {link && (
         <section className="flex flex-col gap-3">
-          <h2 ref={linkHeading} tabIndex={-1} className="font-semibold outline-none">
+          <Heading ref={linkHeading} tabIndex={-1} className="font-semibold outline-none">
             Invite link
-          </h2>
+          </Heading>
           <p className="text-sm text-muted-foreground">
             Copy it now. It is shown only once and works for one person for 7 days.
           </p>
@@ -191,7 +192,7 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
             </Button>
             <a
               className={buttonVariants({ variant: "secondary" })}
-              href={`https://wa.me/?text=${encodeURIComponent(`You are invited to ${projectId ? "a project" : (team?.name ?? "our team")} on Cutnotes. Sign in to accept; this invitation works once and expires after 7 days.\n\n${link}`)}`}
+              href={`https://wa.me/?text=${encodeURIComponent(`You are invited to ${projectId ? "a project" : folderId ? "a folder" : (team?.name ?? "our team")} on Cutnotes. Sign in to accept; this invitation works once and expires after 7 days.\n\n${link}`)}`}
               target="_blank"
               rel="noreferrer"
             >
@@ -201,9 +202,9 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
         </section>
       )}
       <section className="flex flex-col gap-3">
-        <h2 ref={historyHeading} tabIndex={-1} className="text-lg font-semibold outline-none">
+        <Heading ref={historyHeading} tabIndex={-1} className="text-lg font-semibold outline-none">
           Invitation history
-        </h2>
+        </Heading>
         {history.isError && <p role="alert">Could not load Invites. Please reload the page.</p>}
         {revoke.isError && <p role="alert">Could not revoke the Invite. Please try again.</p>}
         {history.isPending && <Skeleton className="h-16" />}
@@ -258,6 +259,15 @@ export function InvitesManager({ projectId }: { projectId?: string }) {
                         <Link
                           to="/projects/$projectId"
                           params={{ projectId: invite.projectId }}
+                          hash="people"
+                          className="inline-flex min-h-11 items-center underline"
+                        >
+                          Manage membership
+                        </Link>
+                      ) : invite.folderId ? (
+                        <Link
+                          to="/folders/$folderId"
+                          params={{ folderId: invite.folderId }}
                           hash="people"
                           className="inline-flex min-h-11 items-center underline"
                         >

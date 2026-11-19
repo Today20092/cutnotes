@@ -34,6 +34,9 @@ const MAX_NAME_LENGTH = 120;
 /** Editor writes: renaming, Status and resolving. Uploaders only add Videos and Revisions. */
 export const canWrite = (role: AccessRole) => role === "editor" || role === "owner";
 
+/** Adding Videos and Revisions: Uploaders do it too, on Videos they created. */
+export const canUpload = (role: AccessRole) => role !== "viewer";
+
 /** Mirrors the server's deleteVideo guard: Owners delete any Video, Editors and Uploaders only their own. */
 export const canDelete = (member: { id: string; role: AccessRole }, video: { createdBy: string }) =>
   member.role === "owner" ||
@@ -111,7 +114,9 @@ export function ProjectNameSheet({
   onSubmit,
   startOpen = false,
   onClosed,
+  extra,
 }: {
+  extra?: ReactNode;
   trigger?: ReactElement;
   startOpen?: boolean;
   onClosed?: () => void;
@@ -175,6 +180,7 @@ export function ProjectNameSheet({
               </p>
             )}
           </Field>
+          {extra}
           <Button type="submit">{submitLabel}</Button>
         </form>
       </SheetContent>

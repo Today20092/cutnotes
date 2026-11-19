@@ -1,6 +1,7 @@
-import { ProjectPeople } from "@/components/project-people";
+import { MoveProject } from "@/components/move-project";
+import { ShareSheet } from "@/components/share-sheet";
 import { CopyPageLink } from "@/components/copy-page-link";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { CompleteBanner, CompleteProject } from "@/components/complete-project";
 import { DeleteWork } from "@/components/delete-work";
 import { ChevronLeft, Clapperboard, Upload } from "lucide-react";
@@ -9,6 +10,7 @@ import { MemberScreen } from "@/components/member-screen";
 import {
   backLinkClass,
   canDelete,
+  canUpload,
   canWrite,
   unreadFirst,
   PageBreadcrumb,
@@ -83,6 +85,8 @@ function ProjectView({ page }: { page: ProjectPage }) {
   const [failure, setFailure] = useState("");
   const { project, videos, member } = page;
   const writable = canWrite(project.role);
+  const uploadable = canUpload(project.role);
+  const startShareOpen = useLocation({ select: (location) => location.hash === "people" });
 
   function rename(name: string) {
     setFailure("");
@@ -132,12 +136,30 @@ function ProjectView({ page }: { page: ProjectPage }) {
   return (
     <div className="flex flex-col gap-4">
       <PageBreadcrumb
-        trail={[{ label: "Projects", link: <Link to="/" /> }]}
+        trail={[
+          { label: "Projects", link: <Link to="/" /> },
+          ...(project.folderId
+            ? [
+                {
+                  label: project.folderName ?? "Folder",
+                  link: <Link to="/folders/$folderId" params={{ folderId: project.folderId }} />,
+                },
+              ]
+            : []),
+        ]}
         current={project.name}
       />
       <PageHeading title={project.name}>
         <CopyPageLink kind="project" path={`/projects/${project.id}`} />
-        {writable && project.completedAt === null && videos.length > 0 && uploadSheet}
+        {member.role === "owner" && (
+          <ShareSheet
+            kind="project"
+            id={project.id}
+            name={project.name}
+            startOpen={startShareOpen}
+          />
+        )}
+        {uploadable && project.completedAt === null && videos.length > 0 && uploadSheet}
       </PageHeading>
       <WriteFeedback status={status} failure={failure} />
       {project.deleteAfter !== null && (
@@ -164,12 +186,12 @@ function ProjectView({ page }: { page: ProjectPage }) {
             </EmptyMedia>
             <EmptyTitle>No Videos yet</EmptyTitle>
             <EmptyDescription>
-              {writable
+              {uploadable
                 ? "Upload the first cut to start the review."
                 : "An Owner or Editor will upload the first cut here."}
             </EmptyDescription>
           </EmptyHeader>
-          {writable && project.completedAt === null && <EmptyContent>{uploadSheet}</EmptyContent>}
+          {uploadable && project.completedAt === null && <EmptyContent>{uploadSheet}</EmptyContent>}
         </Empty>
       ) : (
         <ul className={videoGridClass}>
@@ -187,7 +209,6 @@ function ProjectView({ page }: { page: ProjectPage }) {
       {writable && project.completedAt === null && videos.length > 0 && (
         <ReviewBoard videos={videos} />
       )}
-      {member.role === "owner" && <ProjectPeople projectId={project.id} />}
       {(member.role === "owner" || (writable && project.completedAt === null)) && (
         <section
           aria-labelledby="manage-project-heading"
@@ -199,6 +220,14 @@ function ProjectView({ page }: { page: ProjectPage }) {
           <div className="flex flex-wrap gap-2">
             {writable && project.completedAt === null && (
               <RenameProjectButton name={project.name} onRename={rename} labeled />
+            )}
+            {member.role === "owner" && (
+              <MoveProject
+                projectId={project.id}
+                name={project.name}
+                folderId={project.folderId}
+                onMoved={setStatus}
+              />
             )}
             {member.role === "owner" && project.completedAt === null && (
               <CompleteProject name={project.name} onComplete={() => changeComplete(true)} />

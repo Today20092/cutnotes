@@ -1,10 +1,11 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { FolderOpen, Plus, Upload } from "lucide-react";
+import { Folder, FolderOpen, FolderPlus, Plus, Upload } from "lucide-react";
 import { useState } from "react";
 import { MemberScreen } from "@/components/member-screen";
 import {
   canDelete,
+  canUpload,
   canWrite,
   unreadFirst,
   PageHeading,
@@ -17,7 +18,9 @@ import {
 import { UploadSheet } from "@/components/upload-parts";
 import { VideoTile } from "@/components/video-tile";
 import { Badge } from "@/components/ui/badge";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
+import { NativeSelect } from "@/components/ui/native-select";
 import {
   Empty,
   EmptyContent,
@@ -26,6 +29,8 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { useCreateFolder } from "@/lib/folders";
+import { roleLabel } from "@/lib/share-roles";
 import {
   isPendingProject,
   projectListQuery,
@@ -49,16 +54,39 @@ function Home() {
 
 function ProjectListView({ list }: { list: ProjectList }) {
   const createProject = useCreateProject();
+  const createFolder = useCreateFolder();
+  const [newProjectFolder, setNewProjectFolder] = useState("");
   const renameProject = useRenameProject();
   const [status, setStatus] = useState("");
   const [failure, setFailure] = useState("");
   const writable = canWrite(list.member.role);
+  const isOwner = list.member.role === "owner";
+  // Owners file a Project anywhere; Team Editors only in Folders where they are Editor.
+  const folderChoices = isOwner
+    ? list.folders
+    : list.folders.filter((folder) => folder.role === "editor");
+  const unfiled = list.projects.filter((project) => project.folderId === null);
 
   function create(name: string) {
     setFailure("");
-    createProject.mutate(name, {
-      onSuccess: () => setStatus(`Project ${name} created`),
-      onError: () => setFailure(`Could not create ${name}. Nothing was saved. Try again.`),
+    createProject.mutate(
+      {
+        name,
+        folderId: folderChoices.some(({ id }) => id === newProjectFolder) ? newProjectFolder : null,
+      },
+      {
+        onSuccess: () => setStatus(`Project ${name} created`),
+        onError: () => setFailure(`Could not create ${name}. Nothing was saved. Try again.`),
+      },
+    );
+  }
+
+  function addFolder(name: string) {
+    setFailure("");
+    createFolder.mutate(name, {
+      onSuccess: () => setStatus(`Folder ${name} created`),
+      onError: () =>
+        setFailure(`Could not create the Folder ${name}. Nothing was saved. Try again.`),
     });
   }
 
@@ -78,6 +106,25 @@ function ProjectListView({ list }: { list: ProjectList }) {
       title="New project"
       submitLabel="Create Project"
       onSubmit={create}
+      extra={
+        folderChoices.length > 0 && (
+          <Field className="items-stretch">
+            <FieldLabel htmlFor="new-project-folder">Folder (optional)</FieldLabel>
+            <NativeSelect
+              id="new-project-folder"
+              value={newProjectFolder}
+              onChange={(event) => setNewProjectFolder(event.target.value)}
+            >
+              <option value="">No folder</option>
+              {folderChoices.map((folder) => (
+                <option key={folder.id} value={folder.id}>
+                  {folder.name}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+        )
+      }
       trigger={
         <Button variant="secondary">
           <Plus aria-hidden /> New project
@@ -86,19 +133,35 @@ function ProjectListView({ list }: { list: ProjectList }) {
     />
   );
 
+  const newFolderSheet = (
+    <ProjectNameSheet
+      title="New folder"
+      submitLabel="Create Folder"
+      fieldLabel="Folder name"
+      emptyMessage="Enter a name for the Folder."
+      onSubmit={addFolder}
+      trigger={
+        <Button variant="secondary">
+          <FolderPlus aria-hidden /> New folder
+        </Button>
+      }
+    />
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeading title="Projects">
-        {(writable || list.projects.some((project) => canWrite(project.role))) && (
+        {(writable || list.projects.some((project) => canUpload(project.role))) && (
           <>
-            {writable && list.projects.length > 0 && newProjectSheet}
+            {isOwner && newFolderSheet}
+            {writable && (list.projects.length > 0 || list.folders.length > 0) && newProjectSheet}
             <UploadSheet
               destination={{
                 kind: "new",
                 projects: list.projects.filter(
                   (project) =>
                     project.completedAt === null &&
-                    canWrite(project.role) &&
+                    canUpload(project.role) &&
                     !isPendingProject(project),
                 ),
               }}
@@ -113,7 +176,43 @@ function ProjectListView({ list }: { list: ProjectList }) {
       </PageHeading>
       <WriteFeedback status={status} failure={failure} />
 
-      {list.projects.length === 0 ? (
+      {list.folders.length > 0 && (
+        <section aria-labelledby="folders-heading" className="flex flex-col gap-2">
+          <h2 id="folders-heading" className="text-lg font-semibold">
+            Folders
+          </h2>
+          <ul className={videoGridClass}>
+            {list.folders.map((folder) => (
+              <li key={folder.id} className="min-w-0">
+                <Card className="h-full">
+                  <CardHeader className="p-4">
+                    <CardTitle>
+                      <Folder className="mb-3 size-5 text-muted-foreground" aria-hidden />
+                      <Link
+                        to="/folders/$folderId"
+                        params={{ folderId: folder.id }}
+                        className="inline-flex min-h-11 items-center rounded font-medium wrap-anywhere underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                      >
+                        {folder.name}
+                      </Link>
+                    </CardTitle>
+                    <CardDescription>
+                      {folder.projectCount} {folder.projectCount === 1 ? "project" : "projects"}
+                    </CardDescription>
+                    <CardAction>
+                      <Badge variant="secondary" className="shrink-0">
+                        {roleLabel(folder.role)}
+                      </Badge>
+                    </CardAction>
+                  </CardHeader>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {list.projects.length === 0 && list.folders.length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -128,13 +227,13 @@ function ProjectListView({ list }: { list: ProjectList }) {
           </EmptyHeader>
           {writable && <EmptyContent>{newProjectSheet}</EmptyContent>}
         </Empty>
-      ) : (
+      ) : unfiled.length > 0 ? (
         <section aria-labelledby="projects-heading" className="flex flex-col gap-2">
           <h2 id="projects-heading" className="text-lg font-semibold">
-            Projects
+            {list.folders.length > 0 ? "Unfiled" : "Projects"}
           </h2>
           <ul className={videoGridClass}>
-            {list.projects.map((project) => (
+            {unfiled.map((project) => (
               <li key={project.id} className="min-w-0">
                 <Card className="h-full">
                   <CardHeader className="p-4">
@@ -179,7 +278,7 @@ function ProjectListView({ list }: { list: ProjectList }) {
             ))}
           </ul>
         </section>
-      )}
+      ) : null}
 
       {list.videos.length > 0 && (
         <section aria-labelledby="videos-heading" className="flex flex-col gap-2">

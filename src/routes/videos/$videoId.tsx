@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CompleteBanner } from "@/components/complete-project";
 import { MemberScreen } from "@/components/member-screen";
-import { PageBreadcrumb, PageHeading } from "@/components/project-parts";
+import { canUpload, canWrite, PageBreadcrumb, PageHeading } from "@/components/project-parts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Review as ReviewPanel } from "@/components/comments";
 import { ReviewQueue } from "@/components/review-queue";
@@ -54,7 +54,7 @@ function Review() {
             />
             <PageHeading title={page.video.title}>
               <CopyPageLink kind="video" path={`/videos/${videoId}`} />
-              {page.video.role !== "viewer" && page.revision && (
+              {canWrite(page.video.role) && page.revision && (
                 <ExportMarkers
                   key={page.revision.id}
                   title={page.video.title}
@@ -64,7 +64,7 @@ function Review() {
                   durationMs={page.revision.durationMs}
                 />
               )}
-              {page.video.role !== "viewer" && page.video.completedAt === null && (
+              {canUpload(page.video.role) && page.video.completedAt === null && (
                 <>
                   {page.member.role === "owner" && (
                     <ShareLinksSheet
@@ -73,10 +73,12 @@ function Review() {
                       projectName={page.video.projectName}
                     />
                   )}
-                  <UploadSheet
-                    destination={{ kind: "existing", videoId, title: page.video.title }}
-                    trigger={<Button variant="secondary">Upload new Revision</Button>}
-                  />
+                  {(canWrite(page.video.role) || page.video.createdBy === page.member.id) && (
+                    <UploadSheet
+                      destination={{ kind: "existing", videoId, title: page.video.title }}
+                      trigger={<Button variant="secondary">Upload new Revision</Button>}
+                    />
+                  )}
                 </>
               )}
             </PageHeading>

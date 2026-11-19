@@ -101,12 +101,14 @@ function DeleteFolder({ folderId, name }: { folderId: string; name: string }) {
             variant="destructive"
             pending={remove.isPending}
             onClick={() =>
-              remove.mutate(folderId, {
-                onSuccess: () => {
+              // mutateAsync: the refetch of the deleted Folder unmounts this, skipping mutate's callbacks.
+              void remove.mutateAsync(folderId).then(
+                () => {
                   setOpen(false);
                   void navigate({ to: "/" });
                 },
-              })
+                () => undefined, // remove.isError shows the failure
+              )
             }
           >
             Delete {name}

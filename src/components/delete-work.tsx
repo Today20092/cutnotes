@@ -55,12 +55,15 @@ export function DeleteWork({
             variant="destructive"
             pending={remove.isPending}
             onClick={() => {
-              remove.mutate(undefined, {
-                onSuccess: () => {
+              // mutateAsync, not mutate callbacks: the refetch of a deleted Project unmounts this
+              // component, and mutate's own callbacks are skipped once it is gone.
+              remove.mutateAsync().then(
+                () => {
                   changeOpen(false);
                   onDeleted?.();
                 },
-              });
+                () => undefined, // remove.isError shows the failure
+              );
             }}
           >
             Delete {name} permanently

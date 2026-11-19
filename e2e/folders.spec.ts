@@ -98,6 +98,16 @@ test("an Owner shares a Folder with an Uploader who sees only that Folder", asyn
   await expect(outsiderPage.getByRole("link", { name: folderName, exact: true })).toHaveCount(0);
   await outsiderPage.goto(folderUrl);
   await expect(outsiderPage.getByRole("heading", { name: "Folder not found" })).toBeVisible();
+  await page.goto("/");
+  await page.getByRole("link", { name: otherName, exact: true }).click();
+  await page.getByRole("button", { name: `Delete ${otherName}`, exact: true }).click();
+  await expect(page.getByText(/they become unfiled|become unfiled/)).toBeVisible();
+  await page
+    .getByRole("button", { name: `Delete ${otherName}`, exact: true })
+    .last()
+    .click();
+  await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
+  await expect(page.getByRole("link", { name: otherName, exact: true })).toHaveCount(0);
   await uploaderContext.close();
   await outsiderContext.close();
 });

@@ -47,7 +47,7 @@ function SheetContent({
         {showCloseButton && (
           <DialogClose
             aria-label="Close"
-            render={<Button variant="ghost" className="absolute top-3 right-3" size="icon-sm" />}
+            render={<Button variant="ghost" className="absolute top-2 right-2 max-sm:size-11" size="icon-sm" />}
           >
             <XIcon aria-hidden />
           </DialogClose>

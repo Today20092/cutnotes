@@ -61,7 +61,7 @@ export function PageBreadcrumb({
           <Fragment key={label}>
             <BreadcrumbItem>
               <BreadcrumbLink
-                className="inline-flex min-h-11 items-center wrap-anywhere sm:min-h-0"
+                className="inline-flex min-h-11 min-w-11 items-center wrap-anywhere sm:min-h-0 sm:min-w-0"
                 render={link}
               >
                 {label}

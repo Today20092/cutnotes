@@ -67,7 +67,8 @@ test("an Owner shares a Folder with an Uploader who sees only that Folder", asyn
   await sheet.getByRole("radio", { name: /^Uploader/ }).check();
   await sheet.getByLabel("Optional note").fill(`For a freelancer ${suffix}`);
   await sheet.getByRole("button", { name: "Create Invite", exact: true }).click();
-  expect(await sheet.getByLabel("Link to send").inputValue()).toContain("/invite/");
+  const inviteLink = await sheet.getByLabel("Link to send").inputValue();
+  expect(inviteLink).toContain("/invite/");
   await expectAccessible(page);
   await page.keyboard.press("Escape");
 
@@ -108,6 +109,16 @@ test("an Owner shares a Folder with an Uploader who sees only that Folder", asyn
     .click();
   await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
   await expect(page.getByRole("link", { name: otherName, exact: true })).toHaveCount(0);
+  // A new person accepting the Folder Invite lands on that Folder, not on an empty Home.
+  const guestContext = await browser.newContext();
+  const guestPage = await guestContext.newPage();
+  await signInAs(guestPage, {
+    clerkUserId: `invitee_${suffix}`,
+    email: `invitee.${suffix}@example.com`,
+  });
+  await guestPage.goto(inviteLink);
+  await expect(guestPage.getByRole("heading", { name: folderName, level: 1 })).toBeVisible();
+  await guestContext.close();
   await uploaderContext.close();
   await outsiderContext.close();
 });

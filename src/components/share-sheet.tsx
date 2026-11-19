@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Share2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useId, useRef, useState } from "react";
 import { InvitesManager } from "@/components/invites-manager";
 import { PendingButton } from "@/components/pending-button";
@@ -137,8 +138,10 @@ function SharePanel({ kind, id, noun }: { kind: Kind; id: string; noun: string }
         : setProjectMember({ data: { projectId: id, ...data } }),
     onSuccess: async () => {
       setMemberId("");
-      setStatus(`${noun} access updated`);
+      setStatus(`Access given. The person can now open this ${noun}.`);
       await refresh();
+      // The submit button disables itself once the person is added, which would drop focus.
+      heading.current?.focus();
     },
   });
   const remove = useMutation({
@@ -193,10 +196,23 @@ function SharePanel({ kind, id, noun }: { kind: Kind; id: string; noun: string }
                   {person.teamRole === "owner"
                     ? "Owner · always has access"
                     : person.role === null
-                      ? `${roleLabel(person.folderRole!)} via Folder ${folderName}`
+                      ? `${roleLabel(person.folderRole!)}, from the Folder `
                       : person.folderRole
-                        ? `Also ${roleLabel(person.folderRole)} via Folder ${folderName}`
+                        ? `Also ${roleLabel(person.folderRole)} from the Folder `
                         : `Added by ${person.addedBy}`}
+                  {person.teamRole !== "owner" && person.folderRole && people.data?.folder && (
+                    <>
+                      <Link
+                        to="/folders/$folderId"
+                        params={{ folderId: people.data.folder.id }}
+                        hash="people"
+                        className="underline underline-offset-4"
+                      >
+                        {folderName}
+                      </Link>
+                      {person.role === null && ". Change it there."}
+                    </>
+                  )}
                 </p>
               </div>
               {person.teamRole !== "owner" && person.role !== null && (

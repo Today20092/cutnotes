@@ -159,6 +159,7 @@ export function InvitesManager({
         <Field className="items-stretch">
           <FieldLabel>Optional note</FieldLabel>
           <Input
+            className="h-11 sm:h-8"
             value={note}
             onChange={(event) => setNote(event.target.value)}
             maxLength={240}
@@ -184,7 +185,12 @@ export function InvitesManager({
           </p>
           <Field className="items-stretch">
             <FieldLabel>Link to send</FieldLabel>
-            <Input readOnly value={link} onFocus={(event) => event.currentTarget.select()} />
+            <Input
+              className="h-11 sm:h-8"
+              readOnly
+              value={link}
+              onFocus={(event) => event.currentTarget.select()}
+            />
           </Field>
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={() => void copyLink()}>

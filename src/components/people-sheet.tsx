@@ -116,7 +116,7 @@ export function PeopleSheet({
           <ManagePeople projectId={projectId} />
         ) : (
           <div className="p-4 pt-0">
-            <h3 className="text-lg font-semibold">People with access</h3>
+            <h3 className="text-section">People with access</h3>
             {people.length === 0 ? (
               <p className="py-3 text-muted-foreground">Only Team Owners have access.</p>
             ) : (
@@ -212,7 +212,7 @@ function ManagePeople({ projectId }: { projectId: string }) {
           id={`${memberField}-heading`}
           ref={heading}
           tabIndex={-1}
-          className="text-lg font-semibold outline-none"
+          className="text-section outline-none"
         >
           People with access
         </h3>
@@ -273,7 +273,7 @@ function ManagePeople({ projectId }: { projectId: string }) {
         </ul>
       </section>
       <section aria-labelledby={`${roleField}-heading`}>
-        <h3 id={`${roleField}-heading`} className="mb-2 text-lg font-semibold">
+        <h3 id={`${roleField}-heading`} className="mb-2 text-section">
           Add from Team
         </h3>
         {available && available.length === 0 ? (
@@ -323,7 +323,7 @@ function ManagePeople({ projectId }: { projectId: string }) {
         )}
       </section>
       <section aria-labelledby={`${memberField}-invite`} className="flex flex-col gap-3">
-        <h3 id={`${memberField}-invite`} className="text-lg font-semibold">
+        <h3 id={`${memberField}-invite`} className="text-section">
           Invite link
         </h3>
         <p className="text-sm text-muted-foreground">

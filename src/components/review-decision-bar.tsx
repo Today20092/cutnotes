@@ -1,9 +1,13 @@
+import { createParts } from "@ui-sdk/react/primitive";
 import { useState } from "react";
 import { PendingButton } from "@/components/pending-button";
 import { WriteFeedback } from "@/components/project-parts";
 import { VideoStatusBadge } from "@/components/video-status";
 import { useReviewDecision } from "@/lib/projects";
+import { reviewDecision } from "@/lib/review-decision";
 import type { VideoStatus } from "@/lib/video-status";
+
+const Decision = createParts(reviewDecision, { root: "section" });
 
 /**
  * The only way a Video's Status changes. Request changes sends the Project back to Editing;
@@ -32,9 +36,15 @@ export function ReviewDecisionBar({
   }
 
   return (
-    <section
+    <Decision.Root
       aria-label="Review decision"
-      className="flex flex-wrap items-center gap-2 rounded-xl border p-3"
+      disabled={[
+        ...(status === "rework" ? (["requestChanges"] as const) : []),
+        ...(status === "done" ? (["approve"] as const) : []),
+        ...(decision.isPending ? (["approve", "requestChanges"] as const) : []),
+      ]}
+      onDecide={decide}
+      className="flex flex-wrap items-center gap-2 rounded-card border p-3"
     >
       <p className="flex items-center gap-2 text-sm">
         <span className="text-muted-foreground">Status</span>
@@ -58,6 +68,6 @@ export function ReviewDecisionBar({
         </PendingButton>
       </div>
       <WriteFeedback status={said} failure={failure} />
-    </section>
+    </Decision.Root>
   );
 }

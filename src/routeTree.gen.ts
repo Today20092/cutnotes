@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as InvitesRouteImport } from './routes/invites'
+import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as MembersRouteImport } from './routes/members'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ApiTeamRouteImport } from './routes/api/team'
@@ -33,6 +34,11 @@ const FeedbackRoute = FeedbackRouteImport.update({
 const InvitesRoute = InvitesRouteImport.update({
   id: '/invites',
   path: '/invites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
+  id: '/llms.txt',
+  path: '/llms.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MembersRoute = MembersRouteImport.update({
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/feedback': typeof FeedbackRoute
   '/invites': typeof InvitesRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/members': typeof MembersRoute
   '/settings': typeof SettingsRoute
   '/api/team': typeof ApiTeamRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/feedback': typeof FeedbackRoute
   '/invites': typeof InvitesRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/members': typeof MembersRoute
   '/settings': typeof SettingsRoute
   '/api/team': typeof ApiTeamRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/feedback': typeof FeedbackRoute
   '/invites': typeof InvitesRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/members': typeof MembersRoute
   '/settings': typeof SettingsRoute
   '/api/team': typeof ApiTeamRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/'
     | '/feedback'
     | '/invites'
+    | '/llms.txt'
     | '/members'
     | '/settings'
     | '/api/team'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/'
     | '/feedback'
     | '/invites'
+    | '/llms.txt'
     | '/members'
     | '/settings'
     | '/api/team'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/feedback'
     | '/invites'
+    | '/llms.txt'
     | '/members'
     | '/settings'
     | '/api/team'
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   FeedbackRoute: typeof FeedbackRoute
   InvitesRoute: typeof InvitesRoute
+  LlmsDottxtRoute: typeof LlmsDottxtRoute
   MembersRoute: typeof MembersRoute
   SettingsRoute: typeof SettingsRoute
   ApiTeamRoute: typeof ApiTeamRoute
@@ -181,6 +194,13 @@ declare module '@tanstack/react-router' {
       path: '/invites'
       fullPath: '/invites'
       preLoaderRoute: typeof InvitesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/llms.txt': {
+      id: '/llms.txt'
+      path: '/llms.txt'
+      fullPath: '/llms.txt'
+      preLoaderRoute: typeof LlmsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/members': {
@@ -239,6 +259,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FeedbackRoute: FeedbackRoute,
   InvitesRoute: InvitesRoute,
+  LlmsDottxtRoute: LlmsDottxtRoute,
   MembersRoute: MembersRoute,
   SettingsRoute: SettingsRoute,
   ApiTeamRoute: ApiTeamRoute,

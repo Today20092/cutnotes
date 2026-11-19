@@ -203,7 +203,7 @@ export function InviteLinkForm({
 }
 
 /** A Team Invite link, and the history of every Invite. */
-export function InvitesManager() {
+export function InvitesManager({ project }: { project?: string }) {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("");
   useStatusToast(status);
@@ -222,6 +222,10 @@ export function InvitesManager() {
     },
   });
   const label = inviteRoleLabel;
+  // `?project=` narrows the history to one Project's Invites.
+  const invites = history.data?.invites.filter(
+    (invite) => !project || invite.projectId === project,
+  );
 
   return (
     <div className="flex w-full max-w-xl flex-col gap-8">
@@ -230,14 +234,22 @@ export function InvitesManager() {
       </p>
       <InviteLinkForm />
       <section className="flex flex-col gap-3">
-        <h2 ref={historyHeading} tabIndex={-1} className="text-lg font-semibold outline-none">
+        <h2 ref={historyHeading} tabIndex={-1} className="text-section outline-none">
           Invitation history
         </h2>
         {history.isError && <p role="alert">Could not load Invites. Please reload the page.</p>}
         {revoke.isError && <p role="alert">Could not revoke the Invite. Please try again.</p>}
         {history.isPending && <Skeleton className="h-16" />}
-        {history.data?.invites.length === 0 && (
-          <Empty className="rounded-xl border border-dashed py-8 md:py-8">
+        {project && (
+          <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            Showing Invites for one Project.
+            <Link to="/invites" className="inline-flex min-h-11 items-center underline">
+              Show all Invites
+            </Link>
+          </p>
+        )}
+        {invites?.length === 0 && (
+          <Empty className="rounded-card border border-dashed py-8 md:py-8">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <Mail aria-hidden />
@@ -250,7 +262,7 @@ export function InvitesManager() {
           </Empty>
         )}
         <ul className="divide-y">
-          {history.data?.invites.map((invite) => {
+          {invites?.map((invite) => {
             const state = inviteStatus(invite);
             return (
               <li key={invite.id} className="flex flex-wrap items-start justify-between gap-3 py-4">

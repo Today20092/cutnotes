@@ -14,6 +14,10 @@ Parts of this project will be adapted from [Lawn](https://github.com/pingdotgg/l
 
 Projects are private to assigned members and Team Owners. Editors can create their own projects; Owners manage project roles, single-use invitation links, and guest sharing. See [project access and rollout](docs/project-access.md).
 
+## For agents
+
+Every screen's state is in its URL (sheets, filters, Revision, moment, selected Comment), and `/llms.txt` lists each route, its search params, who can open it and its main actions, with no data. It is built from [`src/lib/route-index.ts`](src/lib/route-index.ts) and linked from every page's `<head>`. See [the decision](docs/adr/0001-project-is-the-unit.md).
+
 ## Self-hosting
 
 Follow [docs/setup.md](docs/setup.md).

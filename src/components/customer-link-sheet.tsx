@@ -184,7 +184,7 @@ function CustomerLinks({
         {links.isError && <p role="alert">Could not load links. Close this and try again.</p>}
         {revoke.isError && <p role="alert">Could not revoke the link. Try again.</p>}
         {links.data?.links.length === 0 && (
-          <Empty className="rounded-xl border border-dashed py-8 md:py-8">
+          <Empty className="rounded-card border border-dashed py-8 md:py-8">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <Link2 aria-hidden />

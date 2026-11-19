@@ -200,7 +200,8 @@ test("the Project screen", async ({ page }, testInfo) => {
   await expectAccessible(page, "Project actions menu");
   await page.getByRole("menuitem", { name: "Rename" }).click();
   await expectAccessible(page, "renaming a Project");
-  await page.reload();
+  // The sheet is in the URL, so a reload would reopen it.
+  await page.goto(new URL(page.url()).pathname);
 
   await page.getByRole("button", { name: "Upload" }).click();
   await expect(page.getByText(/1080p H\.264 MP4/)).toBeVisible();

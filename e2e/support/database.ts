@@ -217,3 +217,55 @@ export function seedUploaderProject(uploaderId: string, otherId: string, suffix:
   );
   return { projectId, ...videoIds };
 }
+
+type SeededRole = "viewer" | "uploader" | "editor";
+
+/** A Project made by the Member with this Clerk user ID, in any Stage, with people assigned. Returns its ID. */
+export function seedProject(
+  createdByClerkUserId: string,
+  name: string,
+  stage: "new" | "editing" | "in_review" | "done" = "new",
+  people: { memberId: string; role: SeededRole }[] = [],
+) {
+  const id = crypto.randomUUID();
+  executeSql(
+    {
+      sql: "INSERT INTO projects (id, name, stage, created_by, created_at, updated_at) SELECT ?, ?, ?, id, 1, 1 FROM members WHERE clerk_user_id = ?",
+      params: [id, name, stage, createdByClerkUserId],
+    },
+    ...people.map(({ memberId, role }) => ({
+      sql: "INSERT INTO project_members (project_id, member_id, role, added_by, created_at) SELECT ?, ?, ?, id, 1 FROM members WHERE clerk_user_id = ?",
+      params: [id, memberId, role, createdByClerkUserId],
+    })),
+  );
+  return id;
+}
+
+/** A Video with one ready Revision in a Project. Returns its ID. */
+export function seedVideo(projectId: string, title: string, createdBy: string) {
+  const id = crypto.randomUUID();
+  executeSql(
+    insertRow(videos, {
+      id,
+      projectId,
+      title,
+      status: "review",
+      createdBy,
+      createdAt: 1,
+      updatedAt: 1,
+    }),
+    insertRow(revisions, {
+      id,
+      videoId: id,
+      number: 1,
+      state: "ready",
+      uploadedBy: createdBy,
+      muxPlaybackId: "sample",
+      durationMs: 8000,
+      frameRate: 25,
+      createdAt: 1,
+      readyAt: 1,
+    }),
+  );
+  return id;
+}

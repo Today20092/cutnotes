@@ -15,7 +15,7 @@ import { getMuxGateway } from "@/server/mux";
 
 /** The same read is used to open the screen and renew its playback credentials. */
 export const getReview = createServerFn({ method: "POST" })
-  .validator((data: { videoId: string; revisionId?: string }) => data)
+  .validator((data: { videoId: string; revisionId?: string; revisionNumber?: number }) => data)
   .handler(async ({ data }) => {
     const readAt = Date.now();
     const videoId = typeof data?.videoId === "string" ? data.videoId : "";
@@ -83,7 +83,10 @@ export const getReview = createServerFn({ method: "POST" })
         comments: [] as Comment[],
       };
     // Renewal stays on the Revision being watched, even if a newer cut is ready.
-    const revision = data?.revisionId ? ready.find((row) => row.id === data.revisionId) : ready[0];
+    // A Revision number from a link that no longer matches one falls back to the latest.
+    const revision = data?.revisionId
+      ? ready.find((row) => row.id === data.revisionId)
+      : (ready.find((row) => row.number === data?.revisionNumber) ?? ready[0]);
     if (data?.revisionId && !revision) refuse(404, "not-found");
     const playback =
       revision?.muxPlaybackId && revision.durationMs !== null

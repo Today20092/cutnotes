@@ -154,7 +154,7 @@ export function CommentComposer({
 }) {
   return (
     <form
-      className="mt-3 flex flex-col gap-3 rounded-xl border bg-card p-3"
+      className="mt-3 flex flex-col gap-3 rounded-card border bg-card p-3"
       onSubmit={(event) => {
         event.preventDefault();
         send();
@@ -188,6 +188,9 @@ export function CommentComposer({
   );
 }
 
+/** What the review screen keeps in its URL: the selected Comment, a moment to open at, and the filter. */
+export type ReviewView = { comment?: string; t?: number; filter?: "todo" | "resolved" };
+
 export type Draft = { id: string; body: string; timecodeMs: number; drawing: Shape[] | null };
 
 /** What differs between a Member and a Guest on the review screen. */
@@ -212,7 +215,12 @@ export function Review({
   comments,
   renewPlayback,
   actor,
+  view,
+  onViewChange,
 }: {
+  view: ReviewView;
+  /** Writes the changed keys to the URL; `undefined` removes one. */
+  onViewChange: (change: Partial<ReviewView>) => void;
   videoId: string;
   revision: { id: string; frameRate: number | null; durationMs: number | null };
   playback: ComponentProps<typeof VideoPlayer>["playback"];
@@ -222,16 +230,28 @@ export function Review({
 }) {
   const [seek, setSeek] = useState<{ timeMs: number }>();
   const [timeMs, setTimeMs] = useState(0);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = comments.find((comment) => comment.id === view.comment);
+  const selectedId = selected?.id ?? null;
   const pen = useDrawingControls({
     timeMs,
     seek: (ms) => setSeek({ timeMs: ms }),
-    deselect: () => setSelectedId(null),
+    deselect: () => onViewChange({ comment: undefined }),
   });
+  // A link opens at its Comment, or at its `t`.
+  useEffect(() => {
+    // A Resolved Comment's link shows the Resolved list.
+    if (selected?.resolvedAt != null && !view.filter) onViewChange({ filter: "resolved" });
+    const at = selected?.timecodeMs ?? (view.t === undefined ? undefined : view.t * 1000);
+    if (at === undefined) return;
+    setSeek({ timeMs: at });
+    setTimeMs(at);
+    // Once, on arrival: later selections come from clicks.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   function select(comment: Comment) {
     setSeek({ timeMs: comment.timecodeMs });
-    setSelectedId(comment.id);
     setTimeMs(comment.timecodeMs);
+    onViewChange({ comment: comment.id, t: undefined });
     pen.stop();
   }
   return (
@@ -287,6 +307,8 @@ export function Review({
         select={select}
         selectedId={selectedId}
         drawing={pen.drawing}
+        resolved={view.filter === "resolved"}
+        setResolved={(next) => onViewChange({ filter: next ? "resolved" : undefined })}
         sent={pen.reset}
         drawingControls={actor.writable && pen.controls}
       />
@@ -302,9 +324,13 @@ function Comments({
   select,
   selectedId,
   drawing,
+  resolved,
+  setResolved,
   sent,
   drawingControls,
 }: {
+  resolved: boolean;
+  setResolved: (resolved: boolean) => void;
   comments: Comment[];
   /** A new Revision starts a new draft ID. */
   scope: string;
@@ -316,7 +342,6 @@ function Comments({
   sent: () => void;
   drawingControls: ReactNode;
 }) {
-  const [resolved, setResolved] = useState(false);
   const [body, setBody] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editedBody, setEditedBody] = useState("");
@@ -422,7 +447,7 @@ function Comments({
       aria-labelledby="comments-heading"
       className="min-w-0 outline-none"
     >
-      <h2 id="comments-heading" className="text-lg font-semibold">
+      <h2 id="comments-heading" className="text-section">
         Comments
       </h2>
       <p role="status" className="sr-only">

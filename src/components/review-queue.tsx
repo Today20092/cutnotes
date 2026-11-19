@@ -55,7 +55,7 @@ export function ReviewQueue({
       render={<section aria-labelledby="queue-heading" />}
       className="mt-6 flex flex-col gap-2"
     >
-      <h2 id="queue-heading" className="text-lg font-semibold">
+      <h2 id="queue-heading" className="text-section">
         <CollapsibleTrigger className="group flex min-h-11 items-center gap-2 rounded-md focus-visible:outline-2">
           Review queue ({notes.length} open)
           <ChevronDown

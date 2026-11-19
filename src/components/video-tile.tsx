@@ -123,11 +123,23 @@ function EditableVideoTitle({ video }: { video: VideoSummary }) {
   );
 }
 
-function VideoControls({ video, deletable }: { video: VideoSummary; deletable: boolean }) {
-  const [sheet, setSheet] = useState<"rename" | "delete" | null>(null);
+/** The Video sheets the Project page keeps in its URL (`?sheet=…&video=<id>`). */
+export type VideoSheet = "rename-video" | "delete-video" | "retry-video";
+
+function VideoControls({
+  video,
+  deletable,
+  sheet,
+  onSheetChange,
+}: {
+  video: VideoSummary;
+  deletable: boolean;
+  sheet?: string;
+  onSheetChange: (sheet?: VideoSheet) => void;
+}) {
   const more = useRef<HTMLButtonElement>(null);
   function closeSheet() {
-    setSheet(null);
+    onSheetChange(undefined);
     // The sheet unmounts with focus inside it.
     requestAnimationFrame(() => more.current?.focus());
   }
@@ -152,6 +164,8 @@ function VideoControls({ video, deletable }: { video: VideoSummary; deletable: b
       <div className="flex flex-wrap items-center gap-2">
         {video.latestRevisionState === "errored" && (
           <UploadSheet
+            open={sheet === "retry-video"}
+            onOpenChange={(next) => onSheetChange(next ? "retry-video" : undefined)}
             destination={{ kind: "existing", videoId: video.id, title: video.title }}
             trigger={
               <Button variant="secondary" aria-label={`Retry ${video.title} with a new upload`}>
@@ -174,16 +188,16 @@ function VideoControls({ video, deletable }: { video: VideoSummary; deletable: b
             <Ellipsis aria-hidden />
           </MenuTrigger>
           <MenuPopup>
-            <MenuItem onSelect={() => setSheet("rename")}>Rename</MenuItem>
+            <MenuItem onSelect={() => onSheetChange("rename-video")}>Rename</MenuItem>
             {deletable && (
-              <MenuItem variant="destructive" onSelect={() => setSheet("delete")}>
+              <MenuItem variant="destructive" onSelect={() => onSheetChange("delete-video")}>
                 Delete
               </MenuItem>
             )}
           </MenuPopup>
         </Menu>
       </div>
-      {sheet === "rename" && (
+      {sheet === "rename-video" && (
         <ProjectNameSheet
           title="Rename Video"
           submitLabel="Save title"
@@ -195,7 +209,7 @@ function VideoControls({ video, deletable }: { video: VideoSummary; deletable: b
           onClosed={closeSheet}
         />
       )}
-      {sheet === "delete" && (
+      {sheet === "delete-video" && (
         <DeleteWork kind="Video" id={video.id} name={video.title} startOpen onClosed={closeSheet} />
       )}
       <WriteFeedback status={status} failure={failure} />
@@ -207,10 +221,14 @@ export function VideoTile({
   video,
   writable,
   deletable = false,
+  sheet,
+  onSheetChange = () => undefined,
 }: {
   video: VideoSummary;
   writable: boolean;
   deletable?: boolean;
+  sheet?: string;
+  onSheetChange?: (sheet?: VideoSheet) => void;
 }) {
   const manageable = writable && video.projectCompletedAt === null;
   const card = <VideoCard video={video} />;
@@ -229,7 +247,14 @@ export function VideoTile({
           {card}
         </Link>
       )}
-      {manageable && <VideoControls video={video} deletable={deletable} />}
+      {manageable && (
+        <VideoControls
+          video={video}
+          deletable={deletable}
+          sheet={sheet}
+          onSheetChange={onSheetChange}
+        />
+      )}
       {!manageable && deletable && (
         <div className="mt-2">
           <DeleteWork kind="Video" id={video.id} name={video.title} />

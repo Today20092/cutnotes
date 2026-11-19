@@ -17,7 +17,7 @@ An evaluation of Vercel's ui-sdk (`@ui-sdk/react` and `@ui-sdk/core` `0.1.0-beta
 | Tests | `e2e/review-queue.spec.ts`, `e2e/review-board.spec.ts` and `e2e/review-agent.spec.ts`. The bridge spec drives the UI only through `agent.act()` and checks the result in the UI. |
 | Measurement | `scripts/bundle-size.ts` prints client JS and CSS sizes after `bun run build`. |
 
-The queue and the board each expose actions to the bridge through the primitive's `agent` key: `resolve`, `remove` and `addNote` on the queue, `setStage` on the board. Any app that renders them gets these agent actions without writing a tool schema.
+The queue, the board and the review decision bar each expose actions to the bridge through the primitive's `agent` key: `resolve`, `remove` and `addNote` on the queue, `setStage` on the board, and `approve` and `requestChanges` on the decision bar (`src/lib/review-decision.ts`). Any app that renders them gets these agent actions without writing a tool schema.
 
 ## Agent bridge compared with browser tools
 

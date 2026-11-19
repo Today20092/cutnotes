@@ -160,6 +160,27 @@
   }
 }
 
+/* The type scale: page title 24/28, section 17/24, body 15–16, meta 13/20 muted. */
+@utility text-title {
+  font-size: 1.5rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+}
+@utility text-section {
+  font-size: 1.0625rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+}
+/* Cards and panels: 16px padding (p-4), 12px radius. */
+@utility rounded-card {
+  border-radius: 0.75rem;
+}
+@utility text-meta {
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  color: var(--muted-foreground);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring;

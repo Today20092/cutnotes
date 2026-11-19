@@ -36,10 +36,20 @@ export function StageBoard({
   list,
   stage,
   onStageChange,
+  view = "board",
+  onViewChange,
+  completing,
+  onCompletingChange,
 }: {
   list: ProjectList;
   stage?: ProjectStage;
   onStageChange: (stage: ProjectStage | undefined) => void;
+  /** `list` stacks the columns, as on a phone. */
+  view?: "board" | "list";
+  onViewChange: (view: "board" | "list" | undefined) => void;
+  /** The Project whose Complete sheet is open, kept in the URL. */
+  completing?: string;
+  onCompletingChange: (projectId: string | undefined) => void;
 }) {
   const help = useId();
   const setStage = useSetProjectStage();
@@ -125,6 +135,7 @@ export function StageBoard({
       ...(project.stage === "done" && list.member.role === "owner"
         ? [
             {
+              id: "complete",
               label: "Complete… (deleted in 14 days)",
               sheet: (onClosed: () => void) => (
                 <CompleteProject
@@ -141,9 +152,9 @@ export function StageBoard({
   }
 
   return (
-    <section aria-labelledby="board-heading" className="flex flex-col gap-3">
+    <section aria-labelledby="board-heading" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="board-heading" className="text-lg font-semibold">
+        <h2 id="board-heading" className="sr-only">
           Board
         </h2>
         <ToggleGroup
@@ -162,8 +173,28 @@ export function StageBoard({
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
+        <ToggleGroup
+          aria-label="Layout"
+          variant="outline"
+          className="hidden md:flex"
+          value={[view]}
+          onValueChange={(next: string[]) => {
+            if (next[0]) onViewChange(next[0] === "list" ? "list" : undefined);
+          }}
+        >
+          <ToggleGroupItem value="board" className="h-9">
+            Board
+          </ToggleGroupItem>
+          <ToggleGroupItem value="list" className="h-9">
+            List
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
-      <div className="flex min-h-11 flex-wrap items-center gap-2 text-sm">
+      <div
+        className={
+          status || undo || failure ? "flex flex-wrap items-center gap-2 text-sm" : "contents"
+        }
+      >
         <p role="status" className={status ? "" : "sr-only"}>
           {status}
         </p>
@@ -183,11 +214,14 @@ export function StageBoard({
         )}
       </div>
       {anyMovable && (
-        <p id={help} className="text-sm text-muted-foreground">
-          Drag a Project to another column to change its Stage, or use its More actions menu. With a
-          keyboard, focus a card and press Space to pick it up, Left and Right to change column,
-          Space to drop and Escape to cancel.
-        </p>
+        <details className="text-meta">
+          <summary className="min-h-6 w-fit cursor-pointer">How to move a Project</summary>
+          <p id={help} className="mt-1">
+            Drag a Project to another column to change its Stage, or use its More actions menu. With
+            a keyboard, focus a card and press Space to pick it up, Left and Right to change column,
+            Space to drop and Escape to cancel.
+          </p>
+        </details>
       )}
       <Board.Root
         lists={lists}
@@ -195,18 +229,20 @@ export function StageBoard({
         columns={stageLabels}
         titles={titles}
         locked={locked}
-        className={stage ? "flex flex-col" : "grid gap-3 md:grid-cols-2 xl:grid-cols-4"}
+        className={
+          stage || view === "list" ? "flex flex-col" : "grid gap-3 md:grid-cols-2 xl:grid-cols-4"
+        }
       >
         {(state) =>
           shown.map((column) => (
             <section
               key={column}
               aria-labelledby={`stage-${column}`}
-              className="flex min-w-0 flex-col gap-2 rounded-xl border p-2"
+              className="flex min-w-0 flex-col gap-2 rounded-card bg-muted/40 p-2"
             >
               <h3
                 id={`stage-${column}`}
-                className="flex items-center gap-2 px-1 text-sm font-semibold"
+                className="flex items-center gap-2 px-2 pt-1 text-sm font-semibold"
               >
                 {stageLabels[column]}
                 <span className="font-normal text-muted-foreground">
@@ -224,6 +260,10 @@ export function StageBoard({
                           list={list}
                           help={movable(project) ? help : undefined}
                           actions={actions(project)}
+                          completing={completing === project.id}
+                          onCompletingChange={(open) =>
+                            onCompletingChange(open ? project.id : undefined)
+                          }
                         />
                       </li>
                     )
@@ -243,11 +283,15 @@ function ProjectCard({
   list,
   help,
   actions,
+  completing,
+  onCompletingChange,
 }: {
   project: ProjectSummary;
   list: ProjectList;
   help?: string;
   actions: Action[];
+  completing: boolean;
+  onCompletingChange: (open: boolean) => void;
 }) {
   const videos = list.videos.filter((video) => video.projectId === project.id);
   const poster = videos.find((video) => video.posterUrl)?.posterUrl ?? null;
@@ -258,9 +302,9 @@ function ProjectCard({
       value={project.id}
       aria-label={`${project.name}, ${stageLabels[project.stage]}`}
       aria-describedby={help}
-      className="flex flex-col gap-2 rounded-xl border bg-card p-3 text-sm select-none focus-visible:outline-2 data-grabbed:ring-2 data-grabbed:ring-ring sm:touch-none"
+      className="flex flex-col gap-2 rounded-card border bg-card p-4 text-sm select-none focus-visible:outline-2 data-grabbed:ring-2 data-grabbed:ring-ring sm:touch-none"
     >
-      <Poster key={poster} url={poster} />
+      {poster && <Poster key={poster} url={poster} />}
       <div className="flex items-start justify-between gap-2">
         {pending ? (
           <span className="min-w-0 py-2 font-semibold wrap-anywhere">{project.name}</span>
@@ -273,7 +317,12 @@ function ProjectCard({
             {project.name}
           </Link>
         )}
-        <ActionMenu label={`More actions for ${project.name}`} actions={actions} />
+        <ActionMenu
+          label={`More actions for ${project.name}`}
+          actions={actions}
+          current={completing ? "complete" : undefined}
+          onCurrentChange={(id) => onCompletingChange(id === "complete")}
+        />
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <StageBadge stage={project.stage} />
@@ -292,9 +341,11 @@ function ProjectCard({
             Changes requested · Rev {project.latestRevision}
           </p>
         )}
-      <div className="flex items-center justify-between gap-2 text-muted-foreground">
+      <div className="text-meta flex items-center justify-between gap-2">
         <span>
-          {project.openNotes} open {project.openNotes === 1 ? "note" : "notes"}
+          {project.openNotes > 0
+            ? `${project.openNotes} open ${project.openNotes === 1 ? "note" : "notes"}`
+            : "No open notes"}
         </span>
         <AvatarStack people={project.people} label="People with access" />
       </div>

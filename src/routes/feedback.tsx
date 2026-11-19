@@ -1,3 +1,5 @@
+import * as v from "valibot";
+import { param } from "@/lib/search-params";
 import { ChevronRight, MessageSquare } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsiblePanel } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
@@ -21,7 +23,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { listFeedback, markFeedback } from "@/server/feedback";
 
+// An unknown value is dropped rather than shown as an error page.
+const searchSchema = v.object({ handled: param(v.boolean()) });
+
 export const Route = createFileRoute("/feedback")({
+  validateSearch: (search) => v.parse(searchSchema, search),
   head: () => ({ meta: [{ title: "Site feedback · Cutnotes" }] }),
   component: FeedbackPage,
 });
@@ -56,7 +62,8 @@ function FeedbackList() {
   const client = useQueryClient();
   const queryKey = ["feedback"];
   const [status, setStatus] = useState("");
-  const [showHandled, setShowHandled] = useState(false);
+  const showHandled = Route.useSearch().handled === true;
+  const navigate = Route.useNavigate();
   const [notes, setNotes] = useState<Record<string, string>>({});
   useStatusToast(status);
   const list = useQuery({ queryKey, queryFn: () => listFeedback() });
@@ -79,13 +86,18 @@ function FeedbackList() {
       <label className="flex min-h-11 items-center gap-2">
         <Checkbox
           checked={showHandled}
-          onCheckedChange={(checked) => setShowHandled(checked === true)}
+          onCheckedChange={(checked) =>
+            void navigate({
+              search: (prev) => ({ ...prev, handled: checked === true ? true : undefined }),
+              replace: true,
+            })
+          }
         />
         Show handled reports
       </label>
       {mark.isError && <p role="alert">Could not update the report. Try again.</p>}
       {reports.length === 0 && (
-        <Empty className="rounded-xl border border-dashed">
+        <Empty className="rounded-card border border-dashed">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <MessageSquare aria-hidden />
@@ -101,7 +113,7 @@ function FeedbackList() {
         {reports.map((report) => (
           <li
             key={report.id}
-            className="flex flex-col gap-2 rounded-xl border bg-card p-4 wrap-anywhere"
+            className="flex flex-col gap-2 rounded-card border bg-card p-4 wrap-anywhere"
           >
             <p className="text-sm text-muted-foreground">
               <Badge variant={report.kind === "broken" ? "warning" : "secondary"}>

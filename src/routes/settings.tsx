@@ -41,7 +41,7 @@ function SettingsPage() {
           <PageHeading title="Settings" />
           <Frame role="region" aria-labelledby="account-heading">
             <FrameHeader>
-              <h2 id="account-heading" className="text-lg font-semibold">
+              <h2 id="account-heading" className="text-section">
                 Your account
               </h2>
             </FrameHeader>
@@ -77,7 +77,7 @@ function SettingsPage() {
           {member.role === "owner" && (
             <Frame role="region" aria-labelledby="team-heading">
               <FrameHeader>
-                <h2 id="team-heading" className="text-lg font-semibold">
+                <h2 id="team-heading" className="text-section">
                   Team
                 </h2>
               </FrameHeader>

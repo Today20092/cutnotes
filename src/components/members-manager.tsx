@@ -1,13 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
-import { Fragment, useRef, useState, type RefObject } from "react";
+import { Fragment, useEffect, useRef, useState, type RefObject } from "react";
 import { roleChoices } from "@/components/invites-manager";
 import { PageHeading, WriteFeedback } from "@/components/project-parts";
 import { PersonAvatar } from "@/components/person-avatar";
 import { Badge } from "@/components/ui/badge";
 import { roleLabel } from "@/lib/share-roles";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
 import {
   Select,
@@ -51,7 +53,19 @@ function failureMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-export function MembersManager() {
+export function MembersManager({
+  q = "",
+  onQChange,
+  removing,
+  onRemovingChange,
+}: {
+  /** The search text and the Member whose Remove sheet is open: both live in the URL. */
+  q?: string;
+  onQChange: (q: string | undefined) => void;
+  removing?: string;
+  onRemovingChange: (id: string | undefined) => void;
+}) {
+  const [search, setSearch] = useState(q);
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("");
   const [failure, setFailure] = useState("");
@@ -59,6 +73,13 @@ export function MembersManager() {
 
   const list = useQuery({ queryKey, queryFn: () => listMembers(), retry: false });
   const youId = list.data?.youId;
+  const needle = q.toLowerCase();
+  const shown = (list.data?.members ?? []).filter(
+    (member) =>
+      !needle ||
+      member.displayName.toLowerCase().includes(needle) ||
+      member.projects.some((project) => project.name.toLowerCase().includes(needle)),
+  );
 
   const settle = (id: string) => {
     void queryClient.invalidateQueries({ queryKey });
@@ -122,7 +143,7 @@ export function MembersManager() {
       <WriteFeedback status={status} failure={failure} />
 
       <section className="space-y-3">
-        <h2 ref={listHeading} tabIndex={-1} className="text-lg font-semibold outline-none">
+        <h2 ref={listHeading} tabIndex={-1} className="text-section outline-none">
           People on the Team
         </h2>
         {list.isPending && <Skeleton className="h-16" />}
@@ -131,12 +152,33 @@ export function MembersManager() {
           <p role="alert">Could not load the Team. Please reload the page.</p>
         )}
         {list.data && (
+          <Field className="items-stretch">
+            <FieldLabel htmlFor="team-search">Search the Team</FieldLabel>
+            <Input
+              id="team-search"
+              type="search"
+              autoComplete="off"
+              placeholder="Name or Project"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                onQChange(event.target.value.trim() || undefined);
+              }}
+            />
+          </Field>
+        )}
+        {list.data && shown.length === 0 && (
+          <p className="text-muted-foreground">No one on the Team matches “{q}”.</p>
+        )}
+        {list.data && shown.length > 0 && (
           <ul className="divide-y">
-            {list.data.members.map((member) => (
+            {shown.map((member) => (
               <MemberRow
                 key={member.id}
                 member={member}
                 isYou={member.id === youId}
+                confirming={removing === member.id}
+                onConfirmingChange={(open) => onRemovingChange(open ? member.id : undefined)}
                 onChangeRole={(role) => changeRole.mutate({ member, role })}
                 onRemove={() => remove.mutate(member)}
                 afterRemove={listHeading}
@@ -152,17 +194,27 @@ export function MembersManager() {
 function MemberRow({
   member,
   isYou,
+  confirming,
+  onConfirmingChange,
   onChangeRole,
   onRemove,
   afterRemove,
 }: {
   member: TeamMember;
   isYou: boolean;
+  confirming: boolean;
+  onConfirmingChange: (open: boolean) => void;
   onChangeRole: (role: Role) => void;
   onRemove: () => void;
   afterRemove: RefObject<HTMLElement | null>;
 }) {
-  const [confirming, setConfirming] = useState(false);
+  // Closing must be immediate: the row may go before the URL catches up, and focus moves as it closes.
+  const [open, setOpen] = useState(confirming);
+  useEffect(() => setOpen(confirming), [confirming]);
+  const changeOpen = (next: boolean) => {
+    setOpen(next);
+    onConfirmingChange(next);
+  };
   const removed = useRef(false);
   const mobile = useIsMobile();
   const name = member.displayName;
@@ -236,7 +288,7 @@ function MemberRow({
             ))}
           </SelectPopup>
         </Select>
-        <Sheet open={confirming} onOpenChange={setConfirming}>
+        <Sheet open={open} onOpenChange={changeOpen}>
           <SheetTrigger
             render={
               <Button
@@ -268,7 +320,7 @@ function MemberRow({
                 variant="destructive"
                 onClick={() => {
                   removed.current = true;
-                  setConfirming(false);
+                  changeOpen(false);
                   onRemove();
                 }}
               >

@@ -96,7 +96,7 @@ export function PageHeading({ title, children }: { title: string; children?: Rea
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h1 ref={heading} tabIndex={-1} className="min-w-0 text-xl font-semibold wrap-anywhere">
+      <h1 ref={heading} tabIndex={-1} className="text-title min-w-0 wrap-anywhere">
         {title}
       </h1>
       {children && <div className="flex max-w-full flex-wrap gap-2">{children}</div>}
@@ -114,10 +114,15 @@ export function ProjectNameSheet({
   onSubmit,
   startOpen = false,
   onClosed,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   trigger?: ReactElement;
   startOpen?: boolean;
   onClosed?: () => void;
+  /** Set both to keep the sheet's open state in the URL. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   title: string;
   submitLabel: string;
   initialName?: string;
@@ -126,19 +131,28 @@ export function ProjectNameSheet({
   onSubmit: (name: string) => void;
 }) {
   const isMobile = useIsMobile();
-  const [open, setOpen] = useState(startOpen);
+  const [ownOpen, setOwnOpen] = useState(startOpen);
+  const open = controlledOpen ?? ownOpen;
+  const setOpen = (next: boolean) => {
+    setOwnOpen(next);
+    onOpenChange?.(next);
+  };
   const [name, setName] = useState(initialName);
   const [error, setError] = useState("");
   const input = useRef<HTMLInputElement>(null);
   const inputId = useId();
   const errorId = useId();
 
+  // A sheet opened from the URL starts with the current name too.
+  useEffect(() => {
+    if (!open) return;
+    setName(initialName);
+    setError("");
+  }, [open, initialName]);
+
   function changeOpen(next: boolean) {
     setOpen(next);
-    if (next) {
-      setName(initialName);
-      setError("");
-    } else onClosed?.();
+    if (!next) onClosed?.();
   }
 
   function submit(event: FormEvent) {
@@ -354,9 +368,12 @@ export function Poster({ url }: { url: string | null }) {
 export function VideoCard({
   video,
   editableTitle,
+  showProject = false,
 }: {
   video: VideoSummary;
   editableTitle?: ReactNode;
+  /** Off inside the Project itself, where the name is already the page title. */
+  showProject?: boolean;
 }) {
   const progress = revisionProgress(video);
   const revision =
@@ -385,8 +402,9 @@ export function VideoCard({
               Unread activity
             </span>
           )}
-          <div className="text-sm text-muted-foreground">
-            {video.projectName} · {revision} · {formatUpdated(video.updatedAt)}
+          <div className="text-meta">
+            {showProject && `${video.projectName} · `}
+            {revision} · {formatUpdated(video.updatedAt)}
           </div>
           {progress && (
             <div className={progress.failed ? "text-sm text-destructive" : "text-sm"}>

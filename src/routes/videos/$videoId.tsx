@@ -1,14 +1,15 @@
 import * as v from "valibot";
+import { idParam, param, positiveInt, secondsParam, sheetParam } from "@/lib/search-params";
 import { CopyPageLink } from "@/components/copy-page-link";
 import { ExportMarkers } from "@/components/export-markers";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { CompleteBanner } from "@/components/complete-project";
 import { MemberScreen } from "@/components/member-screen";
 import { canUpload, canWrite, PageBreadcrumb, PageHeading } from "@/components/project-parts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Review as ReviewPanel } from "@/components/comments";
+import { Review as ReviewPanel, type ReviewView } from "@/components/comments";
 import { ReviewQueue } from "@/components/review-queue";
 import { ReviewDecisionBar } from "@/components/review-decision-bar";
 import { CustomerLinkSheet } from "@/components/customer-link-sheet";
@@ -21,7 +22,14 @@ import { refreshProjects } from "@/lib/writes";
 
 // An unknown value is dropped rather than shown as an error page.
 const searchSchema = v.object({
-  sheet: v.fallback(v.optional(v.picklist(["customer"])), undefined),
+  sheet: sheetParam(["customer", "upload"]),
+  /** The Revision number; without it the latest. */
+  revision: positiveInt,
+  /** Opens at this moment, in seconds. */
+  t: secondsParam,
+  /** The selected Comment. */
+  comment: idParam,
+  filter: param(v.picklist(["todo", "resolved"])),
 });
 
 export const Route = createFileRoute("/videos/$videoId")({
@@ -33,14 +41,16 @@ export const Route = createFileRoute("/videos/$videoId")({
 function Review() {
   const { videoId } = Route.useParams();
   const client = useQueryClient();
-  const [revisionId, setRevisionId] = useState<string>();
   const search = Route.useSearch();
-  const navigate = useNavigate();
-  const setCustomerSheet = (open: boolean) =>
-    void navigate({ to: ".", search: { sheet: open ? "customer" : undefined }, replace: true });
+  const navigate = Route.useNavigate();
+  const { revision } = search;
+  const setSearch = (change: Partial<typeof search>) =>
+    void navigate({ search: (prev) => ({ ...prev, ...change }), replace: true });
+  const setSheet = (sheet: "customer" | "upload", open: boolean) =>
+    setSearch({ sheet: open ? sheet : undefined });
   return (
     <MemberScreen
-      query={reviewQuery(videoId, client, revisionId)}
+      query={reviewQuery(videoId, client, revision)}
       skeleton={<Skeleton className="h-64" />}
     >
       {(page) =>
@@ -80,7 +90,7 @@ function Review() {
                 <>
                   {page.member.role === "owner" && page.revision && (
                     <>
-                      <Button variant="secondary" onClick={() => setCustomerSheet(true)}>
+                      <Button variant="secondary" onClick={() => setSheet("customer", true)}>
                         Send to customer
                       </Button>
                       <CustomerLinkSheet
@@ -91,12 +101,14 @@ function Review() {
                           number: page.history.find((r) => r.id === page.revision?.id)?.number ?? 1,
                         }}
                         open={search.sheet === "customer"}
-                        onOpenChange={setCustomerSheet}
+                        onOpenChange={(open) => setSheet("customer", open)}
                       />
                     </>
                   )}
                   {(canWrite(page.video.role) || page.video.createdBy === page.member.id) && (
                     <UploadSheet
+                      open={search.sheet === "upload"}
+                      onOpenChange={(open) => setSheet("upload", open)}
                       destination={{ kind: "existing", videoId, title: page.video.title }}
                       trigger={<Button variant="secondary">Upload new Revision</Button>}
                     />
@@ -126,7 +138,9 @@ function Review() {
                   className="flex-wrap"
                   value={page.revision ? [page.revision.id] : []}
                   onValueChange={(next: string[]) => {
-                    if (next[0]) setRevisionId(next[0]);
+                    const chosen = page.history.find((cut) => cut.id === next[0]);
+                    if (chosen)
+                      setSearch({ revision: chosen.number, comment: undefined, t: undefined });
                   }}
                 >
                   {page.history.map((cut) => (
@@ -139,8 +153,13 @@ function Review() {
                     </ToggleGroupItem>
                   ))}
                 </ToggleGroup>
-                {revisionId && (
-                  <Button variant="ghost" onClick={() => setRevisionId(undefined)}>
+                {revision && (
+                  <Button
+                    variant="ghost"
+                    onClick={() =>
+                      setSearch({ revision: undefined, comment: undefined, t: undefined })
+                    }
+                  >
                     Latest Revision
                   </Button>
                 )}
@@ -152,7 +171,9 @@ function Review() {
                   key={page.revision.id}
                   page={page}
                   videoId={videoId}
-                  cacheRevisionId={revisionId}
+                  cacheRevision={revision}
+                  view={{ comment: search.comment, t: search.t, filter: search.filter }}
+                  onViewChange={setSearch}
                 />
               </>
             ) : (
@@ -190,13 +211,17 @@ function ReadMarker({ videoId, readAt }: { videoId: string; readAt: number }) {
 function ReviewContent({
   page,
   videoId,
-  cacheRevisionId,
+  cacheRevision,
+  view,
+  onViewChange,
 }: {
   page: ReviewPage;
   videoId: string;
-  cacheRevisionId?: string;
+  cacheRevision?: number;
+  view: ReviewView;
+  onViewChange: (change: Partial<ReviewView>) => void;
 }) {
-  const actor = useMemberActor(page, videoId, cacheRevisionId);
+  const actor = useMemberActor(page, videoId, cacheRevision);
   return (
     <>
       <ReviewPanel
@@ -205,6 +230,8 @@ function ReviewContent({
         playback={page.playback!}
         comments={page.comments}
         actor={actor}
+        view={view}
+        onViewChange={onViewChange}
       />
       <ReviewQueue
         comments={page.comments}

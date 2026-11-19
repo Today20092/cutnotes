@@ -137,6 +137,22 @@ test("ui-sdk agent bridge: snapshot, then act on components by name", async ({ p
   await expectTaskDone(page, id);
 });
 
+test("ui-sdk agent bridge: the decision bar offers approve and requestChanges", async ({
+  page,
+}) => {
+  await setUp(page);
+  const agent = bridge(page);
+  const snapshot = (await agent.snapshot()) as { actions?: string[] }[];
+  expect(
+    snapshot.some(
+      (entry) => entry.actions?.includes("approve") && entry.actions.includes("requestChanges"),
+    ),
+  ).toBe(true);
+  const done = await agent.act([{ ref: "review-decision", action: "requestChanges" }]);
+  expect(done.ok).toBe(true);
+  await expect(page.getByRole("region", { name: "Review decision" })).toContainText("Rework");
+});
+
 test("the dev Agent panel shows the snapshot and runs scripted steps", async ({ page }) => {
   await setUp(page);
   await page.getByRole("button", { name: "Read the page" }).click();

@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { seedMember, seedReview } from "./support/database";
 import { signInAs } from "./support/session";
+import { settled } from "./support/ui-sdk";
 
 const owner = { clerkUserId: "user_first_owner", email: "first.owner@example.com" };
 
@@ -48,6 +49,7 @@ test("an Owner assigns a project, sends a scoped invitation, and removes access"
   const pending = sheet.getByRole("listitem").filter({ hasText: `For Taylor ${suffix}` });
   await expect(pending).toContainText("Pending");
   await expect(pending).toContainText("Editor");
+  await settled(page);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath("project-people.png"), fullPage: true });
 
@@ -71,7 +73,7 @@ test("an Owner assigns a project, sends a scoped invitation, and removes access"
   await signInAs(assignedPage, assigned);
   await assignedPage.goto(projectUrl);
   await expect(assignedPage.getByRole("heading", { name, exact: true })).toBeVisible();
-  await expect(assignedPage.getByRole("button", { name: "Upload", exact: true })).toHaveCount(0);
+  await expect(assignedPage.getByRole("button", { name: /^Upload( first cut)?$/ })).toHaveCount(0);
   await expect(assignedPage.getByRole("link", { name: "Manage people" })).toHaveCount(0);
   // Assigned people see who else has access, read-only.
   await assignedPage.getByRole("link", { name: "See people" }).click();
@@ -79,6 +81,7 @@ test("an Owner assigns a project, sends a scoped invitation, and removes access"
   await expect(readOnly).toContainText(assigned.email);
   await expect(readOnly.getByRole("combobox")).toHaveCount(0);
   await expect(readOnly.getByRole("button", { name: /^(Remove|Revoke)/ })).toHaveCount(0);
+  await settled(assignedPage);
   expect((await new AxeBuilder({ page: assignedPage }).analyze()).violations).toEqual([]);
 
   const invitedContext = await browser.newContext();
@@ -86,13 +89,13 @@ test("an Owner assigns a project, sends a scoped invitation, and removes access"
   await signInAs(invitedPage, invitee);
   await invitedPage.goto(url);
   await expect(invitedPage.getByRole("heading", { name, exact: true })).toBeVisible();
-  await expect(invitedPage.getByRole("button", { name: "Upload", exact: true })).toBeVisible();
+  await expect(invitedPage.getByRole("button", { name: /^Upload( first cut)?$/ })).toBeVisible();
   await invitedPage.goto("/");
   await expect(invitedPage.getByRole("link", { name, exact: true })).toBeVisible();
   await expect(invitedPage.getByRole("button", { name: "New project", exact: true })).toHaveCount(
     0,
   );
-  await expect(invitedPage.getByRole("button", { name: "Upload", exact: true })).toBeVisible();
+  await expect(invitedPage.getByRole("button", { name: /^Upload( first cut)?$/ })).toBeVisible();
 
   // The older `#people` link still opens the sheet; the accepted invitation became an assignment.
   await page.goto("/");
@@ -104,7 +107,7 @@ test("an Owner assigns a project, sends a scoped invitation, and removes access"
   await sheet.getByLabel(`Project role for ${assigned.email}`).selectOption("editor");
   await expect(sheet.getByLabel(`Project role for ${assigned.email}`)).toHaveValue("editor");
   await assignedPage.reload();
-  await expect(assignedPage.getByRole("button", { name: "Upload", exact: true })).toBeVisible();
+  await expect(assignedPage.getByRole("button", { name: /^Upload( first cut)?$/ })).toBeVisible();
 
   // Access at a glance: the home card and the Team page.
   await page.goto("/");
@@ -114,6 +117,7 @@ test("an Owner assigns a project, sends a scoped invitation, and removes access"
   await page.goto("/members");
   const projectsOf = page.getByRole("list", { name: `Projects for ${assigned.email}` });
   await expect(projectsOf.getByRole("link", { name: `${name} Editor` })).toBeVisible();
+  await settled(page);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   await page.goto(`${projectUrl}?sheet=people`);
@@ -169,7 +173,7 @@ test("a team Editor creates private projects and can reopen a direct video URL",
   await expect(page.getByRole("button", { name: "Copy project link", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Copy project link", exact: true }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(page.url());
-  await expect(page.getByRole("button", { name: "Upload", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Upload( first cut)?$/ })).toBeVisible();
   // The Editor who created it is assigned; only Owners manage people.
   await expect(page.getByRole("region", { name: "People with access" })).toContainText("Editor");
   await expect(page.getByRole("link", { name: "See people" })).toBeVisible();

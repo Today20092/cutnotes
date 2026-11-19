@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { FolderOpen, Plus, Upload } from "lucide-react";
 import { useState } from "react";
 import { MemberScreen } from "@/components/member-screen";
@@ -23,6 +23,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { projectStages } from "@/lib/project-stage";
+import { idParam, param, sheetParam } from "@/lib/search-params";
 import {
   isPendingProject,
   projectListQuery,
@@ -31,8 +32,13 @@ import {
 } from "@/lib/projects";
 
 // An unknown value is dropped rather than shown as an error page.
+const sheets = ["new-project", "upload", "complete"] as const;
 const searchSchema = v.object({
-  stage: v.fallback(v.optional(v.picklist(projectStages)), undefined),
+  stage: param(v.picklist(projectStages)),
+  view: param(v.picklist(["board", "list"])),
+  sheet: sheetParam(sheets),
+  /** The Project a Complete sheet is for. */
+  project: idParam,
 });
 
 export const Route = createFileRoute("/")({
@@ -51,8 +57,10 @@ function Home() {
 
 // Recent videos left this screen: each card already shows its Project's latest cut, notes and unread activity.
 function ProjectBoard({ list }: { list: ProjectList }) {
-  const navigate = useNavigate();
-  const { stage } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const { stage, view, sheet, project } = Route.useSearch();
+  const setSearch = (change: Partial<typeof Route.types.fullSearchSchema>) =>
+    void navigate({ search: (prev) => ({ ...prev, ...change }), replace: true });
   const createProject = useCreateProject();
   const [status, setStatus] = useState("");
   const [failure, setFailure] = useState("");
@@ -78,6 +86,8 @@ function ProjectBoard({ list }: { list: ProjectList }) {
       title="New project"
       submitLabel="Create Project"
       onSubmit={create}
+      open={sheet === "new-project"}
+      onOpenChange={(next) => setSearch({ sheet: next ? "new-project" : undefined })}
       trigger={
         <Button>
           <Plus aria-hidden /> New project
@@ -92,6 +102,8 @@ function ProjectBoard({ list }: { list: ProjectList }) {
         {(writable || list.projects.some((project) => canUpload(project.role))) && (
           <>
             <UploadSheet
+              open={sheet === "upload"}
+              onOpenChange={(next) => setSearch({ sheet: next ? "upload" : undefined })}
               destination={{ kind: "new", projects: uploadTargets }}
               trigger={
                 <Button variant="secondary">
@@ -124,8 +136,12 @@ function ProjectBoard({ list }: { list: ProjectList }) {
         <StageBoard
           list={list}
           stage={stage}
-          onStageChange={(next) =>
-            void navigate({ to: "/", search: { stage: next }, replace: true })
+          onStageChange={(next) => setSearch({ stage: next })}
+          view={view}
+          onViewChange={(next) => setSearch({ view: next })}
+          completing={sheet === "complete" ? project : undefined}
+          onCompletingChange={(id) =>
+            setSearch({ sheet: id ? "complete" : undefined, project: id })
           }
         />
       )}

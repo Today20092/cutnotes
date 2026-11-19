@@ -3,12 +3,8 @@ import { seedMember, seedReview } from "./database";
 import { sampleStream } from "./sample-stream";
 import { signInAs } from "./session";
 
-/** Signs in a new Editor with one seeded, playable Video. Returns its ID (also its Revision's). */
-export async function signInWithReview(page: Page) {
-  const clerkUserId = `user_uisdk_${crypto.randomUUID()}`;
-  seedMember(clerkUserId, "editor", "Reviewer");
-  const id = seedReview(clerkUserId);
-  await signInAs(page, { clerkUserId, email: "reviewer@example.com" });
+/** Answers Mux's image and stream hosts with a tiny playable cut. */
+export async function routeMux(page: Page) {
   await page.route("https://image.mux.com/**", (route) =>
     route.fulfill({
       contentType: "image/gif",
@@ -27,6 +23,15 @@ export async function signInWithReview(page: Page) {
       headers: { "access-control-allow-origin": "*" },
     }),
   );
+}
+
+/** Signs in a new Editor with one seeded, playable Video. Returns its ID (also its Revision's). */
+export async function signInWithReview(page: Page) {
+  const clerkUserId = `user_uisdk_${crypto.randomUUID()}`;
+  seedMember(clerkUserId, "editor", "Reviewer");
+  const id = seedReview(clerkUserId);
+  await signInAs(page, { clerkUserId, email: "reviewer@example.com" });
+  await routeMux(page);
   return { id, clerkUserId };
 }
 

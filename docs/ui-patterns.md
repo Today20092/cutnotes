@@ -7,7 +7,7 @@ The interface is React TSX with TanStack Start, Tailwind CSS, and Base UI/shadcn
 - `components/ui/`: Button, Card, Badge, Sheet, Menu, Input, Checkbox, RadioGroup, ToggleGroup, Toast, Skeleton, Spinner, and other primitives.
 - `AppShell`, `MemberScreen`: navigation, account gating, screen loading and errors.
 - `PageHeading`, `PageBreadcrumb`: page headings, focus and navigation.
-- `VideoTile`, `VideoCard`, `Poster`: video presentation across home and project pages, with image failure fallback.
+- `VideoTile`, `VideoCard`, `Poster`: video presentation on the Project page, with image failure fallback.
 - `Comments`, `CommentComposer`, `VideoPlayer`, drawing controls: shared member and guest review experiences.
 - `ProjectNameSheet`, `DeleteWork`, `UploadSheet`, `WriteFeedback`: repeated editing, confirmation, uploading and feedback interactions.
 
@@ -17,7 +17,7 @@ The interface is React TSX with TanStack Start, Tailwind CSS, and Base UI/shadcn
 
 `PendingButton` composes the existing Button with Cnippet's Spinner. It preserves the action label, marks the button busy and disables repeated activation. An explicit disabled state remains disabled when no operation is pending. Used for comments (including guest comments), invitation/share creation, title saves and permanent deletion. Keep Skeleton for loading page structure; use Spinner for work in progress. Reduced motion freezes the spinner rather than requiring animation to convey state.
 
-`video-status.tsx` owns the workflow labels and semantic colors for both editable status selectors and read-only badges:
+`video-status.tsx` owns the workflow labels and semantic colors for the read-only Status badges (the Status changes only through the review decision bar):
 
 | Meaning | Label | Semantic token |
 | --- | --- | --- |
@@ -26,6 +26,33 @@ The interface is React TSX with TanStack Start, Tailwind CSS, and Base UI/shadcn
 | Review finished | Done | success / green |
 
 Text remains visible, so color is supplementary. Error and destructive feedback retains red. Dark mode uses lighter semantic foregrounds on dark surfaces. Color belongs to the status or outcome, not decorative page sections.
+
+## Project and review components
+
+| Component | Where | What it is for |
+| --- | --- | --- |
+| `StageBadge` | `stage-badge.tsx` | The Stage as text on a tinted chip: New gray, Editing amber, In review blue, Done green. Video Statuses borrow the same tones through `ToneBadge`. Colour belongs to a Stage or Status, never decoration; red is for failures and destructive actions. |
+| `StageBoard` | `stage-board.tsx`, `lib/review-board.ts` | The home board. Four labelled sections (one per Stage) of Project cards, with `?stage=` (one column), `?view=list` (stacked) and `?sheet=complete&project=`. Moves by drag, keyboard or card menu, announced, with Undo. |
+| `ProjectCard` | `stage-board.tsx` | One Project as an `<article>` named "Project, Stage": a name link, StageBadge, hint ("Changes requested · Rev N"), open-note count and an AvatarStack. A poster shows only when a Video has one. |
+| `AvatarStack` | `people.tsx` | The people with access as overlapping avatars with an accessible list. Owners are left out because they always have access. |
+| `PeopleStrip` | `people.tsx` | On the Project page: avatars, names and roles, "Only Team Owners have access" when empty, and **Manage people** (a link to `?sheet=people`) for Owners. |
+| `PeopleSheet` | `people-sheet.tsx` | Who can open a Project: one list (Owners implicit, assigned people with a role select and Remove, Pending Invites with Revoke), then **Add from Team** and **Invite link**. |
+| `CustomerLinkSheet` | `customer-link-sheet.tsx` | **Send to customer**: a recipient label, View only or Comment and draw, the exact Revision, then Copy or WhatsApp, and the list of links with Revoke. `?sheet=customer`. |
+| `ReviewDecisionBar` | `review-decision-bar.tsx`, `lib/review-decision.ts` | **Request changes** and **Approve** with the Video's Status. A ui-sdk primitive, so an agent calls `approve` and `requestChanges` on the same path as the buttons. |
+| `ActionMenu` | `action-menu.tsx` | A `⋯` button whose items run at once or open a sheet. The open sheet's id is the URL's `sheet` param, and focus returns to the button when it closes. |
+
+## URL state
+
+Everything that changes what a screen shows is a search param, so a URL reproduces the screen and an agent can navigate without clicking:
+
+- Declare it in the route's `validateSearch` with Valibot, using the helpers in `lib/search-params.ts` (`param`, `sheetParam`, `idParam`, `positiveInt`, `secondsParam`). A missing or unknown value becomes `undefined`; it never throws.
+- Open and close a sheet by writing `sheet` (and the ID it is for, such as `video` or `project`) with `navigate({ search: (prev) => ({ ...prev, sheet }), replace: true })`. Closing removes the param. Sheet components take `open` and `onOpenChange` for this, and `ActionMenu` takes `current` and `onCurrentChange`.
+- Keep ephemeral input in React state: drafts, hover, the inline title editor and the Site feedback dialog.
+- Add a new route and its params to `lib/route-index.ts`. It feeds `/llms.txt`, and `test:structure` checks it against the route files.
+
+## Type scale and layout
+
+`text-title` (page title, 24/28 semibold), `text-section` (17/24 semibold), body 15 to 16, `text-meta` (13/20 muted) and `rounded-card` (12px, used with 16px padding) are utilities in `styles.css`. Use an 8px rhythm. One primary (filled) action per screen: New project on the board, Upload on a Project, Approve on a review. Do not repeat a name the page already shows, such as the Project name on a Video card inside that Project.
 
 ## Thumbnails
 

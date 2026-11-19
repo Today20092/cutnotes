@@ -240,6 +240,9 @@ test("ready Revision history is one tap away and keeps feedback on its own cut",
   const newer = seedReadyRevision(id, clerkUserId, 2);
   seedComment(newer, clerkUserId, "Current cut feedback");
   await page.reload();
+  // The URL names the cut the review opened on, so a newer one is offered, not swapped in.
+  await expect(pageListItem(page).filter({ hasText: "Older cut feedback" })).toBeVisible();
+  await page.getByRole("link", { name: "Watch it" }).click();
   await expect(pageListItem(page).filter({ hasText: "Current cut feedback" })).toBeVisible();
   await page.getByRole("button", { name: "Revision 1", exact: true }).click();
   await expect(pageListItem(page).filter({ hasText: "Older cut feedback" })).toBeVisible();

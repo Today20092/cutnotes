@@ -26,9 +26,10 @@ test("an Owner assigns a project, sends a scoped invitation, and removes access"
   await page.getByRole("button", { name: "Create Project", exact: true }).click();
   await page.getByRole("link", { name, exact: true }).click();
   const projectUrl = page.url();
-  await expect(page.getByRole("heading", { name: "People", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: `Share ${name}`, exact: true }).click();
+  await expect(page.getByRole("heading", { name: "People with access" })).toBeVisible();
   await page.getByLabel("Team member", { exact: true }).selectOption(assigned.clerkUserId);
-  await page.getByLabel("Project role", { exact: true }).selectOption("viewer");
+  await page.getByLabel("Role", { exact: true }).selectOption("viewer");
   await page.getByRole("button", { name: "Add to project", exact: true }).click();
   await expect(page.getByLabel(`Project role for ${assigned.email}`)).toHaveValue("viewer");
 
@@ -38,7 +39,7 @@ test("an Owner assigns a project, sends a scoped invitation, and removes access"
   await assignedPage.goto(projectUrl);
   await expect(assignedPage.getByRole("heading", { name, exact: true })).toBeVisible();
   await expect(assignedPage.getByRole("button", { name: "Upload", exact: true })).toHaveCount(0);
-  await expect(assignedPage.getByRole("heading", { name: "People", exact: true })).toHaveCount(0);
+  await expect(assignedPage.getByRole("button", { name: /^Share/ })).toHaveCount(0);
 
   await page.getByRole("radio", { name: /^Editor/ }).check();
   await page.getByLabel("Optional note").fill(`For Taylor ${suffix}`);
@@ -58,6 +59,7 @@ test("an Owner assigns a project, sends a scoped invitation, and removes access"
   await expect(invitedPage.getByRole("button", { name: "Upload", exact: true })).toBeVisible();
 
   await page.reload();
+  await page.getByRole("button", { name: `Share ${name}`, exact: true }).click();
   const history = page.getByRole("listitem").filter({ hasText: `For Taylor ${suffix}` });
   await expect(history).toContainText(`Accepted by ${invitee.email}`);
   await expect(history).toContainText("Created by");
@@ -122,5 +124,5 @@ test("a team Editor creates private projects and can reopen a direct video URL",
   await page.getByRole("button", { name: "Copy project link", exact: true }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(page.url());
   await expect(page.getByRole("button", { name: "Upload", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "People", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Share/ })).toHaveCount(0);
 });

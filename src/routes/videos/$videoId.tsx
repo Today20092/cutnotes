@@ -53,13 +53,16 @@ function Review() {
   const linkSearch = linkParams.size ? `?${linkParams}` : "";
   const setSheet = (sheet: "customer" | "upload", open: boolean) =>
     setSearch({ sheet: open ? sheet : undefined });
-  /** The customer sheet sends the Revision named in the URL, so it never retargets on its own. */
-  const sendToCustomer = (page: ReviewPage) => {
+  /**
+   * Names the shown Revision in the URL, so a refetch never swaps the cut being reviewed and the
+   * customer sheet never retargets. Seeding the pinned page keeps the player mounted.
+   */
+  const pin = (page: ReviewPage) => {
     const number = page.revision!.number;
-    // Seed the pinned page so the player stays mounted while the URL changes.
     client.setQueryData(reviewQuery(videoId, undefined, number).queryKey, page);
-    setSearch({ sheet: "customer", revision: number });
+    return number;
   };
+  const latest = (page: ReviewPage) => page.history[0]!.number;
   return (
     <MemberScreen
       query={reviewQuery(videoId, client, revision)}
@@ -74,6 +77,9 @@ function Review() {
         ) : (
           <div className="flex flex-col gap-3" data-video-editor>
             <ReadMarker videoId={videoId} readAt={page.readAt} />
+            {revision === undefined && page.revision && (
+              <OnMount run={() => setSearch({ revision: pin(page) })} />
+            )}
             <PageBreadcrumb
               trail={[
                 { label: "Projects", link: <Link to="/" /> },
@@ -103,12 +109,12 @@ function Review() {
                   {page.member.role === "owner" && (
                     <>
                       {page.revision && (
-                        <Button variant="secondary" onClick={() => sendToCustomer(page)}>
+                        <Button
+                          variant="secondary"
+                          onClick={() => setSearch({ sheet: "customer", revision: pin(page) })}
+                        >
                           Send to customer
                         </Button>
-                      )}
-                      {search.sheet === "customer" && revision === undefined && page.revision && (
-                        <OnMount run={() => sendToCustomer(page)} />
                       )}
                       <CustomerLinkSheet
                         videoId={videoId}
@@ -142,6 +148,19 @@ function Review() {
             {page.video.deleteAfter !== null && (
               <CompleteBanner deleteAfter={page.video.deleteAfter} />
             )}
+            {page.revision && page.history[0]!.id !== page.revision.id && (
+              <p role="status" className="text-sm">
+                Revision {latest(page)} is ready.{" "}
+                <Link
+                  to="/videos/$videoId"
+                  params={{ videoId }}
+                  search={{ revision: latest(page) }}
+                  className="font-medium underline underline-offset-4"
+                >
+                  Watch it
+                </Link>
+              </p>
+            )}
             {canWrite(page.video.role) && page.video.completedAt === null && page.revision && (
               <ReviewDecisionBar
                 videoId={videoId}
@@ -154,38 +173,26 @@ function Review() {
             {page.history.length === 1 ? (
               <p className="text-sm text-muted-foreground">Revision {page.history[0]!.number}</p>
             ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                <ToggleGroup
-                  aria-label="Revision history"
-                  className="flex-wrap"
-                  value={page.revision ? [page.revision.id] : []}
-                  onValueChange={(next: string[]) => {
-                    const chosen = page.history.find((cut) => cut.id === next[0]);
-                    if (chosen)
-                      setSearch({ revision: chosen.number, comment: undefined, t: undefined });
-                  }}
-                >
-                  {page.history.map((cut) => (
-                    <ToggleGroupItem
-                      key={cut.id}
-                      value={cut.id}
-                      className="h-11 aria-pressed:underline aria-pressed:decoration-2 aria-pressed:underline-offset-4 sm:h-8"
-                    >
-                      Revision {cut.number}
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
-                {revision && (
-                  <Button
-                    variant="ghost"
-                    onClick={() =>
-                      setSearch({ revision: undefined, comment: undefined, t: undefined })
-                    }
+              <ToggleGroup
+                aria-label="Revision history"
+                className="flex-wrap"
+                value={page.revision ? [page.revision.id] : []}
+                onValueChange={(next: string[]) => {
+                  const chosen = page.history.find((cut) => cut.id === next[0]);
+                  if (chosen)
+                    setSearch({ revision: chosen.number, comment: undefined, t: undefined });
+                }}
+              >
+                {page.history.map((cut) => (
+                  <ToggleGroupItem
+                    key={cut.id}
+                    value={cut.id}
+                    className="h-11 aria-pressed:underline aria-pressed:decoration-2 aria-pressed:underline-offset-4 sm:h-8"
                   >
-                    Latest Revision
-                  </Button>
-                )}
-              </div>
+                    Revision {cut.number}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
             )}
             {page.revision && page.playback ? (
               <>
@@ -198,6 +205,18 @@ function Review() {
                   onViewChange={setSearch}
                 />
               </>
+            ) : revision !== undefined && page.history.length > 0 ? (
+              <p role="status">
+                Revision {revision} cannot be opened. It is not ready to watch, or it was removed.{" "}
+                <Link
+                  to="/videos/$videoId"
+                  params={{ videoId }}
+                  search={{ revision: latest(page) }}
+                  className="font-medium underline underline-offset-4"
+                >
+                  Watch Revision {latest(page)}
+                </Link>
+              </p>
             ) : (
               <p role="status">
                 No Revision is ready to watch yet. Return to the Project to check upload progress or

@@ -168,9 +168,27 @@ test("an older Revision offers no decision, to the reviewer or an agent", async 
   const snapshot = (await bridge(page).snapshot()) as { actions?: string[] }[];
   expect(snapshot.some((entry) => entry.actions?.includes("approve"))).toBe(false);
 
-  await decision.getByRole("link", { name: "Go to Revision 2" }).click();
+  await page.getByRole("status").getByRole("link", { name: "Watch it" }).click();
   await expect(decision.getByRole("button", { name: "Approve" })).toBeVisible();
-  await expect(page).not.toHaveURL(/revision=/);
+  await expect(page).toHaveURL(/revision=2/);
+});
+
+test("a cut that becomes ready while reviewing is offered, never swapped in", async ({ page }) => {
+  const { id, clerkUserId } = await signInWithReview(page);
+  await openVideo(page, id);
+  // The shown cut is named in the URL once the review loads.
+  await expect(page).toHaveURL(/revision=1/);
+  seedReadyRevision(id, clerkUserId, 2);
+  // A focus refetch, as when the reviewer comes back to the tab.
+  await page.evaluate(() => window.dispatchEvent(new Event("visibilitychange")));
+  const offer = page.getByRole("status").filter({ hasText: "Revision 2 is ready." });
+  await expect(offer).toBeVisible();
+  await expect(page).toHaveURL(/revision=1/);
+  const decision = page.getByRole("region", { name: "Review decision" });
+  await expect(decision).toContainText("You're viewing Revision 1.");
+  await offer.getByRole("link", { name: "Watch it" }).click();
+  await expect(page).toHaveURL(/revision=2/);
+  await expect(decision.getByRole("button", { name: "Approve" })).toBeVisible();
 });
 
 test("the dev Agent panel shows the snapshot and runs scripted steps", async ({ page }) => {

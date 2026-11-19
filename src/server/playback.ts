@@ -82,11 +82,13 @@ export const getReview = createServerFn({ method: "POST" })
         history: [] as { id: string; number: number }[],
         comments: [] as Comment[],
       };
-    // Renewal stays on the Revision being watched, even if a newer cut is ready.
-    // A Revision number from a link that no longer matches one falls back to the latest.
+    // Renewal stays on the Revision being watched, even if a newer cut is ready. A Revision
+    // number that matches no ready cut opens nothing, so the screen never swaps cuts silently.
     const revision = data?.revisionId
       ? ready.find((row) => row.id === data.revisionId)
-      : (ready.find((row) => row.number === data?.revisionNumber) ?? ready[0]);
+      : data?.revisionNumber === undefined
+        ? ready[0]
+        : ready.find((row) => row.number === data.revisionNumber);
     if (data?.revisionId && !revision) refuse(404, "not-found");
     const playback =
       revision?.muxPlaybackId && revision.durationMs !== null

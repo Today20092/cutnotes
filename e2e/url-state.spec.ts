@@ -174,17 +174,22 @@ test("the review page's params", async ({ page }, testInfo) => {
   const currentTime = () =>
     page.locator("video").evaluate((video: HTMLVideoElement) => video.currentTime);
 
-  // The latest Revision by default; `revision` picks one; a number with no Revision is dropped.
+  // The latest Revision by default, then named in the URL; `revision` picks one; a number with
+  // no ready Revision opens nothing and links to the latest.
   await open("");
   await expect(pressed("Revision 2")).toHaveAttribute("aria-pressed", "true");
+  await expect(page).toHaveURL(/revision=2/);
   await open("?revision=1");
   await expect(pressed("Revision 1")).toHaveAttribute("aria-pressed", "true");
   await open("?revision=99&t=banana");
+  await expect(page.getByText("Revision 99 cannot be opened.")).toBeVisible();
+  await expect(page.locator("video")).toHaveCount(0);
+  await page.getByRole("link", { name: "Watch Revision 2" }).click();
   await expect(pressed("Revision 2")).toHaveAttribute("aria-pressed", "true");
   await pressed("Revision 1").click();
   await expect(page).toHaveURL(/revision=1/);
-  await pressed("Latest Revision").click();
-  await expect(page).not.toHaveURL(/revision=/);
+  await page.getByRole("link", { name: "Watch it" }).click();
+  await expect(page).toHaveURL(/revision=2/);
 
   // Selecting a Comment writes it to the URL; a link opens with it selected, at its time.
   await open("?revision=1");

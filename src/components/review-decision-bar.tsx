@@ -1,5 +1,4 @@
 import { createParts } from "@ui-sdk/react/primitive";
-import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { PendingButton } from "@/components/pending-button";
 import { WriteFeedback } from "@/components/project-parts";
@@ -13,7 +12,7 @@ const Decision = createParts(reviewDecision, { root: "section" });
 /**
  * The only way a Video's Status changes. Request changes sends the Project back to Editing;
  * Approve marks the Video done, and the Project Done once every Video is. A decision applies to
- * the Revision on screen, so an older Revision shows a link to the latest instead.
+ * the Revision on screen, so an older Revision says so instead; the page links to the latest.
  */
 export function ReviewDecisionBar({
   videoId,
@@ -37,13 +36,6 @@ export function ReviewDecisionBar({
         className="flex flex-wrap items-center gap-2 rounded-card border p-3 text-sm"
       >
         <p>You're viewing Revision {revision.number}. Decisions apply to the latest cut.</p>
-        <Link
-          to="/videos/$videoId"
-          params={{ videoId }}
-          className="ms-auto font-medium underline underline-offset-4"
-        >
-          Go to Revision {latest.number}
-        </Link>
       </section>
     );
   return (

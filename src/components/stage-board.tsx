@@ -9,7 +9,9 @@ import { canWrite, Poster } from "@/components/project-parts";
 import { StageBadge } from "@/components/stage-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { NativeSelect } from "@/components/ui/native-select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { projectStages, stageLabels, type ProjectStage } from "@/lib/project-stage";
 import {
   isPendingProject,
@@ -64,13 +66,23 @@ export function StageBoard({
     const index = order.indexOf(id);
     return index === -1 ? Number.MAX_SAFE_INTEGER : index;
   };
+  // On a phone, Projects that need someone come first in each Stage; an order set by a move still wins.
+  const phone = useIsMobile();
+  const attention = (id: string) =>
+    phone &&
+    needsAttention(
+      projects.find((project) => project.id === id)!,
+      list,
+    )
+      ? 1
+      : 0;
   const lists: TransferLists = Object.fromEntries(
     projectStages.map((column) => [
       column,
       projects
         .filter((project) => project.stage === column)
         .map((project) => project.id)
-        .sort((a, b) => rank(a) - rank(b)),
+        .sort((a, b) => rank(a) - rank(b) || attention(b) - attention(a)),
     ]),
   );
   const titles = Object.fromEntries(projects.map((project) => [project.id, project.name]));
@@ -157,11 +169,29 @@ export function StageBoard({
         <h2 id="board-heading" className="sr-only">
           Board
         </h2>
+        <label className="flex min-w-0 items-center gap-2 text-sm font-medium md:hidden">
+          Stage
+          <NativeSelect
+            value={stage ?? "all"}
+            onChange={(event) =>
+              onStageChange(
+                event.target.value === "all" ? undefined : (event.target.value as ProjectStage),
+              )
+            }
+          >
+            <option value="all">All Stages ({projects.length})</option>
+            {projectStages.map((value) => (
+              <option key={value} value={value}>
+                {stageLabels[value]} ({lists[value]!.length})
+              </option>
+            ))}
+          </NativeSelect>
+        </label>
         <ToggleGroup
           aria-label="Show Stage"
           variant="outline"
-          // One row that scrolls sideways on a phone: a wrapped segmented control breaks apart.
-          className="-m-1 max-w-[calc(100%+0.5rem)] flex-nowrap overflow-x-auto p-1 [scrollbar-width:none]"
+          // A phone gets the Stage select below: five buttons do not fit its width.
+          className="max-md:hidden"
           value={[stage ?? "all"]}
           onValueChange={(next: string[]) => {
             if (next[0]) onStageChange(next[0] === "all" ? undefined : (next[0] as ProjectStage));
@@ -224,9 +254,14 @@ export function StageBoard({
         <details className="text-meta">
           <summary className="w-fit cursor-pointer py-3">How to move a Project</summary>
           <p id={help} className="mt-1">
-            Drag a Project to another column to change its Stage, or use its More actions menu. With
-            a keyboard, focus a card and press Space to pick it up, Left and Right to change column,
-            Space to drop and Escape to cancel.
+            <span className="md:hidden">
+              Open a Project's More actions menu and choose a Stage.
+            </span>
+            <span className="max-md:hidden">
+              Drag a Project to another column to change its Stage, or use its More actions menu.
+              With a keyboard, focus a card and press Space to pick it up, Left and Right to change
+              column, Space to drop and Escape to cancel.
+            </span>
           </p>
         </details>
       )}
@@ -237,7 +272,9 @@ export function StageBoard({
         titles={titles}
         locked={locked}
         className={
-          stage || view === "list" ? "flex flex-col" : "grid gap-3 md:grid-cols-2 xl:grid-cols-4"
+          stage || view === "list"
+            ? "flex flex-col max-md:gap-6"
+            : "grid gap-3 max-md:gap-6 md:grid-cols-2 xl:grid-cols-4"
         }
       >
         {(state) =>
@@ -245,11 +282,12 @@ export function StageBoard({
             <section
               key={column}
               aria-labelledby={`stage-${column}`}
-              className="flex min-w-0 flex-col gap-2 rounded-card bg-muted/40 p-2"
+              // On a phone the Stages are plain sections of one list, not boxed columns.
+              className="flex min-w-0 flex-col gap-2 md:rounded-card md:bg-muted/40 md:p-2"
             >
               <h3
                 id={`stage-${column}`}
-                className="flex items-center gap-2 px-2 pt-1 text-sm font-semibold"
+                className="flex items-center gap-2 pt-1 text-sm font-semibold md:px-2"
               >
                 {stageLabels[column]}
                 <span className="font-normal text-muted-foreground">
@@ -257,7 +295,7 @@ export function StageBoard({
                 </span>
               </h3>
               {!state.lists[column]?.length && (
-                <p className="px-2 text-sm text-muted-foreground">No Projects</p>
+                <p className="text-sm text-muted-foreground md:px-2">No Projects</p>
               )}
               <Board.Column value={column} className="flex min-h-16 flex-col gap-2">
                 {(state.lists[column] ?? []).map((id) => {
@@ -316,9 +354,12 @@ function ProjectCard({
       value={project.id}
       aria-label={`${project.name}, ${stageLabels[project.stage]}`}
       aria-describedby={help}
-      className="flex flex-col gap-2 rounded-card border bg-card p-4 text-sm select-none focus-visible:outline-2 data-grabbed:ring-2 data-grabbed:ring-ring sm:touch-none"
+      // A phone shows a compact row: a small thumbnail beside the name, status and meta.
+      className="grid gap-2 rounded-card border bg-card p-4 text-sm select-none focus-visible:outline-2 data-grabbed:ring-2 data-grabbed:ring-ring max-md:grid-cols-[6rem_minmax(0,1fr)] max-md:gap-x-3 max-md:gap-y-0 max-md:p-3 sm:touch-none"
     >
-      {poster && <Poster key={poster} url={poster} />}
+      <div className={poster ? "max-md:row-span-4" : "max-md:row-span-4 md:hidden"}>
+        <Poster key={poster} url={poster} />
+      </div>
       <div className="flex items-start justify-between gap-2">
         {pending ? (
           <span className="min-w-0 py-2 font-semibold wrap-anywhere">{project.name}</span>
@@ -356,13 +397,23 @@ function ProjectCard({
           </p>
         )}
       <div className="text-meta flex items-center justify-between gap-2">
-        <span>
+        <span className={project.openNotes > 0 ? undefined : "max-md:hidden"}>
           {project.openNotes > 0
             ? `${project.openNotes} open ${project.openNotes === 1 ? "note" : "notes"}`
             : "No open notes"}
         </span>
-        <AvatarStack people={project.people} label="People with access" />
+        <span className="max-md:hidden">
+          <AvatarStack people={project.people} label="People with access" />
+        </span>
       </div>
     </Board.Card>
+  );
+}
+
+/** Changes requested or unread activity: the Projects an Editor opens Home to find. */
+function needsAttention(project: ProjectSummary, list: ProjectList) {
+  return (
+    (project.stage === "editing" && project.changesRequested) ||
+    list.videos.some((video) => video.projectId === project.id && video.unread)
   );
 }

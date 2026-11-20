@@ -267,12 +267,20 @@ h1[tabindex="-1"]:focus-visible {
 @media (min-width: 64rem) {
   .review-layout {
     grid-template-columns: minmax(0, 3fr) minmax(18rem, 1fr);
-    /* The decision row sits under the player; Comments span both rows on the right. */
-    grid-template-rows: auto 1fr;
+    /* Keeps the decision row directly under the player when Comments are long. */
+    align-items: start;
   }
-  #comments {
-    grid-column: 2;
-    grid-row: 1 / span 2;
+  /* With a decision row, it sits under the player and Comments span both rows on the right. */
+  .review-layout:has(> [aria-label="Review decision"]) {
+    grid-template-rows: auto 1fr;
+    & #comments {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+    }
+  }
+  /* Unpin the player while the decision row has focus, so it never covers a focused button. */
+  .review-layout:has([aria-label="Review decision"]:focus-within) .review-player {
+    position: static;
   }
 }
 @media (max-height: 32rem) {

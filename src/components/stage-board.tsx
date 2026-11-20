@@ -54,6 +54,7 @@ export function StageBoard({
   onCompletingChange: (projectId: string | undefined) => void;
 }) {
   const help = useId();
+  const stagePicker = useId();
   const setStage = useSetProjectStage();
   const setComplete = useSetProjectComplete();
   // Order inside a column is local: the server stores only the Stage.
@@ -169,9 +170,13 @@ export function StageBoard({
         <h2 id="board-heading" className="sr-only">
           Board
         </h2>
-        <label className="flex min-w-0 items-center gap-2 text-sm font-medium md:hidden">
-          Stage
+        {/* A sibling label: wrapping the select would add every option to the label's text. */}
+        <div className="flex min-w-0 items-center gap-2 md:hidden">
+          <label htmlFor={stagePicker} className="text-sm font-medium">
+            Stage
+          </label>
           <NativeSelect
+            id={stagePicker}
             value={stage ?? "all"}
             onChange={(event) =>
               onStageChange(
@@ -186,7 +191,7 @@ export function StageBoard({
               </option>
             ))}
           </NativeSelect>
-        </label>
+        </div>
         <ToggleGroup
           aria-label="Show Stage"
           variant="outline"

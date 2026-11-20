@@ -248,7 +248,7 @@ h1[tabindex="-1"]:focus-visible {
     padding: 0.25rem 0.5rem 0.5rem;
   }
   /* Unpin for Comment work and the decision row, but keep the picture on screen while using the Drawing controls. */
-  .review-layout:has(#comments:focus-within, [aria-label="Review decision"]:focus-within):not(
+  .review-layout:has(#comments:focus-within, [aria-label="Review decision"] :focus-visible):not(
       :has([aria-label="Drawing controls"] :focus)
     )
     .review-picture {
@@ -278,8 +278,8 @@ h1[tabindex="-1"]:focus-visible {
       grid-row: 1 / span 2;
     }
   }
-  /* Unpin the player while the decision row has focus, so it never covers a focused button. */
-  .review-layout:has([aria-label="Review decision"]:focus-within) .review-player {
+  /* Unpin the player while a decision button has keyboard focus, so it never covers it. */
+  .review-layout:has([aria-label="Review decision"] :focus-visible) .review-player {
     position: static;
   }
 }

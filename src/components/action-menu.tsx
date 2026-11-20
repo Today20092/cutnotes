@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
 
-/** A quiet icon button; `label` is its accessible name and its tooltip, because touch shows no tooltip. */
+/** A quiet icon button. `label` is its accessible name and its hover and focus tooltip; touch shows no tooltip, so use it only for well-known glyphs. */
 export function IconAction({
   label,
   children,

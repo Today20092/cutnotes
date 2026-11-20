@@ -22,7 +22,8 @@ export function useCopyPageLink(kind: "project" | "video", path: string) {
   const feedback = (
     <>
       {fallback && (
-        <label className="flex flex-col gap-1 text-sm">
+        // Wraps onto its own line when shown inside a header row.
+        <label className="flex min-w-0 basis-full flex-col gap-1 text-sm">
           Link to copy
           <Input readOnly value={fallback} onFocus={(event) => event.currentTarget.select()} />
         </label>

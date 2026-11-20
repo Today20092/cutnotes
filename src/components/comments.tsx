@@ -304,8 +304,8 @@ export function Review({
             />
           }
         />
-        {belowPlayer}
       </div>
+      {belowPlayer}
       <Comments
         comments={comments}
         scope={revision.id}

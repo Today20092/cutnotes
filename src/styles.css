@@ -247,8 +247,10 @@ h1[tabindex="-1"]:focus-visible {
     color: #fff;
     padding: 0.25rem 0.5rem 0.5rem;
   }
-  /* Unpin for Comment work, but keep the picture on screen while using the Drawing controls. */
-  .review-layout:has(#comments:focus-within):not(:has([aria-label="Drawing controls"] :focus))
+  /* Unpin for Comment work and the decision row, but keep the picture on screen while using the Drawing controls. */
+  .review-layout:has(#comments:focus-within, [aria-label="Review decision"]:focus-within):not(
+      :has([aria-label="Drawing controls"] :focus)
+    )
     .review-picture {
     position: static !important;
   }
@@ -265,6 +267,12 @@ h1[tabindex="-1"]:focus-visible {
 @media (min-width: 64rem) {
   .review-layout {
     grid-template-columns: minmax(0, 3fr) minmax(18rem, 1fr);
+    /* The decision row sits under the player; Comments span both rows on the right. */
+    grid-template-rows: auto 1fr;
+  }
+  #comments {
+    grid-column: 2;
+    grid-row: 1 / span 2;
   }
 }
 @media (max-height: 32rem) {

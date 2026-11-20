@@ -162,10 +162,11 @@ function Review() {
                       onOpenChange={(open) => setSheet("upload", open)}
                       destination={{ kind: "existing", videoId, title: page.video.title }}
                       trigger={
-                        // Icon only on a phone; the label stays its accessible name.
-                        <Button variant="secondary" className="max-sm:w-11 max-sm:px-0">
+                        // A shorter visible label on a phone; the full name stays its accessible name.
+                        <Button variant="secondary" aria-label="Upload new Revision">
                           <Upload aria-hidden />
-                          <span className="max-sm:sr-only">Upload new Revision</span>
+                          <span className="sm:hidden">New Revision</span>
+                          <span className="max-sm:hidden">Upload new Revision</span>
                         </Button>
                       }
                     />

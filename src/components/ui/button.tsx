@@ -13,7 +13,7 @@ const buttonVariants = cva(
           "border-input bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         // Outlined, not filled, so the one primary action per screen stands out.
         secondary:
-          "border-input bg-transparent text-foreground hover:bg-muted aria-expanded:bg-muted dark:hover:bg-input/50",
+          "border-input bg-transparent text-foreground hover:bg-muted aria-expanded:bg-muted",
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         destructive:

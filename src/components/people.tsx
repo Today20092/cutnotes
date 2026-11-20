@@ -96,7 +96,7 @@ export function PeopleStrip({
         to="/projects/$projectId"
         params={{ projectId }}
         search={{ sheet: "people" }}
-        className={buttonVariants({ variant: "secondary", size: "sm" })}
+        className={buttonVariants({ variant: "ghost", size: "sm" })}
       >
         <Users aria-hidden /> {canManage ? "Manage people" : "See people"}
       </Link>

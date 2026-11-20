@@ -228,6 +228,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
       />
       <PageHeading
         title={project.name}
+        badge={<StageBadge stage={project.stage} />}
         menu={
           <ActionMenu
             label={`More actions for ${project.name}`}
@@ -237,15 +238,10 @@ function ProjectView({ page }: { page: ProjectPage }) {
           />
         }
       >
+        {uploadable && isOpen && videos.length > 0 && uploadSheet("Upload")}
         <CopyPageLink kind="project" path={`/projects/${project.id}`} />
       </PageHeading>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <p className="flex items-center gap-2 text-sm">
-          <span className="text-meta">Stage</span>
-          <StageBadge stage={project.stage} />
-        </p>
-        <PeopleStrip projectId={project.id} people={project.people} canManage={isOwner} />
-      </div>
+      <PeopleStrip projectId={project.id} people={project.people} canManage={isOwner} />
       <PeopleSheet
         projectId={project.id}
         name={project.name}
@@ -272,12 +268,9 @@ function ProjectView({ page }: { page: ProjectPage }) {
         />
       )}
       <section aria-labelledby="videos-heading" className="flex flex-col gap-4">
-        <div className="flex min-h-11 flex-wrap items-center justify-between gap-2">
-          <h2 id="videos-heading" className="text-section">
-            Videos
-          </h2>
-          {uploadable && isOpen && videos.length > 0 && uploadSheet("Upload")}
-        </div>
+        <h2 id="videos-heading" className="text-section">
+          Videos
+        </h2>
         {videos.length === 0 ? (
           <Empty>
             <EmptyHeader>

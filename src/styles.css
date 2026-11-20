@@ -264,15 +264,7 @@ h1[tabindex="-1"]:focus-visible {
 }
 @media (min-width: 64rem) {
   .review-layout {
-    grid-template-columns: minmax(16rem, 1fr) minmax(0, 3fr);
-  }
-  .review-player {
-    grid-column: 2;
-    grid-row: 1;
-  }
-  .review-layout > section {
-    grid-column: 1;
-    grid-row: 1;
+    grid-template-columns: minmax(0, 3fr) minmax(18rem, 1fr);
   }
 }
 @media (max-height: 32rem) {

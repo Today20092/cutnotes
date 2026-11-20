@@ -407,9 +407,7 @@ function ProjectCard({
             ? `${project.openNotes} open ${project.openNotes === 1 ? "note" : "notes"}`
             : "No open notes"}
         </span>
-        <span className="max-md:hidden">
-          <AvatarStack people={project.people} label="People with access" />
-        </span>
+        <AvatarStack people={project.people} label="People with access" />
       </div>
     </Board.Card>
   );

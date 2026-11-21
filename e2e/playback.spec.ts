@@ -4,6 +4,7 @@ import { seedMember, seedReview } from "./support/database";
 import { signInAs } from "./support/session";
 import { sampleStream } from "./support/sample-stream";
 import { appAlert } from "./support/ui-sdk";
+import { expectUncovered } from "./support/uncovered";
 
 const cors = { "access-control-allow-origin": "*" };
 const playlist = `#EXTM3U
@@ -91,6 +92,7 @@ test("timeline is keyboard operable and previews signed storyboard tiles", async
     .toBeCloseTo(0.04, 2);
   await expect(timeline).toHaveAttribute("aria-valuetext", /seconds/);
   await expect(page.getByRole("img", { name: /Preview at/ })).toBeVisible();
+  await expectUncovered(page.getByRole("img", { name: /Preview at/ }));
   await timeline.press("ArrowRight");
   await page.emulateMedia({ forcedColors: "active" });
   await expect(timeline).toBeVisible();

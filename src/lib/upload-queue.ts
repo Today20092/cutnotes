@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 
 export type UploadTarget = { projectId: string; title: string } | { videoId: string };
-export type UploadPhase =
+type UploadPhase =
   | "waiting"
   | "sending"
   | "paused"

@@ -34,14 +34,14 @@ const CommentList = createParts(commentList, {
 });
 
 /** Selected without relying on colour, so it survives forced colours. */
-export const selectedRowClass =
+const selectedRowClass =
   "aria-[current=true]:border-l-4 aria-[current=true]:border-current aria-[current=true]:pl-2 aria-[current=true]:font-semibold";
 
 /** Shared by the Member and Guest lists; the underline marks the choice without relying on colour. */
 const segmentClass =
   "h-11 aria-pressed:underline aria-pressed:decoration-2 aria-pressed:underline-offset-4 sm:pointer-fine:h-8";
 
-export function CommentMarkers<
+function CommentMarkers<
   Row extends { id: string; timecodeMs: number; body: string; resolvedAt: number | null },
 >({
   comments,
@@ -118,7 +118,7 @@ export function CommentMarkers<
   );
 }
 
-export function CommentFilter({
+function CommentFilter({
   resolved,
   setResolved,
   tab,
@@ -149,7 +149,7 @@ export function CommentFilter({
   );
 }
 
-export function CommentComposer({
+function CommentComposer({
   body,
   setBody,
   timeMs,

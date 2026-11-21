@@ -5,7 +5,7 @@ export const projectsKey = ["projects"] as const;
 export const reviewKey = (videoId: string) => ["review", videoId] as const;
 const projectWrites = ["project-write"];
 const videoWrites = (videoId?: string) => (videoId ? ["video-write", videoId] : ["video-write"]);
-export const videoScope = (videoId: string) => ({ id: `video-${videoId}` });
+const videoScope = (videoId: string) => ({ id: `video-${videoId}` });
 
 export const isWritingVideo = (client: QueryClient, videoId: string) =>
   client.isMutating({ mutationKey: videoWrites(videoId) }) > 0;
@@ -18,7 +18,7 @@ async function snapshot<Data>(client: QueryClient) {
 }
 
 /** Only the last pending write refetches, so an earlier answer cannot undo a later one. */
-export function refreshAfterProjectWrite(client: QueryClient) {
+function refreshAfterProjectWrite(client: QueryClient) {
   if (
     client.isMutating({ mutationKey: projectWrites }) === 1 &&
     !client.isMutating({ mutationKey: videoWrites() })
@@ -27,7 +27,7 @@ export function refreshAfterProjectWrite(client: QueryClient) {
   }
 }
 
-export function refreshAfterVideoWrite(client: QueryClient, videoId: string) {
+function refreshAfterVideoWrite(client: QueryClient, videoId: string) {
   const refreshReview =
     client.isMutating({ mutationKey: videoWrites(videoId) }) === 1
       ? client.invalidateQueries({ queryKey: reviewKey(videoId) })

@@ -1,5 +1,5 @@
 // Adapted from Lawn (MIT); see LICENSE.lawn.
-export const VIDEO_FREEZE_GRACE_MS = 8_000;
+const VIDEO_FREEZE_GRACE_MS = 8_000;
 
 export type VideoPlaybackHealthState = {
   lastMediaTime: number | null;

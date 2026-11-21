@@ -15,7 +15,7 @@ type CommentListOptions = {
 };
 
 /** "1:05", "65" or 65000-style milliseconds. */
-export function parseTimecode(time: string | number): number | null {
+function parseTimecode(time: string | number): number | null {
   if (typeof time === "number") return Number.isFinite(time) && time >= 0 ? time : null;
   const match = /^(?:(\d+):)?(\d+(?:\.\d+)?)$/.exec(time.trim());
   if (!match) return null;

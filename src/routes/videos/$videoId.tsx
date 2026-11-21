@@ -3,7 +3,7 @@ import { idParam, param, positiveInt, secondsParam, sheetParam } from "@/lib/sea
 import { ActionMenu } from "@/components/action-menu";
 import { useCopyPageLink } from "@/components/copy-page-link";
 import { ExportMarkers } from "@/components/export-markers";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CompleteBanner } from "@/components/complete-project";
@@ -20,6 +20,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { UploadSheet } from "@/components/upload-parts";
 import { markVideoRead } from "@/server/playback";
 import { refreshProjects } from "@/lib/writes";
+import { Send, Upload } from "lucide-react";
 
 // An unknown value is dropped rather than shown as an error page.
 const searchSchema = v.object({
@@ -137,7 +138,7 @@ function Review() {
                           variant="secondary"
                           onClick={() => setSearch({ sheet: "customer", revision: pin(page) })}
                         >
-                          Send to customer
+                          <Send aria-hidden /> Send to customer
                         </Button>
                       )}
                       <CustomerLinkSheet
@@ -160,7 +161,14 @@ function Review() {
                       open={search.sheet === "upload"}
                       onOpenChange={(open) => setSheet("upload", open)}
                       destination={{ kind: "existing", videoId, title: page.video.title }}
-                      trigger={<Button variant="secondary">Upload new Revision</Button>}
+                      trigger={
+                        // A shorter visible label on a phone; the full name stays its accessible name.
+                        <Button variant="secondary" aria-label="Upload new Revision">
+                          <Upload aria-hidden />
+                          <span className="sm:hidden">New Revision</span>
+                          <span className="max-sm:hidden">Upload new Revision</span>
+                        </Button>
+                      }
                     />
                   )}
                 </>
@@ -185,16 +193,6 @@ function Review() {
                   Watch it
                 </Link>
               </p>
-            )}
-            {canWrite(page.video.role) && page.video.completedAt === null && page.revision && (
-              <ReviewDecisionBar
-                videoId={videoId}
-                title={page.video.title}
-                status={page.video.status}
-                revision={page.revision}
-                latest={page.history[0]!}
-                sendable={page.member.role === "owner"}
-              />
             )}
             {page.history.length === 1 ? (
               <p className="text-sm text-muted-foreground">Revision {page.history[0]!.number}</p>
@@ -230,6 +228,19 @@ function Review() {
                   cacheRevision={revision}
                   view={{ comment: search.comment, t: search.t, filter: search.filter }}
                   onViewChange={setSearch}
+                  belowPlayer={
+                    canWrite(page.video.role) &&
+                    page.video.completedAt === null && (
+                      <ReviewDecisionBar
+                        videoId={videoId}
+                        title={page.video.title}
+                        status={page.video.status}
+                        revision={page.revision}
+                        latest={page.history[0]!}
+                        sendable={page.member.role === "owner"}
+                      />
+                    )
+                  }
                 />
               </>
             ) : revision !== undefined && page.history.length > 0 ? (
@@ -292,7 +303,9 @@ function ReviewContent({
   cacheRevision,
   view,
   onViewChange,
+  belowPlayer,
 }: {
+  belowPlayer?: ReactNode;
   page: ReviewPage;
   videoId: string;
   cacheRevision?: number;
@@ -310,6 +323,7 @@ function ReviewContent({
         actor={actor}
         view={view}
         onViewChange={onViewChange}
+        belowPlayer={belowPlayer}
       />
       <ReviewQueue
         comments={page.comments}

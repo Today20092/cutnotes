@@ -99,6 +99,12 @@ test("browser-style tools: read the ARIA tree, then click and type", async ({ pa
   await m.act(page.getByRole("button", { name: "Request changes" }).click());
   await look();
   results.browser = m.done();
+  // Let the decision save before leaving the page, or Home can still show the old Stage.
+  await expect(
+    page
+      .getByRole("region", { name: "Review decision" })
+      .getByText("Changes requested", { exact: true }),
+  ).toBeVisible();
 
   await expectTaskDone(page, id);
 });

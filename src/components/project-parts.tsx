@@ -86,10 +86,13 @@ export const backLinkClass =
 /** `menu` is a More actions button. It follows `children` in tab order, but on a phone it sits beside the title and `children` wrap below. */
 export function PageHeading({
   title,
+  badge,
   children,
   menu,
 }: {
   title: string;
+  /** A Stage or Status badge, shown beside the title but outside the h1. */
+  badge?: ReactNode;
   children?: ReactNode;
   menu?: ReactNode;
 }) {
@@ -104,12 +107,15 @@ export function PageHeading({
   }, [title]);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <h1 ref={heading} tabIndex={-1} className="text-title min-w-0 flex-[1_1_12rem] wrap-anywhere">
-        {title}
-      </h1>
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
+      <div className="flex min-w-0 flex-[1_1_12rem] flex-wrap items-center gap-x-3 gap-y-1">
+        <h1 ref={heading} tabIndex={-1} className="text-title min-w-0 wrap-anywhere">
+          {title}
+        </h1>
+        {badge}
+      </div>
       {children && (
-        <div className="order-last flex w-full flex-wrap gap-2 sm:order-none sm:w-auto">
+        <div className="order-last flex w-full flex-wrap items-center gap-2 sm:order-none sm:w-auto">
           {children}
         </div>
       )}

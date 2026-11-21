@@ -1,7 +1,24 @@
 import { Ellipsis } from "lucide-react";
-import { useRef, type ReactNode } from "react";
+import { useRef, type ComponentProps, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
+
+/** A quiet icon button. `label` is its accessible name and its hover and focus tooltip; touch shows no tooltip, so use it only for well-known glyphs. */
+export function IconAction({
+  label,
+  children,
+  ...props
+}: { label: string; children: ReactNode } & ComponentProps<typeof Button>) {
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<Button variant="ghost" size="icon" aria-label={label} {...props} />}>
+        {children}
+      </TooltipTrigger>
+      <TooltipPopup>{label}</TooltipPopup>
+    </Tooltip>
+  );
+}
 
 export type Action<Id extends string = string> = {
   label: string;

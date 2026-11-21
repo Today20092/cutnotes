@@ -37,7 +37,7 @@ export function ReviewDecisionBar({
     return (
       <section
         aria-label="Review decision"
-        className="flex flex-wrap items-center gap-2 rounded-card border p-3 text-sm"
+        className="flex flex-wrap items-center gap-2 pt-3 text-sm text-muted-foreground"
       >
         <p>You're viewing Revision {revision.number}. Decisions apply to the latest cut.</p>
       </section>
@@ -93,7 +93,7 @@ function DecisionButtons({
         ...(decision.isPending ? (["approve", "requestChanges"] as const) : []),
       ]}
       onDecide={decide}
-      className="flex flex-wrap items-center gap-2 rounded-card border p-3"
+      className="flex flex-wrap items-center gap-2 pt-3"
     >
       <p className="flex items-center gap-2 text-sm">
         <span className="text-muted-foreground">Status</span>

@@ -75,7 +75,10 @@ test("a card's menu and, on desktop, a drag move it; the Stage filter is in the 
   }
 
   const stage = testInfo.project.name === "desktop" ? "Done" : "In review";
-  await page.getByLabel("Show Stage").getByRole("button", { name: /^New/ }).click();
+  // A phone picks the Stage from a select; a wider screen has a button per Stage.
+  if (testInfo.project.name === "phone")
+    await page.getByLabel("Stage", { exact: true }).selectOption("new");
+  else await page.getByLabel("Show Stage").getByRole("button", { name: /^New/ }).click();
   await expect(page).toHaveURL(/\?stage=new$/);
   await expect(card(page, stage)).toHaveCount(0);
   await expect(column(page, "New")).toBeVisible();

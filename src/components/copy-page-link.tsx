@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Link2 } from "lucide-react";
+import { IconAction } from "@/components/action-menu";
 import { Input } from "@/components/ui/input";
 import { useStatusToast } from "@/components/project-parts";
 
@@ -21,7 +22,8 @@ export function useCopyPageLink(kind: "project" | "video", path: string) {
   const feedback = (
     <>
       {fallback && (
-        <label className="flex flex-col gap-1 text-sm">
+        // Wraps onto its own line when shown inside a header row.
+        <label className="flex min-w-0 basis-full flex-col gap-1 text-sm">
           Link to copy
           <Input readOnly value={fallback} onFocus={(event) => event.currentTarget.select()} />
         </label>
@@ -37,11 +39,11 @@ export function useCopyPageLink(kind: "project" | "video", path: string) {
 export function CopyPageLink({ kind, path }: { kind: "project" | "video"; path: string }) {
   const { copy, feedback } = useCopyPageLink(kind, path);
   return (
-    <div className="flex flex-col gap-2">
-      <Button variant="secondary" onClick={copy}>
-        Copy {kind} link
-      </Button>
+    <>
+      <IconAction label={`Copy ${kind} link`} onClick={copy}>
+        <Link2 aria-hidden />
+      </IconAction>
       {feedback}
-    </div>
+    </>
   );
 }

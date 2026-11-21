@@ -220,7 +220,10 @@ export function Review({
   actor,
   view,
   onViewChange,
+  belowPlayer,
 }: {
+  /** Shown right under the player, such as the review decision. */
+  belowPlayer?: ReactNode;
   view: ReviewView;
   /** Writes the changed keys to the URL; `undefined` removes one. */
   onViewChange: (change: Partial<ReviewView>) => void;
@@ -302,6 +305,7 @@ export function Review({
           }
         />
       </div>
+      {belowPlayer}
       <Comments
         comments={comments}
         scope={revision.id}

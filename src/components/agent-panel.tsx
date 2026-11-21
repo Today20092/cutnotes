@@ -67,7 +67,11 @@ export default function AgentPanel() {
   }
 
   return (
-    <div data-agent-hidden className="fixed right-4 bottom-4 z-50 flex flex-col items-end gap-2">
+    <div
+      data-agent-hidden
+      // Bottom-left on a phone, clear of each card's More actions button on the right.
+      className="fixed bottom-4 z-50 flex flex-col gap-2 max-md:left-4 max-md:items-start md:right-4 md:items-end"
+    >
       {open && (
         <aside
           aria-label="Agent bridge demo"

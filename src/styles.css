@@ -247,8 +247,12 @@ h1[tabindex="-1"]:focus-visible {
     color: #fff;
     padding: 0.25rem 0.5rem 0.5rem;
   }
-  /* Unpin for Comment work, but keep the picture on screen while using the Drawing controls. */
-  .review-layout:has(#comments:focus-within):not(:has([aria-label="Drawing controls"] :focus))
+  /* Unpin for Comment work and the decision row, but keep the picture on screen while using the Drawing controls.
+     Any focus in the decision row counts: a tap moving focus from Comments to Approve must not re-pin the
+     picture over the button between press and release. */
+  .review-layout:has(#comments:focus-within, [aria-label="Review decision"]:focus-within):not(
+      :has([aria-label="Drawing controls"] :focus)
+    )
     .review-picture {
     position: static !important;
   }
@@ -264,15 +268,21 @@ h1[tabindex="-1"]:focus-visible {
 }
 @media (min-width: 64rem) {
   .review-layout {
-    grid-template-columns: minmax(16rem, 1fr) minmax(0, 3fr);
+    grid-template-columns: minmax(0, 3fr) minmax(18rem, 1fr);
+    /* Keeps the decision row directly under the player when Comments are long. */
+    align-items: start;
   }
-  .review-player {
-    grid-column: 2;
-    grid-row: 1;
+  /* With a decision row, it sits under the player and Comments span both rows on the right. */
+  .review-layout:has(> [aria-label="Review decision"]) {
+    grid-template-rows: auto 1fr;
+    & #comments {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+    }
   }
-  .review-layout > section {
-    grid-column: 1;
-    grid-row: 1;
+  /* Unpin the player while a decision button has keyboard focus, so it never covers it. */
+  .review-layout:has([aria-label="Review decision"] :focus-visible) .review-player {
+    position: static;
   }
 }
 @media (max-height: 32rem) {

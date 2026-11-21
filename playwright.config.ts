@@ -8,9 +8,11 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  // CI retries a failing test once; a pass on retry is reported as flaky, not hidden.
+  retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["json", { outputFile: "test-results/results.json" }]],
-  use: { baseURL },
+  // A CI retry records a trace, so a failure there can be replayed.
+  use: { baseURL, trace: "on-first-retry" },
   projects: [
     { name: "phone", use: { ...devices["Pixel 7"] } },
     { name: "desktop", use: { viewport: { width: 1280, height: 800 } } },

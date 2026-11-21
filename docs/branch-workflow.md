@@ -30,7 +30,7 @@ Completion: the change is merged to `main`, Check passed on the merge commit, an
 
 `.github/workflows/check.yml` runs on every pull request and on pushes to `main`. The `checks` job runs `bun run check`, the dependency audit and the build; the `browser` job runs the full browser suite on pushes to `main` and on pull requests into `main`; the `check` job requires both. `.github/workflows/deploy.yml`:
 
-- A successful Check run for the current `main` commit automatically deploys production.
+- A successful Check run for the current `main` commit automatically deploys production. A run that finishes after a newer commit landed is skipped, not failed; the newer commit's run deploys both.
 - Dependabot opens one monthly PR for minor and patch updates and one PR per major update (`.github/dependabot.yml`). `.github/workflows/dependabot-auto-merge.yml` merges the minor and patch PRs after Check passes, runs Check on the merge commit and starts Deploy, because a bot merge creates no push event. A major update needs a person: read its changelog, fix what breaks, then merge.
 - Staging deploys only by hand: run Deploy from `main` and choose `staging`. A manual run can also retry production for the current passing `main` commit.
 - The workflow checks out the exact passing SHA. Each deployment checks the branch head, credentials, runtime secret names and generated target, then records a D1 Time Travel bookmark before migrations. A successful `/api/team` response is a basic availability check; the setup guide describes the additional real-service checks.

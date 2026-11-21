@@ -177,6 +177,15 @@ export type RedeemResult =
   | { outcome: "already-member"; projectId?: string }
   | { outcome: "unavailable"; reason: "used" | "expired" | "revoked" | "unknown" };
 
+function unavailableReason(
+  invite: Pick<PendingInvite, "expiresAt"> & { usedAt: number | null; revokedAt: number | null },
+  now: number,
+) {
+  if (invite.revokedAt !== null) return "revoked";
+  if (invite.usedAt !== null) return "used";
+  if (invite.expiresAt <= now) return "expired";
+}
+
 /**
  * One D1 batch, so of any simultaneous redemptions exactly one marks the Invite
  * used. A new person gets a new row. A removed Member keeps their row and name,
@@ -232,14 +241,12 @@ async function redeem(person: SignedInPerson, tokenHash: string): Promise<Redeem
   ]);
 
   if (marked.meta.changes === 1) return { outcome: "joined" };
+  const invite = inviteRows[0];
+  const reason = invite ? unavailableReason(invite, now) : "unknown";
+  if (reason) return { outcome: "unavailable", reason };
   const caller = callerRows[0];
   if (caller && caller.removedAt === null) return { outcome: "already-member" };
-
-  const invite = inviteRows[0];
-  if (!invite) return { outcome: "unavailable", reason: "unknown" };
-  if (invite.revokedAt !== null) return { outcome: "unavailable", reason: "revoked" };
-  if (invite.usedAt !== null) return { outcome: "unavailable", reason: "used" };
-  return { outcome: "unavailable", reason: "expired" };
+  return { outcome: "unavailable", reason: "unknown" };
 }
 
 /** Not Member-gated: this is how a signed-in person becomes a Member. */
@@ -313,7 +320,16 @@ async function redeemProject(
           AND crew.role IN ('uploader', 'editor'))`,
     ),
     db.select().from(members).where(isCaller),
-    db.select().from(invites).where(eq(invites.tokenHash, tokenHash)),
+    db
+      .select({
+        usedAt: invites.usedAt,
+        revokedAt: invites.revokedAt,
+        expiresAt: invites.expiresAt,
+        activeProjectId: projects.id,
+      })
+      .from(invites)
+      .leftJoin(projects, and(eq(projects.id, invites.projectId), isNull(projects.deletedAt)))
+      .where(eq(invites.tokenHash, tokenHash)),
     db
       .select({ memberId: projectMembers.memberId })
       .from(projectMembers)
@@ -321,12 +337,13 @@ async function redeemProject(
       .where(and(isCaller, eq(projectMembers.projectId, projectId))),
   ]);
   if (marked.meta.changes === 1) return { outcome: "joined", projectId };
-  const caller = callerRows[0];
   const invite = inviteRows[0];
+  if (!invite) return { outcome: "unavailable", reason: "unknown" };
+  const reason = unavailableReason(invite, now);
+  if (reason) return { outcome: "unavailable", reason };
+  if (!invite.activeProjectId) return { outcome: "unavailable", reason: "unknown" };
+  const caller = callerRows[0];
   if (caller && caller.removedAt === null && (caller.role === "owner" || assignmentRows.length))
     return { outcome: "already-member", projectId };
-  if (!invite) return { outcome: "unavailable", reason: "unknown" };
-  if (invite.revokedAt !== null) return { outcome: "unavailable", reason: "revoked" };
-  if (invite.usedAt !== null) return { outcome: "unavailable", reason: "used" };
-  return { outcome: "unavailable", reason: "expired" };
+  return { outcome: "unavailable", reason: "unknown" };
 }

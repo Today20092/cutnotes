@@ -215,7 +215,7 @@ it("one project invitation admits exactly one person under concurrent acceptance
   ).toBe(1);
 });
 
-it.each(["revoked", "expired", "deleted"])(
+it.each(["revoked", "expired", "deleted", "used"] as const)(
   "a %s project invitation grants no access or team membership",
   async (state) => {
     const { url, invite: created } = await invite();
@@ -223,12 +223,27 @@ it.each(["revoked", "expired", "deleted"])(
     if (state === "expired")
       await env.DB.prepare("UPDATE invites SET expires_at = 1 WHERE id = ?").bind(created.id).run();
     if (state === "deleted") await call(fn.deleteProject, owner, { projectId });
-    expect(await resultOf(await redeem(url))).toMatchObject({ outcome: "unavailable" });
+    if (state === "used") await redeem(url, editor);
+    const unavailable = {
+      outcome: "unavailable",
+      reason: state === "deleted" ? "unknown" : state,
+    };
+    expect(await resultOf(await redeem(url))).toEqual(unavailable);
+    expect(await resultOf(await redeem(url, owner))).toEqual(unavailable);
     expect(
       await env.DB.prepare("SELECT id FROM members WHERE clerk_user_id = 'user_new'").first(),
     ).toBeNull();
   },
 );
+
+it("an Owner opening a pending Project Invite keeps it available", async () => {
+  const { url } = await invite();
+  expect(await resultOf(await redeem(url, owner))).toEqual({
+    outcome: "already-member",
+    projectId,
+  });
+  expect(await resultOf(await redeem(url))).toEqual({ outcome: "joined", projectId });
+});
 
 it("removing someone from the team clears old assignments; a new invitation restores only its project", async () => {
   await assign("member_editor", "editor");

@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   comments,
   insertRow,
@@ -122,6 +123,14 @@ export function shareTokenFor(videoId: string) {
 
 function executeSql(...statements: Statement[]) {
   wrangler("--command", statements.map(inlineParams).join(";\n"));
+}
+
+export function expireInvite(url: string) {
+  const token = new URL(url).pathname.split("/").pop()!;
+  executeSql({
+    sql: "UPDATE invites SET expires_at = 1 WHERE token_hash = ?",
+    params: [createHash("sha256").update(token).digest("hex")],
+  });
 }
 
 // wrangler d1 execute takes raw SQL only, so bound parameters become escaped literals here.

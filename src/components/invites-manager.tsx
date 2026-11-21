@@ -28,7 +28,7 @@ export const roleChoices: { role: Role; label: string; description: string }[] =
   {
     role: "viewer",
     label: "Viewer",
-    description: "Reviews assigned projects. Project roles control uploads.",
+    description: "Sees no Projects until assigned to one. Project roles control uploads.",
   },
   {
     role: "editor",
@@ -73,21 +73,49 @@ export function InviteLinkForm({
   const queryClient = useQueryClient();
   const [role, setRole] = useState<InviteRole>(scoped ? "uploader" : "viewer");
   const [note, setNote] = useState("");
-  const [link, setLink] = useState<string | null>(null);
+  const [createdLink, setCreatedLink] = useState<Awaited<ReturnType<typeof createInvite>> | null>(
+    null,
+  );
   const [copied, setCopied] = useState(false);
   const [status, setStatus] = useState("");
   useStatusToast(status);
   const linkHeading = useRef<HTMLHeadingElement>(null);
   const choices = scoped ? shareRoles : roleChoices;
+  const latestInvites = useQuery({
+    queryKey: ["invites", projectId ?? "all"],
+    queryFn: () => listInvites({ data: projectId ? { projectId } : undefined }),
+    enabled: createdLink !== null,
+    retry: false,
+    refetchOnWindowFocus: "always",
+    refetchInterval: ({ state }) =>
+      state.data?.invites.some(
+        (invite) => invite.id === createdLink?.invite.id && inviteStatus(invite) === "Pending",
+      )
+        ? 30_000
+        : false,
+  });
+  const listedInvite = latestInvites.data?.invites.find(({ id }) => id === createdLink?.invite.id);
+  const link =
+    latestInvites.isSuccess && listedInvite && inviteStatus(listedInvite) === "Pending"
+      ? createdLink?.url
+      : undefined;
   const create = useMutation({
     mutationFn: () => createInvite({ data: { role, note, ...(projectId ? { projectId } : {}) } }),
     onSuccess: (created) => {
-      setLink(created.url);
+      setCreatedLink(created);
       setCopied(false);
       setStatus(`${inviteRoleLabel(created.invite.role, scoped)} Invite created`);
       void queryClient.invalidateQueries({ queryKey: ["invites"] });
     },
   });
+  useEffect(() => {
+    if (!createdLink) return;
+    const timeout = window.setTimeout(
+      () => setCreatedLink(null),
+      createdLink.invite.expiresAt - Date.now(),
+    );
+    return () => window.clearTimeout(timeout);
+  }, [createdLink]);
   useEffect(() => {
     if (link) linkHeading.current?.focus();
   }, [link]);
@@ -127,10 +155,17 @@ export function InviteLinkForm({
                 <Radio
                   id={`invite-role-${projectId ?? "team"}-${choice.role}`}
                   value={choice.role}
+                  aria-label={choice.label}
+                  aria-describedby={`invite-role-${projectId ?? "team"}-${choice.role}-description`}
                 />
                 <span>
                   <span className="block font-medium">{choice.label}</span>
-                  <span className="block text-sm text-muted-foreground">{choice.description}</span>
+                  <span
+                    id={`invite-role-${projectId ?? "team"}-${choice.role}-description`}
+                    className="block text-sm text-muted-foreground"
+                  >
+                    {choice.description}
+                  </span>
                 </span>
               </label>
             ))}
@@ -271,14 +306,28 @@ export function InvitesManager({ project }: { project?: string }) {
                     {invite.note || `${label(invite.role, Boolean(invite.projectId))} invitation`}
                   </span>
                   <span>
-                    {invite.projectName ?? "Team membership"} ·{" "}
-                    {label(invite.role, Boolean(invite.projectId))}
+                    {invite.projectId && invite.projectName ? (
+                      <Link
+                        to="/projects/$projectId"
+                        params={{ projectId: invite.projectId }}
+                        className="underline"
+                      >
+                        {invite.projectName}
+                      </Link>
+                    ) : (
+                      "Team membership"
+                    )}{" "}
+                    · {label(invite.role, Boolean(invite.projectId))}
                   </span>
                   <Badge variant="secondary" className="w-fit">
                     {state}
                   </Badge>
                   <p className="text-sm text-muted-foreground">
-                    Created by {invite.createdBy} · {expiryDate(invite.createdAt)}
+                    Created by{" "}
+                    <Link to="/members" search={{ q: invite.createdBy }} className="underline">
+                      {invite.createdBy}
+                    </Link>{" "}
+                    · {expiryDate(invite.createdAt)}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Expires {expiryDate(invite.expiresAt)}
@@ -291,8 +340,19 @@ export function InvitesManager({ project }: { project?: string }) {
                   {invite.usedAt !== null && (
                     <>
                       <p className="text-sm text-muted-foreground">
-                        Accepted by {invite.acceptedBy ?? "former member"} ·{" "}
-                        {expiryDate(invite.usedAt)}
+                        Accepted by{" "}
+                        {invite.acceptedBy ? (
+                          <Link
+                            to="/members"
+                            search={{ q: invite.acceptedBy }}
+                            className="underline"
+                          >
+                            {invite.acceptedBy}
+                          </Link>
+                        ) : (
+                          "former Member"
+                        )}{" "}
+                        · {expiryDate(invite.usedAt)}
                       </p>
                       {invite.projectId ? (
                         <Link

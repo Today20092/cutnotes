@@ -271,11 +271,28 @@ describe("redeeming an Invite", () => {
       expect(await pending()).toEqual([]);
     });
 
-    it("tells the winner they are on the Team if they redeem twice", async () => {
+    it("tells the recipient the Invite was used if they redeem twice", async () => {
       const { url } = await invite();
       await redeem(tokenOf(url));
 
-      expect((await redeem(tokenOf(url))).outcome).toBe("already-member");
+      expect(await redeem(tokenOf(url))).toEqual({ outcome: "unavailable", reason: "used" });
     });
+
+    it.each(["revoked", "expired", "unknown"])(
+      "reports a %s Invite to a Member",
+      async (reason) => {
+        const { url, invite: created } = await invite();
+        if (reason === "revoked") await call(revokeInvite, owner, { id: created.id });
+        if (reason === "expired")
+          await env.DB.prepare("UPDATE invites SET expires_at = 1 WHERE id = ?")
+            .bind(created.id)
+            .run();
+
+        expect(await redeem(reason === "unknown" ? "unknown-token" : tokenOf(url), owner)).toEqual({
+          outcome: "unavailable",
+          reason,
+        });
+      },
+    );
   });
 });

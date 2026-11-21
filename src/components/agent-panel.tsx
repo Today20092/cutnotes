@@ -35,7 +35,9 @@ const scripts: Script[] = [
   {
     name: "Move the first Project to In review",
     steps: () => {
-      const card = document.querySelector('[data-slot="review-board-card"] a')?.textContent;
+      const card = document.querySelector(
+        '[data-slot="review-board-card"] a:not([aria-hidden])',
+      )?.textContent;
       return card
         ? [{ ref: "review-board", action: "setStage", args: [card, "In review"] }]
         : "No Project on this page. Open Projects.";

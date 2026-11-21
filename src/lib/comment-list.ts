@@ -91,7 +91,13 @@ export const commentList = definePrimitive({
     }),
     content: slot<{ value: string }>({
       props: { value: "string" },
-      attrs: () => ({ style: css({ transform: "translateX(var(--swipe-x, 0px))" }) }),
+      // Limit the painted offset while the gesture still measures the full pull.
+      attrs: () => ({
+        style: css({
+          transform:
+            "translateX(clamp(calc(-1 * var(--resolve-width, 0px)), var(--swipe-x, 0px), var(--resolve-width, 0px)))",
+        }),
+      }),
       live: live((state, { api, key }) => api.swipe.contentAttrs(state, key)),
     }),
     action: slot<{ value: string }>({

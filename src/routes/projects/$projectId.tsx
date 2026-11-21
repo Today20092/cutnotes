@@ -26,7 +26,7 @@ import {
 import { UploadSheet } from "@/components/upload-parts";
 import { VideoTile } from "@/components/video-tile";
 import { StageBadge } from "@/components/stage-badge";
-import { useProjectStageMoves } from "@/components/project-stage-moves";
+import { dismissStageUndo, useProjectStageMoves } from "@/components/project-stage-moves";
 import { stageLabels } from "@/lib/project-stage";
 import { Button } from "@/components/ui/button";
 import {
@@ -103,7 +103,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
   const goTo = Route.useNavigate();
   const renameProject = useRenameProject();
   const setComplete = useSetProjectComplete();
-  const { stageActions, feedback, setUndo } = useProjectStageMoves();
+  const { stageActions, feedback } = useProjectStageMoves();
   const [status, setStatus] = useState("");
   const [failure, setFailure] = useState("");
   const { project, videos, member } = page;
@@ -134,7 +134,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
   }
 
   function changeComplete(complete: boolean) {
-    setUndo(null);
+    dismissStageUndo(project.id);
     setFailure("");
     setStatus("");
     setComplete.mutate(

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { seedComment } from "./support/database";
 import { commentList, openVideo, signInWithReview } from "./support/review-page";
+import { expectUncovered } from "./support/uncovered";
 
 test("the Comment list counts To do and offers Undo after Resolve", async ({ page }) => {
   const { id, clerkUserId } = await signInWithReview(page);
@@ -58,9 +59,21 @@ test("swiping right resolves a Comment on touch", async ({ page, context, isMobi
         touchPoints: [{ x: x + (box.width * 0.6 * step) / 15, y }],
       });
     }
+    const list = commentList(page);
+    const content = list.locator('[data-slot="comment-list-content"]');
+    const resolve = list.locator('[data-slot="comment-list-action"]');
+    await expect
+      .poll(async () => {
+        const contentBox = await content.boundingBox();
+        const actionBox = await resolve.boundingBox();
+        return contentBox && actionBox
+          ? Math.abs(contentBox.x - (actionBox.x + actionBox.width))
+          : Infinity;
+      })
+      .toBeLessThan(1);
     await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     await expect(row).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeVisible();
+    await expectUncovered(page.locator("[data-front]").getByRole("button", { name: "Undo" }));
   } else {
     await page.mouse.move(x, y);
     await page.mouse.down();

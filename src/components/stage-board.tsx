@@ -8,7 +8,7 @@ import { AvatarStack } from "@/components/people";
 import { canWrite, Poster } from "@/components/project-parts";
 import { StageBadge } from "@/components/stage-badge";
 import { Badge } from "@/components/ui/badge";
-import { useProjectStageMoves } from "@/components/project-stage-moves";
+import { dismissStageUndo, useProjectStageMoves } from "@/components/project-stage-moves";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { projectStages, stageLabels, type ProjectStage } from "@/lib/project-stage";
@@ -51,7 +51,7 @@ export function StageBoard({
 }) {
   const help = useId();
   const [allDone, setAllDone] = useState(false);
-  const { move, stageActions, feedback, setStatus, setFailure, setUndo } = useProjectStageMoves();
+  const { move, stageActions, feedback, setStatus, setFailure } = useProjectStageMoves();
   const setComplete = useSetProjectComplete();
   // Order inside a column is local: the server stores only the Stage.
   const [order, setOrder] = useState<string[]>([]);
@@ -98,8 +98,8 @@ export function StageBoard({
   }
 
   function complete(project: ProjectSummary) {
+    dismissStageUndo(project.id);
     setFailure("");
-    setUndo(null);
     setComplete.mutate(
       { projectId: project.id, complete: true },
       {

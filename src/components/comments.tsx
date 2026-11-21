@@ -598,7 +598,9 @@ function Comments({
                 id={`comment-${comment.id}`}
                 className={cn(
                   "relative isolate wrap-anywhere",
-                  actor.resolve && !resolved && "touch-pan-y overflow-hidden",
+                  actor.resolve &&
+                    !resolved &&
+                    "touch-pan-y overflow-hidden [--resolve-width:6rem]",
                   comment.id === activeId && "-mx-2 rounded-lg",
                 )}
               >
@@ -736,7 +738,7 @@ function Comments({
                 {actor.resolve && !resolved && (
                   <CommentList.Action
                     value={comment.id}
-                    className="absolute inset-y-0 start-0 flex items-center bg-success px-4 text-sm font-medium text-white"
+                    className="absolute inset-y-0 start-0 flex w-(--resolve-width) items-center justify-center bg-success text-sm font-medium text-white"
                     aria-label={`Resolve ${at}`}
                     disabled={pending}
                   >

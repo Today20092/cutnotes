@@ -1,4 +1,4 @@
-export type PlaybackAudience = "v" | "t" | "s";
+type PlaybackAudience = "v" | "t" | "s";
 
 export type Playback = { videoUrl: string; posterUrl: string; storyboardUrl: string };
 

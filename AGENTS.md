@@ -36,7 +36,7 @@ The `phone` Playwright project is desktop Chromium at phone size: it never opens
 
 ## Testing
 
-`bun run check` is the normal check and does not start a browser: it runs typecheck, lint (Oxlint), format check (Oxfmt), `test:player`, `test:setup`, `test:structure` and Seam 1. Run `bun run fmt` to fix formatting. CI also runs `bun run audit`. Use focused browser specs while editing. The Git workflow defines full-suite gates for integration and release; inspect `.github/workflows/check.yml` for the gates CI actually runs.
+`bun run check` is the normal check and does not start a browser: it runs typecheck, lint (Oxlint), format check (Oxfmt), unused code (Knip, `bun run knip`; config in `knip.jsonc`), `test:player`, `test:setup`, `test:structure` and Seam 1. Run `bun run fmt` to fix formatting. CI also runs `bun run audit`. Use focused browser specs while editing. The Git workflow defines full-suite gates for integration and release; inspect `.github/workflows/check.yml` for the gates CI actually runs.
 
 Server functions check browser input in the handler, after the Access check, with Valibot `parse(schema, data)` or `id()`/`text()` from `src/server/access.ts`; `test:structure` enforces it. Browser components and routes must not import `@/server/db/*` or `@/server/mux/*` at runtime; type imports are allowed. `test:structure` checks server functions for Access helpers, with an explicit exception for token-authorized public Invite previews. `bun install` enables the pre-commit hook for lint and formatting.
 

@@ -9,7 +9,7 @@ const PROBE_TIMEOUT_MS = 10_000;
 // Must be a multiple of 256 KB. To be tuned on real phones.
 const CHUNK_SIZE_KB = 8192;
 
-export type { UploadTarget, UploadPhase, UploadItem } from "@/lib/upload-queue";
+export type { UploadTarget, UploadItem } from "@/lib/upload-queue";
 
 function warnBeforeLeaving(event: BeforeUnloadEvent) {
   event.preventDefault();

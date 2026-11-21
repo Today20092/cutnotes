@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import type { VideoStatus } from "@/lib/video-status";
 
-export const statusLabels = { review: "Review", rework: "Rework", done: "Done" };
+const statusLabels = { review: "Review", rework: "Rework", done: "Done" };
 const statusTone = {
   review: "bg-violet-500/12 text-violet-800 dark:text-violet-300",
   rework: "bg-rose-500/12 text-rose-800 dark:text-rose-300",

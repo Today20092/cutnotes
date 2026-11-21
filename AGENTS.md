@@ -24,6 +24,16 @@ Before using ui-sdk (`@ui-sdk/react`, `@ui-sdk/core`), follow the `ui-sdk` skill
 
 Use cnippet by default: `npx shadcn@latest add @cnippet/<name>`. Use `@shadcn` only when cnippet has no equivalent. Never overwrite `src/components/ui/button.tsx` or `input.tsx` without checking the diff: they carry local accessibility changes.
 
+## Mobile
+
+Below 64rem the Video page pins the picture (`.review-picture`: sticky, `z-index: 10`), and the viewport meta sets `interactive-widget=resizes-content`, so the on-screen keyboard shrinks the layout. Build for both:
+
+- Overlays that can reach the picture (previews, menus, sheets) sit at `z-20` or higher.
+- Size bottom-pinned and full-height UI with `dvh`, so it stays above the keyboard.
+- Assert overlays with `expectUncovered` (`e2e/support/uncovered.ts`): `toBeVisible()` also passes for an element painted over.
+
+The `phone` Playwright project is desktop Chromium at phone size: it never opens an on-screen keyboard. Before merging a UI change, tap through the changed screens on a real phone screen, with the keyboard open on every input: the Android emulator through the T3 device tools when it is installed; until then, list the screens for the user to check on their phone. The `browse` MCP drives the user's desktop Helium browser; use it to check the deployed site while signed in.
+
 ## Testing
 
 `bun run check` is the normal check and does not start a browser: it runs typecheck, lint (Oxlint), format check (Oxfmt), `test:player`, `test:setup`, `test:structure` and Seam 1. Run `bun run fmt` to fix formatting. CI also runs `bun run audit`. Use focused browser specs while editing. The Git workflow defines full-suite gates for integration and release; inspect `.github/workflows/check.yml` for the gates CI actually runs.

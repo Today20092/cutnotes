@@ -1,25 +1,35 @@
 import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { activeMember, readAsMember, refuse, requireMember } from "@/server/access";
+import {
+  memberIdForUser,
+  projectRole,
+  videoAccess,
+  readAsMember,
+  refuse,
+  requireMember,
+} from "@/server/access";
 import { commentColumns, toComment, type Comment } from "@/server/comment-rules";
 import { getDb } from "@/server/db";
-import { comments, projects, revisions, videos, videoReads } from "@/server/db/schema";
+import { comments, members, projects, revisions, videos, videoReads } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
 
 /** The same read is used to open the screen and renew its playback credentials. */
 export const getReview = createServerFn({ method: "POST" })
-  .validator((data: { videoId: string; revisionId?: string }) => data)
+  .validator((data: { videoId: string; revisionId?: string; revisionNumber?: number }) => data)
   .handler(async ({ data }) => {
     const readAt = Date.now();
     const videoId = typeof data?.videoId === "string" ? data.videoId : "";
     const {
       member,
       results: [rows, ready, feedback],
-    } = await readAsMember("viewer", (db) => [
+    } = await readAsMember("viewer", (db, clerkUserId) => [
       db
         .select({
           id: videos.id,
+          role: projectRole(memberIdForUser(clerkUserId), videos.projectId),
           title: videos.title,
+          status: videos.status,
+          createdBy: videos.createdBy,
           projectId: videos.projectId,
           projectName: projects.name,
           completedAt: projects.completedAt,
@@ -27,17 +37,36 @@ export const getReview = createServerFn({ method: "POST" })
         })
         .from(videos)
         .innerJoin(projects, eq(videos.projectId, projects.id))
-        .where(and(eq(videos.id, videoId), isNull(videos.deletedAt), isNull(projects.deletedAt))),
+        .where(
+          and(
+            eq(videos.id, videoId),
+            isNull(videos.deletedAt),
+            isNull(projects.deletedAt),
+            videoAccess(memberIdForUser(clerkUserId), videos.id),
+          ),
+        ),
       db
         .select()
         .from(revisions)
-        .where(and(eq(revisions.videoId, videoId), eq(revisions.state, "ready")))
+        .where(
+          and(
+            eq(revisions.videoId, videoId),
+            eq(revisions.state, "ready"),
+            videoAccess(memberIdForUser(clerkUserId), revisions.videoId),
+          ),
+        )
         .orderBy(desc(revisions.number)),
       db
         .select({ ...commentColumns, revisionId: comments.revisionId })
         .from(comments)
+        .leftJoin(members, eq(comments.memberId, members.id))
         .innerJoin(revisions, eq(comments.revisionId, revisions.id))
-        .where(eq(revisions.videoId, videoId))
+        .where(
+          and(
+            eq(revisions.videoId, videoId),
+            videoAccess(memberIdForUser(clerkUserId), revisions.videoId),
+          ),
+        )
         .orderBy(comments.timecodeMs, comments.createdAt, comments.id),
     ]);
     const video = rows[0];
@@ -53,8 +82,13 @@ export const getReview = createServerFn({ method: "POST" })
         history: [] as { id: string; number: number }[],
         comments: [] as Comment[],
       };
-    // Renewal stays on the Revision being watched, even if a newer cut is ready.
-    const revision = data?.revisionId ? ready.find((row) => row.id === data.revisionId) : ready[0];
+    // Renewal stays on the Revision being watched, even if a newer cut is ready. A Revision
+    // number that matches no ready cut opens nothing, so the screen never swaps cuts silently.
+    const revision = data?.revisionId
+      ? ready.find((row) => row.id === data.revisionId)
+      : data?.revisionNumber === undefined
+        ? ready[0]
+        : ready.find((row) => row.number === data.revisionNumber);
     if (data?.revisionId && !revision) refuse(404, "not-found");
     const playback =
       revision?.muxPlaybackId && revision.durationMs !== null
@@ -101,7 +135,7 @@ export const markVideoRead = createServerFn({ method: "POST" })
       SELECT ${member.id}, videos.id, ${data.readAt} FROM videos
       JOIN projects ON projects.id = videos.project_id
       WHERE videos.id = ${data.videoId} AND videos.deleted_at IS NULL AND projects.deleted_at IS NULL
-      AND ${activeMember(member.id, "viewer")}
+      AND ${videoAccess(member.id, data.videoId)}
     `)
       .onConflictDoUpdate({
         target: [videoReads.memberId, videoReads.videoId],

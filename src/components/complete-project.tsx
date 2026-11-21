@@ -1,3 +1,5 @@
+import { Archive } from "lucide-react";
+import { Banner, BannerContent, BannerDescription, BannerAction } from "@/components/ui/banner";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,23 +29,47 @@ export function CompleteBanner({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted p-3">
-      <p>
-        This Project is Complete and {countdown(deleteAfter)}. It can be watched, but not changed.
-      </p>
-      {action}
-    </div>
+    <Banner
+      variant="warning"
+      role="region"
+      aria-label="Complete Project"
+      className="flex-wrap rounded-lg border"
+    >
+      <Archive aria-hidden />
+      <BannerContent>
+        <BannerDescription className="text-foreground">
+          This Project is Complete and {countdown(deleteAfter)}. It can be watched, but not changed.
+        </BannerDescription>
+      </BannerContent>
+      {action && <BannerAction>{action}</BannerAction>}
+    </Banner>
   );
 }
 
-export function CompleteProject({ name, onComplete }: { name: string; onComplete: () => void }) {
-  const [open, setOpen] = useState(false);
+export function CompleteProject({
+  name,
+  onComplete,
+  startOpen = false,
+  onClosed,
+}: {
+  name: string;
+  onComplete: () => void;
+  startOpen?: boolean;
+  onClosed?: () => void;
+}) {
+  const [open, setOpen] = useState(startOpen);
+  function changeOpen(next: boolean) {
+    setOpen(next);
+    if (!next) onClosed?.();
+  }
   const mobile = useIsMobile();
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<Button variant="secondary" aria-label={`Complete ${name}`} />}>
-        Complete
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={changeOpen}>
+      {!startOpen && (
+        <SheetTrigger render={<Button variant="secondary" aria-label={`Complete ${name}`} />}>
+          Complete
+        </SheetTrigger>
+      )}
       <SheetContent side={mobile ? "bottom" : "right"}>
         <SheetHeader>
           <SheetTitle>Complete Project?</SheetTitle>
@@ -56,7 +82,7 @@ export function CompleteProject({ name, onComplete }: { name: string; onComplete
           <SheetClose render={<Button variant="outline" />}>Keep open</SheetClose>
           <Button
             onClick={() => {
-              setOpen(false);
+              changeOpen(false);
               onComplete();
             }}
           >

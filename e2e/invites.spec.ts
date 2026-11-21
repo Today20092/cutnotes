@@ -76,7 +76,7 @@ test("an Owner revokes a pending Invite, and its link stops working", async ({
   await revoke.click();
   await page.getByRole("button", { name: / now$/ }).click();
   await expect(page.getByRole("button", { name: /^Revoke/ })).toHaveCount(before - 1);
-  await expect(page.getByRole("heading", { name: "Pending Invites" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Invitation history" })).toBeFocused();
 
   const visitor = await openAs(
     browser,

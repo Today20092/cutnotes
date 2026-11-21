@@ -8,7 +8,13 @@ const { createInvite, getAppShell, listInvites, redeemInvite, revokeInvite } = s
 const owner: Person = { clerkUserId: "user_owner", email: "owner@example.com" };
 const newcomer: Person = { clerkUserId: "user_new", email: "new@example.com" };
 
-type Pending = { id: string; role: string; expiresAt: number };
+type Pending = {
+  id: string;
+  role: string;
+  expiresAt: number;
+  usedAt: number | null;
+  revokedAt: number | null;
+};
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -42,7 +48,12 @@ const roleOf = async (person: Person) => {
 };
 
 const pending = async () =>
-  resultOf<{ invites: Pending[] }>(await call(listInvites, owner)).then((result) => result.invites);
+  resultOf<{ invites: Pending[] }>(await call(listInvites, owner)).then((result) =>
+    result.invites.filter(
+      (invite) =>
+        invite.usedAt === null && invite.revokedAt === null && invite.expiresAt > Date.now(),
+    ),
+  );
 
 beforeEach(async () => {
   await env.DB.batch([

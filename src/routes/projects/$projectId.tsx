@@ -1,23 +1,31 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import * as v from "valibot";
+import { idParam, sheetParam } from "@/lib/search-params";
+import { ActionMenu, type Action } from "@/components/action-menu";
+import { PeopleStrip } from "@/components/people";
+import { PeopleSheet } from "@/components/people-sheet";
+import { CopyPageLink } from "@/components/copy-page-link";
+import { createFileRoute, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { CompleteBanner, CompleteProject } from "@/components/complete-project";
 import { DeleteWork } from "@/components/delete-work";
-import { ChevronLeft, Clapperboard, Upload } from "lucide-react";
+import { ChevronLeft, Clapperboard, Upload, Users } from "lucide-react";
 import { useState } from "react";
 import { MemberScreen } from "@/components/member-screen";
 import {
   backLinkClass,
   canDelete,
+  canUpload,
   canWrite,
   unreadFirst,
   PageBreadcrumb,
   PageHeading,
-  RenameProjectButton,
+  ProjectNameSheet,
   videoGridClass,
   VideoGridSkeleton,
   WriteFeedback,
 } from "@/components/project-parts";
 import { UploadSheet } from "@/components/upload-parts";
 import { VideoTile } from "@/components/video-tile";
+import { StageBadge } from "@/components/stage-badge";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -34,7 +42,22 @@ import {
   type ProjectPage,
 } from "@/lib/projects";
 
+const sheets = [
+  "people",
+  "upload",
+  "rename",
+  "complete",
+  "delete",
+  "rename-video",
+  "delete-video",
+  "retry-video",
+] as const;
+
+// An unknown value is dropped rather than shown as an error page.
+const searchSchema = v.object({ sheet: sheetParam(sheets), video: idParam });
+
 export const Route = createFileRoute("/projects/$projectId")({
+  validateSearch: (search) => v.parse(searchSchema, search),
   head: () => ({ meta: [{ title: "Project · Cutnotes" }] }),
   // Only on intent: a first page load has no session token yet.
   loader: ({ context, params, preload }) => {
@@ -74,12 +97,25 @@ function Project() {
 
 function ProjectView({ page }: { page: ProjectPage }) {
   const navigate = useNavigate();
+  const goTo = Route.useNavigate();
   const renameProject = useRenameProject();
   const setComplete = useSetProjectComplete();
   const [status, setStatus] = useState("");
   const [failure, setFailure] = useState("");
   const { project, videos, member } = page;
-  const writable = canWrite(member.role);
+  const writable = canWrite(project.role);
+  const uploadable = canUpload(project.role);
+  const search = Route.useSearch();
+  // `#people` is the older link form, still sent in Invite history and old messages.
+  const hashPeople = useLocation({ select: (location) => location.hash === "people" });
+  const peopleOpen = search.sheet === "people" || hashPeople;
+  // One sheet at a time, named in the URL; `video` says which Video a Video sheet is for.
+  const setSheet = (sheet?: (typeof sheets)[number], video?: string) =>
+    void goTo({ search: (prev) => ({ ...prev, sheet, video }), hash: "", replace: true });
+  const isOwner = member.role === "owner";
+  const isOpen = project.completedAt === null;
+  // An Owner usually hands the first upload to the Project's editor.
+  const needsPeople = isOwner && project.people.length === 0;
 
   function rename(name: string) {
     setFailure("");
@@ -112,15 +148,73 @@ function ProjectView({ page }: { page: ProjectPage }) {
     );
   }
 
-  const uploadSheet = (
+  const actions: Action<(typeof sheets)[number]>[] = [
+    ...(writable && isOpen
+      ? [
+          {
+            id: "rename" as const,
+            label: "Rename",
+            sheet: (onClosed: () => void) => (
+              <ProjectNameSheet
+                title="Rename Project"
+                submitLabel="Save name"
+                initialName={project.name}
+                onSubmit={rename}
+                startOpen
+                onClosed={onClosed}
+              />
+            ),
+          },
+        ]
+      : []),
+    ...(isOwner && isOpen
+      ? [
+          {
+            id: "complete" as const,
+            label: "Complete… (deleted in 14 days)",
+            sheet: (onClosed: () => void) => (
+              <CompleteProject
+                name={project.name}
+                onComplete={() => changeComplete(true)}
+                startOpen
+                onClosed={onClosed}
+              />
+            ),
+          },
+        ]
+      : []),
+    ...(isOwner
+      ? [
+          {
+            id: "delete" as const,
+            label: "Delete",
+            destructive: true,
+            sheet: (onClosed: () => void) => (
+              <DeleteWork
+                kind="Project"
+                id={project.id}
+                name={project.name}
+                startOpen
+                onClosed={onClosed}
+                onDeleted={() => void navigate({ to: "/" })}
+              />
+            ),
+          },
+        ]
+      : []),
+  ];
+
+  const uploadSheet = (label: string, variant?: "secondary") => (
     <UploadSheet
+      open={search.sheet === "upload"}
+      onOpenChange={(next) => setSheet(next ? "upload" : undefined)}
       destination={{
         kind: "new",
         projects: [{ id: project.id, name: project.name }],
       }}
       trigger={
-        <Button>
-          <Upload aria-hidden /> Upload
+        <Button variant={variant}>
+          <Upload aria-hidden /> {label}
         </Button>
       }
     />
@@ -132,9 +226,30 @@ function ProjectView({ page }: { page: ProjectPage }) {
         trail={[{ label: "Projects", link: <Link to="/" /> }]}
         current={project.name}
       />
-      <PageHeading title={project.name}>
-        {writable && project.completedAt === null && videos.length > 0 && uploadSheet}
+      <PageHeading
+        title={project.name}
+        badge={<StageBadge stage={project.stage} />}
+        menu={
+          <ActionMenu
+            label={`More actions for ${project.name}`}
+            actions={actions}
+            current={search.sheet}
+            onCurrentChange={setSheet}
+          />
+        }
+      >
+        {uploadable && isOpen && videos.length > 0 && uploadSheet("Upload")}
+        <CopyPageLink kind="project" path={`/projects/${project.id}`} />
       </PageHeading>
+      <PeopleStrip projectId={project.id} people={project.people} canManage={isOwner} />
+      <PeopleSheet
+        projectId={project.id}
+        name={project.name}
+        people={project.people}
+        canManage={isOwner}
+        open={peopleOpen}
+        onOpenChange={(next) => setSheet(next ? "people" : undefined)}
+      />
       <WriteFeedback status={status} failure={failure} />
       {project.deleteAfter !== null && (
         <CompleteBanner
@@ -152,58 +267,52 @@ function ProjectView({ page }: { page: ProjectPage }) {
           }
         />
       )}
-      {videos.length === 0 ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Clapperboard aria-hidden />
-            </EmptyMedia>
-            <EmptyTitle>No Videos yet</EmptyTitle>
-            <EmptyDescription>
-              {writable
-                ? "Upload the first cut to start the review."
-                : "An Owner or Editor will upload the first cut here."}
-            </EmptyDescription>
-          </EmptyHeader>
-          {writable && project.completedAt === null && <EmptyContent>{uploadSheet}</EmptyContent>}
-        </Empty>
-      ) : (
-        <ul className={videoGridClass}>
-          {unreadFirst(videos).map((video) => (
-            <li key={video.id} className="min-w-0">
-              <VideoTile video={video} writable={writable} deletable={canDelete(member, video)} />
-            </li>
-          ))}
-        </ul>
-      )}
-      {(member.role === "owner" || (writable && project.completedAt === null)) && (
-        <section
-          aria-labelledby="manage-project-heading"
-          className="mt-8 flex flex-col gap-4 border-t pt-6"
-        >
-          <h2 id="manage-project-heading" className="text-lg font-semibold">
-            Manage Project
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {writable && project.completedAt === null && (
-              <RenameProjectButton name={project.name} onRename={rename} labeled />
+      <section aria-labelledby="videos-heading" className="flex flex-col gap-4">
+        <h2 id="videos-heading" className="text-section">
+          Videos
+        </h2>
+        {videos.length === 0 ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Clapperboard aria-hidden />
+              </EmptyMedia>
+              <EmptyTitle>No Videos yet</EmptyTitle>
+              <EmptyDescription>
+                {needsPeople
+                  ? "Add your editor so they can upload the first cut."
+                  : uploadable
+                    ? "Upload the first cut to start the review."
+                    : "Someone with upload access will add it here."}
+              </EmptyDescription>
+            </EmptyHeader>
+            {uploadable && isOpen && (
+              <EmptyContent className="flex-row flex-wrap justify-center">
+                {needsPeople && (
+                  <Button onClick={() => setSheet("people")}>
+                    <Users aria-hidden /> Add people
+                  </Button>
+                )}
+                {uploadSheet("Upload first cut", needsPeople ? "secondary" : undefined)}
+              </EmptyContent>
             )}
-            {member.role === "owner" && project.completedAt === null && (
-              <CompleteProject name={project.name} onComplete={() => changeComplete(true)} />
-            )}
-            {member.role === "owner" && (
-              <DeleteWork
-                kind="Project"
-                id={project.id}
-                name={project.name}
-                onDeleted={() => {
-                  void navigate({ to: "/" });
-                }}
-              />
-            )}
-          </div>
-        </section>
-      )}
+          </Empty>
+        ) : (
+          <ul className={videoGridClass}>
+            {unreadFirst(videos).map((video) => (
+              <li key={video.id} className="min-w-0">
+                <VideoTile
+                  video={video}
+                  writable={writable}
+                  deletable={canDelete({ ...member, role: project.role }, video)}
+                  sheet={search.video === video.id ? search.sheet : undefined}
+                  onSheetChange={(sheet) => setSheet(sheet, sheet ? video.id : undefined)}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

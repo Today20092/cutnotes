@@ -7,12 +7,20 @@ import {
   listProjects,
   renameProject,
   reopenProject,
+  setProjectStage,
 } from "@/server/projects";
-import { deleteVideo, renameVideo, setVideoStatus } from "@/server/videos";
-import type { VideoStatus } from "@/server/db/schema";
-import { confirmedProjectWrite, projectsKey, projectWrite, videoWrite } from "@/lib/writes";
+import { approveVideo, deleteVideo, renameVideo, requestChanges } from "@/server/videos";
+import type { ProjectStage } from "@/lib/project-stage";
+import {
+  confirmedProjectWrite,
+  projectsKey,
+  projectWrite,
+  reviewKey,
+  videoWrite,
+} from "@/lib/writes";
 
 const FOLLOW_PROCESSING_MS = 5000;
+const SCREEN_REFRESH_MS = 30_000;
 
 /** Keeps a screen current while one of its Revisions is on its way to ready. */
 const followProcessing = (query: {
@@ -28,7 +36,8 @@ export const projectListQuery = queryOptions({
   queryKey: projectsKey,
   queryFn: () => listProjects(),
   retry: false,
-  refetchInterval: followProcessing,
+  // The board also learns of a new cut while the Owner leaves it open; React Query pauses this in a hidden tab.
+  refetchInterval: (query) => followProcessing(query) || SCREEN_REFRESH_MS,
 });
 
 export const projectQuery = (projectId: string) =>
@@ -36,7 +45,8 @@ export const projectQuery = (projectId: string) =>
     queryKey: [...projectsKey, projectId],
     queryFn: () => getProject({ data: { projectId } }),
     retry: false,
-    refetchInterval: followProcessing,
+    // An Owner waiting on an empty Project sees the first cut arrive.
+    refetchInterval: (query) => followProcessing(query) || SCREEN_REFRESH_MS,
   });
 
 export type ProjectList = Awaited<ReturnType<typeof listProjects>>;
@@ -50,9 +60,9 @@ export const isPendingProject = (project: ProjectSummary) => project.id.startsWi
 export function useCreateProject() {
   const client = useQueryClient();
   return useMutation(
-    projectWrite<ProjectList | ProjectPage, string>(client, {
-      mutationFn: (name) => createProject({ data: { name } }),
-      apply: (name) =>
+    projectWrite<ProjectList | ProjectPage, { name: string }, { id: string }>(client, {
+      mutationFn: (input) => createProject({ data: input }),
+      apply: ({ name }) =>
         client.setQueryData(
           projectListQuery.queryKey,
           (list) =>
@@ -62,9 +72,15 @@ export function useCreateProject() {
                 {
                   id: `${PENDING_PREFIX}${crypto.randomUUID()}`,
                   name,
+                  role: list.member.role === "owner" ? ("owner" as const) : ("editor" as const),
                   createdAt: Date.now(),
                   completedAt: null,
                   deleteAfter: null,
+                  stage: "new" as const,
+                  openNotes: 0,
+                  latestRevision: null,
+                  changesRequested: false,
+                  people: [],
                 },
                 ...list.projects,
               ],
@@ -135,10 +151,36 @@ export function useSetProjectComplete() {
   );
 }
 
+/** Shown at once on the board and the Project page, undone if it fails. */
+export function useSetProjectStage() {
+  const client = useQueryClient();
+  return useMutation(
+    projectWrite<ProjectList | ProjectPage, { projectId: string; stage: ProjectStage }>(client, {
+      mutationFn: (input) => setProjectStage({ data: input }),
+      apply: ({ projectId, stage }) =>
+        client.setQueriesData<ProjectList | ProjectPage>(
+          { queryKey: projectListQuery.queryKey },
+          (data) =>
+            data &&
+            ("projects" in data
+              ? {
+                  ...data,
+                  projects: data.projects.map((project) =>
+                    project.id === projectId ? { ...project, stage } : project,
+                  ),
+                }
+              : data.project.id === projectId
+                ? { ...data, project: { ...data.project, stage } }
+                : data),
+        ),
+    }),
+  );
+}
+
 /** A write shown at once on every screen holding this Video, undone if it fails. */
 function useVideoWrite<Input extends { videoId: string }>(
   videoId: string,
-  field: "title" | "status",
+  field: "title",
   mutationFn: (input: Input) => Promise<unknown>,
   apply: (video: VideoSummary, input: Input) => VideoSummary,
 ) {
@@ -161,13 +203,22 @@ export const useRenameVideo = (videoId: string) =>
     (video, { title }) => ({ ...video, title }),
   );
 
-export const useSetVideoStatus = (videoId: string) =>
-  useVideoWrite(
-    videoId,
-    "status",
-    (input: { videoId: string; status: VideoStatus }) => setVideoStatus({ data: input }),
-    (video, { status }) => ({ ...video, status }),
-  );
+/**
+ * A review decision on the Revision shown on the Video page: it changes the Video's Status and
+ * may move its Project. The server refuses it once a newer cut is ready.
+ */
+export function useReviewDecision(videoId: string, revisionId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (decision: "requestChanges" | "approve") =>
+      (decision === "approve" ? approveVideo : requestChanges)({ data: { videoId, revisionId } }),
+    onSettled: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: reviewKey(videoId) }),
+        client.invalidateQueries({ queryKey: projectsKey }),
+      ]),
+  });
+}
 
 export function useDeleteWork(kind: "Project" | "Video", id: string) {
   const client = useQueryClient();

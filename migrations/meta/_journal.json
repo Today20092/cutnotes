@@ -57,6 +57,34 @@
       "when": 1794418585025,
       "tag": "0007_magenta_blue_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1794513656033,
+      "tag": "0008_mature_adam_warlock",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1794517489819,
+      "tag": "0009_skinny_legion",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1795089383039,
+      "tag": "0010_fantastic_tenebrous",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1795093114349,
+      "tag": "0011_lying_emma_frost",
+      "breakpoints": true
     }
   ]
 }

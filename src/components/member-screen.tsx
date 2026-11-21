@@ -11,16 +11,17 @@ import { getAppShell } from "@/server/app-shell";
 const isRefusal = (error: unknown, status: number) =>
   error instanceof Response && error.status === status;
 
-/** For screens whose only call is the caller's own Member record. */
+/** Shared across screens so Clerk profile refreshes do not run on every navigation. */
 export const appShellQuery = queryOptions({
   queryKey: ["app-shell"],
   queryFn: () => getAppShell(),
+  staleTime: 5 * 60_000,
   retry: false,
 });
 
 /**
- * A screen whose single server call also answers who the caller is. Sign-in
- * and refusal states come from that call, and loading stays inside the shell.
+ * Sign-in and refusal states come from the screen's server call; the cached
+ * account query supplies the avatar without delaying the screen's content.
  */
 export function MemberScreen<Data, Key extends QueryKey>({
   query,
@@ -36,6 +37,7 @@ export function MemberScreen<Data, Key extends QueryKey>({
   const { isLoaded, isSignedIn } = useAuthStatus();
   const team = useTeam();
   const screen = useQuery({ ...query, enabled: isLoaded && isSignedIn });
+  const profile = useQuery({ ...appShellQuery, enabled: isLoaded && isSignedIn });
   const isNotFound = Boolean(notFound) && isRefusal(screen.error, 404);
 
   if (!isLoaded || !team.data)
@@ -75,7 +77,11 @@ export function MemberScreen<Data, Key extends QueryKey>({
         children(screen.data)
       );
   }
-  return <AppShell team={team.data}>{content}</AppShell>;
+  return (
+    <AppShell team={team.data} member={profile.data?.member}>
+      {content}
+    </AppShell>
+  );
 }
 
 /** Shown only when loading takes long, which is how a broken sign-in looks. */

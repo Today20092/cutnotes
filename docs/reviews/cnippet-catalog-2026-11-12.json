@@ -1,0 +1,345 @@
+[
+  {
+    "category": "Accordion12",
+    "docs": "https://ui.cnippet.dev/ui/data/accordion",
+    "variants": "Single (one open at a time)\nIs there a free trial?\nYes. Every plan starts with a 14-day trial, no card required.\nCan I change plans later?\nWhat happens when I cancel?\nMultiple (any can be open)\nIs there a free trial?\nYes. Every plan starts with a 14-day trial, no card required.\nCan I change plans later?\nUpgrade or downgrade at any time from Billing. Changes are prorated.\nWhat happens when I cancel?\nShowcase: Single And Multiple\nView code\nData Security\nWe use industry-standard AES-256 encryption to protect your sensitive information at rest and in transit.\nAPI Integration\nTeam Collaboration\nWith Plus/Minus Indicators\nView code\nWith Borders And Rounded Corners\nView code\nEmbedded Within A Card\nView code\nNested Accordion Example With Bordered Items\nView code\nUser List Accordion With Avatars And Role Indicators\nView code\nChangelog / Release Notes With Versioned Entries\nView code\nSearchable FAQ With Live Keyword Filter\nView code\nSettings Sidebar Navigation With Icon Sections\nView code\nJob Board Listings With Requirements And Apply Action\nView code\nOnboarding Step Tracker With Completion State\nView code\nProduct Specifications Table By Category\nView code"
+  },
+  {
+    "category": "Alert15",
+    "docs": "https://ui.cnippet.dev/ui/feedback/alert",
+    "variants": "Heads up!\n\nDescribe what can be done about it here.\n\nDefault\nView code\nAlert!\nThis is an alert with icon, title and description.\nWith Icon\nView code\nWith Icon And Action Buttons\nView code\nInfo Alert\nView code\nSuccess Alert\nView code\nWarning Alert\nView code\nError Alert\nView code\nStacked Alerts Within A Frame\nView code\nAlert With Actions Integrated Within A Frame\nView code\nFeature Discovery Alert\nView code\nDismissible Announcement Banner With CTA\nView code\nCookie Consent Banner With Accept And Decline\nView code\nStorage Limit Warning With Usage Progress Bar\nView code\nUpdate Available With Async Install Feedback\nView code\nEmail Verification With Resend Countdown\nView code"
+  },
+  {
+    "category": "Alert Dialog15",
+    "docs": "https://ui.cnippet.dev/ui/overlays/alert-dialog",
+    "variants": "Delete Account\nDefault\nView code\nSmall (Media)\nSmall Size Alert Dialog\nView code\nAlert Dialog Within A Standard Dialog\nView code\nTask Success Confirmation\nView code\nAccount Deactivation Confirmation\nView code\nWarning For Unsaved Changes\nView code\nConfirmation For Successful E-Ticket Registration\nView code\nSystem Update Notification\nView code\nBilling Warning For Expired Subscriptions\nView code\nLogout Confirmation Dialog\nView code\nFile Overwrite Confirmation With Three-Way Choice\nView code\nSubscription Downgrade Warning With Feature Loss List\nView code\nTransfer Ownership With Typed Confirmation Input\nView code\nClear All Data With Checkbox Consent Gate\nView code\nRate Limit Exceeded With Live Countdown Timer\nView code"
+  },
+  {
+    "category": "Autocomplete11",
+    "docs": "https://ui.cnippet.dev/ui/pickers/autocomplete",
+    "variants": "City\nGo to\nSmall\nDisabled\nShowcase: Clear, Trigger, Groups, Sizes And Disabled\nView code\nGrouped Items\nView code\nLimit Results\nView code\nAsync Search\nView code\nForm Integration\nView code\nTimezone Picker\nView code\nPerson Picker\nView code\nCountry Picker With Flag And ISO Code\nView code\nRepository Picker With Language And Star Count\nView code\nPriority Selector With Icon And Description\nView code\nTech Stack Picker Grouped By Category\nView code"
+  },
+  {
+    "category": "Avatar16",
+    "docs": "https://ui.cnippet.dev/ui/media/avatar",
+    "variants": "Sizes\nSC\nSC\nSC\nSC\nRadius\nSC\nSC\nSC\nFallback\nMP\nJL\nGroup\nSC\nMR\nEW\n+3\nShowcase: Sizes, Radius, Fallback And Group\nView code\nAJ\nAlex Johnson\nPro\nFounder & CEO\nWith Details And Badge\nView code\nAvatar Social Proof With Text Label\nView code\nCompact Social Proof With Initials\nView code\nWith Hover Effect\nView code\nWith Hover Effect & Tooltips\nView code\nAvatar Inside An Empty State Example\nView code\nWith Loading State Demonstration\nView code\nWith Custom Badge\nView code\nWith Ring Animation\nView code\nWith Dropdown Menu\nView code\nTeam Grid With Online Presence Status Dots\nView code\nPull Request Comment Thread\nView code\nInteractive Assignee Picker With Selection State\nView code\nContributor Leaderboard With Rank And Commit Count\nView code\nProfile Card With Stats And Action Buttons\nView code"
+  },
+  {
+    "category": "Badge6",
+    "docs": "https://ui.cnippet.dev/ui/feedback/badge",
+    "variants": "Variants\nDefault\nOutline\nSecondary\nDestructive\nInfo\nSuccess\nWarning\nError\nSizes\nSmall\nDefault\nLarge\nWith icon\nVerified\nPending\nCounts\n7\n24\n99+\nShowcase: Variants, Sizes, Icons And Counts\nView code\nOnline\nBusy\nAway\nOffline\nStatus Dot Indicators (Online, Busy, Away, Offline)\nView code\nRelease Channel Tags (Stable, Beta, Experimental, Deprecated)\nView code\nSubscription Plan Tiers With Pricing\nView code\nNotification Category Badges With Unread Counts\nView code\nPriority Labels In A Task List\nView code"
+  },
+  {
+    "category": "Banner3",
+    "docs": "https://ui.cnippet.dev/ui/feedback/banner",
+    "variants": "Launch week: 30% off annual plans\n\nEnds Friday, Oct 23.\n\nUpgrade\n\nScheduled maintenance\n\nSun, Oct 25 · 02:00–03:00 UTC. Deploys will be paused.\n\nDashboard\n\nBanners sit above the page and close for this visit.\n\nDismissible Promo And Maintenance Banners Above A Page\nView code\n\nNew in v4.2\n\nSaved views for every table.\n\nYou're viewing a shared workspace\n\nChanges are visible to 12 people.\n\nAll systems operational\n\nLast incident 41 days ago.\n\nYour trial ends in 3 days\n\nAdd a card to keep your projects.\n\nPayment failed\n\nWe'll retry on Oct 21.\n\nBanner Tones: Default, Info, Success, Warning, Error\nView code\nCookie Consent Bar With Two Actions\nView code"
+  },
+  {
+    "category": "Breadcrumb10",
+    "docs": "https://ui.cnippet.dev/ui/navigation/breadcrumb",
+    "variants": "Home\nProjects\nWebsite redesign\nHome\n/\nSettings\n/\nBilling\nDocs\nMore\nComponents\nBreadcrumb\nShowcase: Separators, Home Icon And Ellipsis\nView code\nVC\nVercel\n@mayapatel\nProjects\nWith Avatar\nView code\nInside Card\nView code\nButton-Style\nView code\nWith Project, Sser And Document Info\nView code\nFile Path Breadcrumb With Folder And File Icons In Monospace\nView code\nCheckout Step Progress Breadcrumb With Numbered Circles And Navigation Buttons\nView code\nAdmin Hierarchy Breadcrumb With Colored Icon Badges Per Level\nView code\nPage Header Breadcrumb With Edit And Share Action Buttons\nView code\nCompact Breadcrumb With Ellipsis And Hidden-Items Count Badge\nView code"
+  },
+  {
+    "category": "Button12",
+    "docs": "https://ui.cnippet.dev/ui/actions/button",
+    "variants": "Variants\nDefault\nOutline\nSecondary\nDestructive\nDestructive Outline\nGhost\nLink\nSizes\nXS\nSM\nDefault\nLG\nXL\nWith icon\nDownload\nAdd item\nDelete\nLearn more\nIcon only\nStates\nDisabled\nSaving\nShowcase: Variants, Sizes, Icons And States\nView code\nStar\n589\nStar Button With Count\nView code\nButton With An Unread Badge\nView code\nButton With Icon, Label, And Shortcut Keys\nView code\nIcon-Only Copy Button With Feedback\nView code\nAnimated Hamburger / Close Toggle Button\nView code\nSliding Icon Button (Hover Reveal)\nView code\nSocial Login Buttons With GitHub, Google, And Email Options\nView code\nLoading And Success State Button With Animated Icon Swap\nView code\nFile Upload Button With Attachment Preview And Clear Action\nView code\nSplit Button With Primary Action And Dropdown Menu Via Group\nView code\nSegmented View Toggle With List, Table, And Kanban Options\nView code"
+  },
+  {
+    "category": "Calendar15",
+    "docs": "https://ui.cnippet.dev/ui/pickers/calendar",
+    "variants": "Single date\nNovember 2026\nSu\tMo\tTu\tWe\tTh\tFr\tSa\n\n1\n\t\n2\n\t\n3\n\t\n4\n\t\n5\n\t\n6\n\t\n7\n\n\n8\n\t\n9\n\t\n10\n\t\n11\n\t\n12\n\t\n13\n\t\n14\n\n\n15\n\t\n16\n\t\n17\n\t\n18\n\t\n19\n\t\n20\n\t\n21\n\n\n22\n\t\n23\n\t\n24\n\t\n25\n\t\n26\n\t\n27\n\t\n28\n\n\n29\n\t\n30\n\t\n1\n\t\n2\n\t\n3\n\t\n4\n\t\n5\nRange with month and year dropdowns\nJan\nFeb\nMar\nApr\nMay\nJun\nJul\nAug\nSep\nOct\nNov\nDec\nNov\n2020\n2021\n2022\n2023\n2024\n2025\n2026\n2027\n2028\n2029\n2030\n2026\nNovember 2026\nSu\tMo\tTu\tWe\tTh\tFr\tSa\n\n1\n\t\n2\n\t\n3\n\t\n4\n\t\n5\n\t\n6\n\t\n7\n\n\n8\n\t\n9\n\t\n10\n\t\n11\n\t\n12\n\t\n13\n\t\n14\n\n\n15\n\t\n16\n\t\n17\n\t\n18\n\t\n19\n\t\n20\n\t\n21\n\n\n22\n\t\n23\n\t\n24\n\t\n25\n\t\n26\n\t\n27\n\t\n28\n\n\n29\n\t\n30\n\t\n1\n\t\n2\n\t\n3\n\t\n4\n\t\n5\nShowcase: Single Date And Range With Dropdowns\nView code\nNovember 2026\nSu\tMo\tTu\tWe\tTh\tFr\tSa\n\n1\n\t\n2\n\t\n3\n\t\n4\n\t\n5\n\t\n6\n\t\n7\n\n\n8\n\t\n9\n\t\n10\n\t\n11\n\t\n12\n\t\n13\n\t\n14\n\n\n15\n\t\n16\n\t\n17\n\t\n18\n\t\n19\n\t\n20\n\t\n21\n\n\n22\n\t\n23\n\t\n24\n\t\n25\n\t\n26\n\t\n27\n\t\n28\n\n\n29\n\t\n30\n\t\n1\n\t\n2\n\t\n3\n\t\n4\n\t\n5\n\nClick any day to select multiple dates.\n\nMultiple Selection\nView code\nAppointment Booking\nView code\nTwo-Month Range Picker\nView code\nEvent Indicators\nView code\nDate Picker With Presets\nView code\nDate Of Birth\nView code\nWeek Picker\nView code\nHoliday Highlights With Name On Select\nView code\nHotel Stay Check-In And Check-Out\nView code\nHabit Tracker With Completion Indicators And Monthly Streak Counter\nView code\nSprint Planner With Two-Month Range Selection And Duration Stats\nView code\nTime Off Request With Leave Type Selector And Range Picker\nView code\nMini Year View With All 12 Months In A Compact Grid\nView code\nTime Slot Booking With Available/Booked Slot Grid And Confirmation\nView code"
+  },
+  {
+    "category": "Card20",
+    "docs": "https://ui.cnippet.dev/ui/layout/card",
+    "variants": "Create project\nDeploy your new project in one-click.\nName\nFramework\nNext.js\nDeploy\n\nThis will take a few seconds to complete.\n\nDefault\nView code\nWeekly digest\nActivity in Acme Workspace, Oct 6 – 12.\n\n14 pull requests merged, 3 incidents resolved and 2 new members joined the team this week.\n\nWith Border\nView code\nWith Border Separation\nView code\nWith Link\nView code\nWith Dropdown Menu\nView code\nWith Image\nView code\nWith Image Scale Hover Effect\nView code\nWith Image And Shadow Fade Effect\nView code\nWith Stacked Depth Effect\nView code\nLogin Form Card\nView code\nExpandable Content Card\nView code\nWith Overflow Menu\nView code\nWith Header Badge & Actions\nView code\nWith Icon, Title And Link\nView code\nWith Header Label And Link\nView code\nGitHub Repository List Cards With Language, Star, And Fork Counts\nView code\nSettings Card With Sidebar Navigation And Swappable Content Panels\nView code\nPricing Plan Card With Feature Checklist And Highlighted Ring\nView code\nEvent Card With Date, Time, Location, Attendee Count, And RSVP Button\nView code\nStats Dashboard Grid With Four Metric Tiles And Trend Indicators\nView code"
+  },
+  {
+    "category": "Carousel12",
+    "docs": "https://ui.cnippet.dev/ui/media/carousel",
+    "variants": "Horizontal, two per view\nDesign\n\nDesigning calm interfaces\n\n6 min read\nEngineering\n\nShipping a design system in a monorepo\n\n4 min read\nAccessibility\n\nKeyboard support that just works\n\n8 min read\nProduct\n\nWriting release notes people read\n\n5 min read\nEngineering\n\nTheming with CSS variables\n\n7 min read\nPrevious slide\nNext slide\nVertical\nDesign\n\nDesigning calm interfaces\n\n6 min read\nEngineering\n\nShipping a design system in a monorepo\n\n4 min read\nAccessibility\n\nKeyboard support that just works\n\n8 min read\nProduct\n\nWriting release notes people read\n\n5 min read\nEngineering\n\nTheming with CSS variables\n\n7 min read\nPrevious slide\nNext slide\nShowcase: Horizontal And Vertical\nView code\n\nBuild fast\n\nShip production-ready components today\n\nStay consistent\n\nOne design system, every surface\n\nScale with ease\n\nFrom prototype to enterprise\n\nFully accessible\n\nWCAG 2.1 AA out of the box\n\nOpen source\n\nFree forever, community-driven\n\nAutoplay With Indicators\nView code\nTestimonials\nView code\nProduct Showcase\nView code\nOnboarding Steps\nView code\nTeam Members\nView code\nGallery With Thumbnails\nView code\nTestimonial Carousel With Avatar, Quote, And Dot Indicators\nView code\nPricing Plan Carousel With Arrow Navigation And Highlighted Active Plan\nView code\nMedia Gallery Carousel With Caption Badge And Progress Dots\nView code\nChangelog Carousel With Drag-Free Multi-Slide And Version Tags\nView code\nFeature Highlight Carousel With Icon Slides And Prev/Next Controls\nView code"
+  },
+  {
+    "category": "Chart15",
+    "variants": "\n\nMulti-Series Bar Chart\nView code\nJan\nFeb\nMar\nApr\nMay\nJun\nArea Chart\nView code\nBar Chart\nView code\nLine Chart\nView code\nPie Chart\nView code\nRadar Chart\nView code\nRadial Bar Chart\nView code\nStacked Monthly Expense Bars\nView code\nScatter Plot Of Scores\nView code\nRevenue Bars With Target Reference Line\nView code\nStacked Area Chart With Two Revenue Series And A Y-Axis Legend\nView code\nHorizontal Bar Chart Ranking Traffic Channels By Session Count\nView code\nDonut Chart With Center Label Showing Team Headcount By Department\nView code\nMulti-Series Line Chart Comparing API Response Percentiles (P50/P90/P99)\nView code\nComposed Chart Overlaying Revenue Bars With A Growth-Rate Line On Dual Axes\nView code"
+  },
+  {
+    "category": "Checkbox13",
+    "docs": "https://ui.cnippet.dev/ui/forms/checkbox",
+    "variants": "States\nUnchecked\nChecked\nIndeterminate\nDisabled\nWith description\nAccept terms\n\nYou agree to our Terms of Service and Privacy Policy.\n\nProduct updates\n\nOne email a month about new features.\n\nShowcase: States And Descriptions\nView code\n\nEnable notifications\n\nYou can enable or disable notifications at any time.\n\nCard Style\nView code\nForm Integration\nView code\nPayment Method Card Checkbox\nView code\nSelect All With Indeterminate State\nView code\nIssue Label Picker\nView code\nNotification Channel Selector\nView code\nMulti-Consent Registration Gate\nView code\nWeekly Availability Grid With Checkboxes Per Day And Time Slot\nView code\nRole Permissions Picker With Colored Badge Per Access Level\nView code\nNotification Preferences Matrix With Event Rows And Channel Columns\nView code\nPlan Add-On Selector With Dynamic Price Total As Features Are Toggled\nView code\nSprint Task Checklist With Priority Badges And Completion Celebration\nView code"
+  },
+  {
+    "category": "Checkbox Group15",
+    "docs": "https://ui.cnippet.dev/ui/forms/checkbox-group",
+    "variants": "Next.js\nVite\nAstro\nDefault\nView code\nNext.js\nVite\nAstro\nWith Disabled Item\nView code\nParent Checkbox\nView code\nNested Parent Checkbox\nView code\nForm Integration\nView code\nWeekday Picker\nView code\nLanguage Picker With Selection Badges\nView code\nNotification Preferences With Descriptions\nView code\nFeature Flags\nView code\nNotification Channels With Icons\nView code\nTwo-Level Nested Group For Tech Stack Selection By Frontend And Backend Category\nView code\nRecurring Schedule Picker With Weekday And Weekend Sub-Groups And Day Count Badge\nView code\nIntegration Enablement List With Card Rows And A Master Enable-All Parent Checkbox\nView code\nData Export Selector With Two Section Groups And An Item Count Summary\nView code\nFood Preference Picker With Independent Cuisine And Dietary Checkbox Groups\nView code"
+  },
+  {
+    "category": "Collapsible10",
+    "docs": "https://ui.cnippet.dev/ui/data/collapsible",
+    "variants": "Explorer\nOutline\ncomponents\nlib\nhooks\napp.tsx\npackage.json\nTree View With File Actions\nView code\nUnit Pricing\nBase Price\n$\nCollapsible Form Fields\nView code\nMulti-Level Collapsible Menu\nView code\nRead More Content Expander\nView code\nCI/CD Build Step Log Viewer\nView code\nIncident Status With Timeline\nView code\nSidebar Filter Panel With Collapsible Groups, Checkboxes, And Active Count\nView code\nPackage Dependency List With Version Badges And Expandable Package Names\nView code\nTeam Directory With Status Dots, Role Labels, And Per-Team Collapsible Sections\nView code\nPrivacy Policy Card With Accordion Sections And Single-Panel-Open Behavior\nView code"
+  },
+  {
+    "category": "Color Picker3",
+    "docs": "https://ui.cnippet.dev/ui/pickers/color-picker",
+    "variants": "Brand colour\n\nBrand Colour Picker With Area, Hue, Hex And Presets\nView code\n\nAccent colour\n\n#14b8a6\nColour Picker In A Popover Behind A Swatch Button\nView code\nLabel Colour Swatches With Hex Input\nView code"
+  },
+  {
+    "category": "Combobox9",
+    "docs": "https://ui.cnippet.dev/ui/pickers/combobox",
+    "variants": "Assignee\nLabels\nBug\nDesign\nSmall\nDisabled\nShowcase: Single, Multiple Chips, Sizes And Disabled\nView code\nAsync Search\nView code\nRich Item Rendering\nView code\nCreatable Option When Nothing Matches\nView code\nCity Picker With Timezone And Country Code Trailing Metadata\nView code\nSprint Selector With Status Badge And Date Range Per Item\nView code\nFont Picker Grouped By Category With Live Preview Sentence\nView code\nTimezone Picker With UTC Offset Badge In Trigger And Region Info Below\nView code\nCurrency Picker With Symbol Icon In Trigger And Code Trailing Each Item\nView code"
+  },
+  {
+    "category": "Command15",
+    "docs": "https://ui.cnippet.dev/ui/overlays/command",
+    "variants": "Open Command Palette\n⌘\nJ\nDefault\nView code\nSimple Command\nSimple Command\nView code\nCommand With Groups\nView code\nCommand With File Search\nView code\nUser Search Command With Avatars\nView code\nAction Palette With Keyboard Shortcuts\nView code\nWith Recent And Favorites Sections\nView code\nProject Switcher\nView code\nInvite Members With Multi-Select\nView code\nLabel Picker With Multi-Select\nView code\nAccount Settings Palette With Grouped Profile, Preferences, And Sign-Out Actions\nView code\nRepository Search Palette Showing Issues, Pull Requests, Branches, And Files\nView code\nGo-To-Page Palette With Shortcut Hints And Arrow Icon For Unbound Items\nView code\nAppearance Picker With Theme And Accent-Color Options And Active Check Marks\nView code\nQuick-Open Palette With Page List, Notification Badges, And A Keyboard Footer\nView code"
+  },
+  {
+    "category": "Context Menu15",
+    "docs": "https://ui.cnippet.dev/ui/navigation/menu",
+    "variants": "acme.dev/docs/getting-started\nWork\nDashboard\nPull requests\nDesign system\n\nGetting started\n\nInstall the CLI, add your first component and ship it.\n\nRight-click the page for browser options.\n\nBrowser Page With Submenu, Checkbox Toggles And Profile Radio\nView code\nlogo-mark.svg\nBrand\nlaunch-hero.png\nCampaigns\npricing-og.png\nCampaigns\nteam-offsite.jpg\nBrand\n\nRight-click an asset to move or share it.\n\nMedia Library With Move To And Share Submenus\nView code\nCode Editor With Keyboard Shortcuts\nView code\nCalendar Events With Labelled Action Groups\nView code\nSpreadsheet Cells With Icon Actions\nView code\nData Table With Column Visibility Checkboxes\nView code\nFolder View With Sort By And View Radio Groups\nView code\nInbox Rows With Destructive Delete\nView code\nCanvas Layers Opening On Each Side\nView code\nTeam Members Dialog With Role Submenu\nView code\nBookmark List With Per-Item Star Toggle, Open, Copy, Share, And Delete Actions\nView code\nRich-Text Editor With Checkbox Formatting And Alignment Submenu\nView code\nFile Explorer Rows With Extension Badge, Rename, Download, And Delete Per File\nView code\nSocial Feed With Upvote/Downvote Controls And A Report Submenu Per Post\nView code\nTask Board With Inline Status Radio, Priority Submenu, Reassign, And Delete\nView code"
+  },
+  {
+    "category": "Data Table8",
+    "docs": "https://ui.cnippet.dev/ui/data/data-table",
+    "variants": "Status\nPriority\nView\n\tTask\n\tTitle\n\tStatus\n\tPriority\n\n\n\tACM-400\t\nBug\nCheckout fails for saved cards\n\t\nTodo\n\t\nLow\n\n\n\tACM-401\t\nFeature\nDark mode for email templates\n\t\nCanceled\n\t\nMedium\n\n\n\tACM-402\t\nDocs\nRetry failed payouts\n\t\nDone\n\t\nHigh\n\n\n\tACM-403\t\nBug\nDocument the webhooks API\n\t\nIn progress\n\t\nUrgent\n\n\n\tACM-404\t\nFeature\nTypo in onboarding email\n\t\nTodo\n\t\nMedium\n\n\n\tACM-405\t\nDocs\nAdd CSV export to reports\n\t\nTodo\n\t\nHigh\n\n\n\tACM-406\t\nBug\nFix focus ring on dialogs\n\t\nCanceled\n\t\nUrgent\n\n\n\tACM-407\t\nFeature\nWrite the migration guide\n\t\nDone\n\t\nLow\n\n36 row(s)\n\nRows per page\n8\nPage 1 of 5\nShowcase: Search, Filters, Selection, Sorting And Pagination\nView code\nSortable Invoices\nView code\nCustomer Directory With Search And Pagination\nView code\nTeam Members With Row Selection And Bulk Actions\nView code\nOrders With Column Visibility Menu\nView code\nIssue Tracker With Faceted Status And Priority Filters\nView code\nDepartment Budgets With Expandable Sub-Rows\nView code\nAPI Keys Card Table With Row Actions\nView code"
+  },
+  {
+    "category": "Date Picker12",
+    "docs": "https://ui.cnippet.dev/ui/pickers/date-picker",
+    "variants": "Due date\nPick a date\nTrip dates\nPick a date range\nDate of birth\nSelect your birth date\nDisabled\nMar 4, 2027\nShowcase: Single, Range, Birthday And Disabled\nView code\nNovember 12th, 2026\nWith Presets\nView code\nWith Input\nView code\nAppointment Booking\nView code\nTeam Meeting Scheduler\nView code\nDelivery Date Selector\nView code\nTask Deadline Reschedule\nView code\nReport Period Range With Presets\nView code\nRecurring Event Date Picker\nView code\nHotel Stay Range With Duration Shortcuts\nView code\nBirthday Picker With Age Validation\nView code\nMulti-Date Availability Selector\nView code"
+  },
+  {
+    "category": "Dialog13",
+    "docs": "https://ui.cnippet.dev/ui/overlays/dialog",
+    "variants": "Margaret Welsh\n\nmargaret@example.com\n\nEdit Profile With Avatar\nView code\nOpen menu\nOpen From A Menu\nView code\nDialog With Scroll Inside\nView code\nNested Dialogs\nView code\nWith Destructive Action\nView code\nCookie Preferences\nView code\nSession Expired\nView code\nInvite Team Members\nView code\nShare Document With Link Copy\nView code\nTwo-Factor Authentication Setup\nView code\nSubscription Cancellation With Reason\nView code\nAPI Key Generation And Reveal\nView code\nProduct Feedback Star Rating\nView code"
+  },
+  {
+    "category": "Drawer12",
+    "docs": "https://ui.cnippet.dev/ui/overlays/drawer",
+    "variants": "Cart (3)\nShopping Cart\nView code\nNested drawers\nMulti-Step Nested Drawers\nView code\nNavigation Menu\nView code\nFilter & Sort Panel\nView code\nNotification Center\nView code\nDelete Account Confirmation With Undo\nView code\nEdit Profile Form\nView code\nUser Preferences & Theme Settings\nView code\nFile Attachments With Upload\nView code\nActivity Log With Status Timeline\nView code\nHelp Center With FAQ Search\nView code\nQuick Actions Grid\nView code"
+  },
+  {
+    "category": "Empty State15",
+    "variants": "\n\nNo upcoming meetings\nCreate a meeting to get started.\nCreate meeting\nView docs\nDefault\nView code\nNo results found\nNo results found for your search. Try adjusting your search terms.\nTry again\nLearn more\nSearch Empty State\nView code\nEmpty State With Search Input\nView code\nEmpty State With Add Button\nView code\nDashed Upload Empty State\nView code\nNo Automations Empty State With Toggle Illustration\nView code\nNo Products Empty State With Stacked Cards And Blur Effect\nView code\nNo Payments Empty State With Credit Card Illustration\nView code\nNo Events Empty State With Calendar Illustration\nView code\nNo Recent Activity Empty State\nView code\nAll Caught Up — No New Notifications\nView code\nNo Team Members — Invite Form Empty State\nView code\nNo Matching Results — Clear Filters Empty State\nView code\nInbox Zero — Illustration With Compose Action\nView code\nAccess Restricted — Permission Request Empty State\nView code"
+  },
+  {
+    "category": "Field3",
+    "docs": "https://ui.cnippet.dev/ui/forms/field",
+    "variants": "Full Name\n*\nEmail\n*\nRole\nSelect your role\n\nThis is an optional field\n\nSubscribe to newsletter\nSubmit\nComplete Multi-Field Form\nView code\nResume\n\nDrop your resume here or browse\n\nPDF or Word document, max 5 MB.\n\nResume Dropzone With File Validation\nView code\nField With Password Strength Indicator\nView code"
+  },
+  {
+    "category": "Fieldset10",
+    "docs": "https://ui.cnippet.dev/ui/forms/fieldset",
+    "variants": "Billing Details\nCompany\n\nThe name that will appear on invoices.\n\nTax ID\n\nYour business tax identification number.\n\nBilling Details Fieldset\nView code\nPersonal Information\nFirst name\nLast name\nEmail address\n\nWe'll send account-related emails here.\n\nPhone number\n\nOptional. Used for SMS notifications.\n\nPersonal Information Fieldset\nView code\nShipping Address Fieldset\nView code\nNotification Preferences Fieldset\nView code\nChange Password Fieldset\nView code\nPayment Information Fieldset\nView code\nAccount Settings Fieldset With Timezone Select\nView code\nTeam Member Invite Fieldset\nView code\nSupport Request Fieldset With Textarea\nView code\nSocial Links Fieldset With URL Prefixes\nView code"
+  },
+  {
+    "category": "File Upload5",
+    "docs": "https://ui.cnippet.dev/ui/forms/file-upload",
+    "variants": "Drop files here or browse\n\nDropzone With Per-File Upload Progress\nView code\n\nDrop files here or browse\n\nImages or PDF, up to 4 files, 2 MB each\n\nMulti-File Dropzone With Type, Size And Count Limits\nView code\nAvatar Upload With Preview\nView code\nMessage Composer With Attachments\nView code\nPhoto Gallery Grid\nView code"
+  },
+  {
+    "category": "Form11",
+    "docs": "https://ui.cnippet.dev/ui/forms/form",
+    "variants": "Create an account\n\nFill in the details below to get started.\n\nEmail\nPassword\nConfirm password\nI agree to the Terms of Service and Privacy Policy\nCreate account\nSign Up / Register\nView code\nWelcome back\n\nSign in to your account to continue.\n\nEmail\nPassword\nForgot password?\nRemember me for 30 days\nSign in\nDon't have an account?\nCreate account\nSign In\nView code\nProfile Settings\nView code\nContact Form\nView code\nChange Password\nView code\nNewsletter Signup\nView code\n3-Step Onboarding Wizard\nView code\nFeedback Form With Rating\nView code\nForgot Password — Reset Email\nView code\nDelete Account — Danger Zone Confirmation\nView code\nInvite Team Member\nView code"
+  },
+  {
+    "category": "Frame10",
+    "docs": "https://ui.cnippet.dev/ui/layout/frame",
+    "variants": "Section header\nBrief description about the section\nSection title\n\nSection description\n\nFooter\n\nDefault\nView code\nSection header\nBrief description about the section\nSeparated panel\n\nSection description\n\nSeparated panel\n\nSection description\n\nSeparated Panels\nView code\nWith Collapsible Panel\nView code\nDense Layout\nView code\nWith Action Button In Header\nView code\nStats Metrics Display\nView code\nWith Badge Status Indicator\nView code\nRead-Only Key-Value Info\nView code\nWith Footer CTA Buttons\nView code\nDanger Zone With Typed Delete Confirmation\nView code"
+  },
+  {
+    "category": "Group15",
+    "docs": "https://ui.cnippet.dev/ui/layout/group",
+    "variants": "Outline\nFiles\nMedia\nArchive\nSmall\n100%\nPrimary\nDeploy\nWith input\nInvite\nShowcase: Outline, Small, Primary And With Input\nView code\nWith Input\nView code\nWith Start Labeled Text\nView code\nWith End Text\nView code\nVertical\nView code\nNested Groups\nView code\nWith Popup\nView code\nWith Input Group\nView code\nWith Menu\nView code\nWith Select\nView code\nText Formatting Toolbar\nView code\nThumbs Up / Down Vote Buttons\nView code\nMedia Player Controls\nView code\nPrice Range Input With Apply Button\nView code\nSearch With Category Filter Select\nView code"
+  },
+  {
+    "category": "Input15",
+    "docs": "https://ui.cnippet.dev/ui/forms/input",
+    "variants": "Full name\nUsername\n\nShown on your public profile.\n\nCompany\n*\nEmail\nEnter a valid email address.\nPlan\nSizes\nShowcase: Labels, Required, Error, Disabled And Sizes\nView code\nAttachment\nChoose file\nNo file selected\nFile Picker With Clear Button\nView code\nTime Slot Select\nView code\nWith Multiple Fields\nView code\nInput Label With Tooltip\nView code\nWith Badge\nView code\nWith Optional Badge\nView code\nWith Link And Visibility Toggle\nView code\nWith Multiple Error Messages\nView code\nPassword Strength With Dynamic Hint And Icons\nView code\nDisabled Input With Masked Value\nView code\nReadonly With Copy-To-Clipboard Button\nView code\nInput With Inline Start Icon\nView code\nColor Picker With Swatches And Hex Input\nView code\nInput With Inline Clear Button\nView code"
+  },
+  {
+    "category": "Input Group12",
+    "docs": "https://ui.cnippet.dev/ui/forms/input-group",
+    "variants": "⌘K\nhttps://\n.com\n$\nUSD\nShowcase: Icons, Text Add-Ons, Shortcut And Button\nView code\nEmail\nWith Inner Label\nView code\nSizes\nView code\nDisabled\nView code\nLoading\nView code\nWith Number Field\nView code\nWith Textarea\nView code\nWith Currency Select Prefix\nView code\nNewsletter Subscribe With Arrow Button\nView code\nWith Inline Clear Button\nView code\nChat Input With Async Send\nView code\nTextarea With Character Countdown\nView code"
+  },
+  {
+    "category": "Kbd11",
+    "docs": "https://ui.cnippet.dev/ui/feedback/kbd",
+    "variants": "Single keys:\n\nK\n⌘\n⌃\n⇧\n\nKey combinations:\n\n⌘\nK\n⌘\nShift\nP\nCtrl\nAlt\nDelete\nDefault\nView code\n⌘K\nInput Group\nView code\nKeys Grouped Together\nView code\nWith Icons\nView code\nIn A Tooltip\nView code\nReference List\nView code\nKeyboard Shortcut In Button\nView code\nArrow Key Navigation Display\nView code\nCross-Platform Mac Vs Win Shortcut Table\nView code\nShortcuts In Menu Items\nView code\nCommand Palette Result Rows With Navigation Hints\nView code"
+  },
+  {
+    "category": "Label1",
+    "docs": "https://ui.cnippet.dev/ui/forms/label",
+    "variants": "Work email\n*\nPhone\n(optional)\nAPI key\n\nUsed to sign requests from your server.\n\nPassword\nForgot password?\nBio\n24/160\nUsername\n\n“admin” is reserved. Try another name.\n\nProduct updates\n\nA short email when we ship something new. Clicking the label toggles the checkbox.\n\nShowcase: Markers, Hints, Links And Errors\nView code"
+  },
+  {
+    "category": "Menu7",
+    "docs": "https://ui.cnippet.dev/ui/navigation/menu",
+    "variants": "Open menu\nDefault\nView code\nNotification settings\nOpen A Dialog\nView code\nAccount Menu\nView code\nFile Actions\nView code\nIcon Button Trigger\nView code\nNotification Settings\nView code\nShare With Export Sub-Menu\nView code"
+  },
+  {
+    "category": "Meter12",
+    "docs": "https://ui.cnippet.dev/ui/forms/meter",
+    "variants": "Storage\n42%\nx\nRating\n4 / 5\nx\nBandwidth\n700 Mbps\nx\nShowcase: Percentage, Formatted Value And Custom Range\nView code\nCPU load · web-01\n42%\nx\nPause\nLive CPU Load Meter With Pause\nView code\nLanguage Usage Breakdown\nView code\nPassword Strength Meter\nView code\nAPI Usage By Team Member\nView code\nQuarterly Budget By Department\nView code\nScore Card With Letter Grade\nView code\nStacked Resource Meters\nView code\nColor-Coded By Severity\nView code\nStorage Breakdown With Icons\nView code\nBandwidth Quota Card\nView code\nProfile Strength Checklist\nView code"
+  },
+  {
+    "category": "Navigation Menu2",
+    "docs": "https://ui.cnippet.dev/ui/navigation/navigation-menu",
+    "variants": "Products\nResources\nPricing\nMarketing Mega Menu With Icon Cards And A Featured Link\nView code\nComponents\nGetting started\nGitHub\nDocs Menu With Sections And A Plain Link\nView code"
+  },
+  {
+    "category": "Number Field8",
+    "docs": "https://ui.cnippet.dev/ui/forms/number-field",
+    "variants": "Quantity\nFont size\nSizes\nSeats (disabled)\nShowcase: Label, Scrub, Sizes And Disabled\nView code\nQuantity\nSubmit\nForm Integration\nView code\nFont Size With Live Preview\nView code\nPercentage With Scrub\nView code\nShopping Cart Quantity Row\nView code\nTypography Settings\nView code\nMin/Max Budget Range\nView code\nControlled With Reset\nView code"
+  },
+  {
+    "category": "Input Otp12",
+    "docs": "https://ui.cnippet.dev/ui/forms/otp-field",
+    "variants": "Verification code\nPIN (large)\nDisabled\nShowcase: Separator, Large And Disabled\nView code\nTier code\n\nDigits 0-3 only.\n\nCustom Sanitization\nView code\nAuto Validation\nView code\nAlphanumeric\nView code\nPlaceholder Hints\nView code\nMasked Entry\nView code\n4-Digit PIN With Confirm\nView code\nEmail Verification Card\nView code\n2FA Authenticator App\nView code\n8-Char Invite Code With Separator\nView code\nSuccess State On Completion\nView code\nResend Countdown Timer\nView code"
+  },
+  {
+    "category": "Pagination17",
+    "docs": "https://ui.cnippet.dev/ui/navigation/pagination",
+    "variants": "Previous\n1\n2\n3\nMore pages\n12\nNext\n1\n2\n3\n4\n5\nPrevious\nPage 4 of 12\nNext\nShowcase: Numbered, Icon-Only And Page Info\nView code\n1\n2\n3\nMore pages\nGo to page\nWith Go-To-Page Input\nView code\nNumbered Pagination In Card\nView code\nWith Arrows Buttons\nView code\nWith Page Info On Center\nView code\nWith Page Info On Left\nView code\nWith Outline Style Buttons\nView code\nRows Per Page With First/Last Navigation\nView code\nWith Page Select Dropdown And First/Last Navigation\nView code\nNumbered Pagination With Go-To-Page Input\nView code\nWith Page Info, Numbered Pages, Ellipsis, And Per-Page Select\nView code\nSmart Ellipsis With Results Count\nView code\nMini Pill\nView code\nOlder/Newer Cursor Navigation\nView code\nControlled With Smart Ellipsis\nView code\nResults Summary With Compact Nav\nView code\nLoading/Disabled State\nView code"
+  },
+  {
+    "category": "Popover19",
+    "docs": "https://ui.cnippet.dev/ui/overlays/popover",
+    "variants": "Open Popover\nFeedback Form\nView code\nOpen Popover\nWith Close Button\nView code\nTooltip Style\nView code\nShared Popover With Multiple Triggers\nView code\nUser Profile Card\nView code\nTimestamp Detail\nView code\nQuick Settings\nView code\nFeature Tour\nView code\nShare Link\nView code\nAccent Color Picker\nView code\nKeyboard Shortcuts\nView code\nFilter Panel\nView code\nSet A Reminder\nView code\nSystem Status\nView code\nEmoji Picker\nView code\nConfirmation / Delete\nView code\nInline Tag Editor\nView code\nNotification Panel\nView code\nInline Text Edit\nView code"
+  },
+  {
+    "category": "Preview Card15",
+    "docs": "https://ui.cnippet.dev/ui/layout/preview-card",
+    "variants": "cnippet.dev/ui\nWebsite Link Preview With Stats\nView code\n\nJoin us at The Grand Pavilion for the annual summit.\n\nVenue Location Preview\nView code\nPackage Preview With License And Version\nView code\nEvent Preview With Date And Attendees\nView code\nCompany Profile Preview\nView code\nGitHub Repository Preview\nView code\nVideo Preview With Duration\nView code\nHashtag Previews With Post Counts\nView code\nProduct Preview With Add To Cart\nView code\nReference Links With URL Previews\nView code\nUser Mention Profile Card\nView code\nArticle / Blog Post Preview\nView code\nGlossary Term Definition With Related Terms\nView code\nGitHub-Style Issue Preview\nView code\nStock Ticker Preview With Sparkline And Key Stats\nView code"
+  },
+  {
+    "category": "Progress14",
+    "docs": "https://ui.cnippet.dev/ui/feedback/progress",
+    "variants": "x\nInstalling\n64%\nx\nUpload\n384 / 512 MB\nx\nShowcase: Plain, Labelled And Formatted Value\nView code\nWorkspace Setup\n0%\nx\nInitializing download...\nWith Status Messages\nView code\nWith Slider\nView code\nMulti-Step Progress Indicator\nView code\nWith Custom Colors\nView code\nSkills Meter\nView code\nMulti-File Upload Queue\nView code\nMonthly Budget Breakdown\nView code\nAPI Usage With Tier Milestones\nView code\nSurvey Completion Counter\nView code\nDownload With Speed Stats\nView code\nFundraiser Goal Tracker\nView code\nReading Progress Bar\nView code\nBuild Pipeline Stages\nView code"
+  },
+  {
+    "category": "Radio Group13",
+    "docs": "https://ui.cnippet.dev/ui/forms/radio-group",
+    "variants": "Simple\nNext.js\nVite\nAstro (disabled)\nWith description\nFree\n\nFor personal projects.\n\nPro\n\nFor growing teams.\n\nEnterprise\n\nContact sales to enable.\n\nShowcase: Simple, Disabled And With Descriptions\nView code\n\nEmail\n\nReceive notifications via email.\n\nSMS\n\nReceive notifications via text message.\n\nCard Style\nView code\nColored Variants\nView code\nWith Legend\nView code\nIn Card With Description\nView code\nIn Card With Icons\nView code\nForm Integration\nView code\nPlan Picker With Descriptions\nView code\nHorizontal Layout\nView code\nShipping Options\nView code\nTheme Selector\nView code\nAvailability Status\nView code\nBilling Frequency\nView code"
+  },
+  {
+    "category": "Rating4",
+    "docs": "https://ui.cnippet.dev/ui/forms/rating",
+    "variants": "Rate your purchase\n\nAero Wireless Headphones · delivered Oct 14\n\nTap a star\nYour review (optional)\nPost review\nProduct Review Form With Star Rating\nView code\n4.5\n1,200 reviews\n5 star\nx\n68%\n4 star\nx\n22%\n3 star\nx\n6%\n2 star\nx\n2%\n1 star\nx\n3%\nAverage Rating With Star Breakdown Bars\nView code\nRating Sizes, Disabled And Fractional Read-Only\nView code\nTen-Point Survey Ratings\nView code"
+  },
+  {
+    "category": "Resizable4",
+    "docs": "https://ui.cnippet.dev/ui/layout/resizable",
+    "variants": "Explorer\n\napp\nlayout.tsx\nlib\nretry.ts\nretry.test.ts\npackage.json\nlib/retry.ts\nexport async function retry<T>(fn: () => Promise<T>) {\n  for (let attempt = 0; ; attempt++) {\n    try {\n      return await fn();\n    } catch (error) {\n      if (attempt === 4) throw error;\n      await sleep(Math.min(2 ** attempt * 500, 30_000));\n    }\n  }\n}\n$ bun test lib/retry.test.ts\n✓ 6 passed\nDone in 412ms\nCode Editor Layout With Nested Resizable Panels\nView code\nOne\nTwo\nTwo Horizontal Panels\nView code\nVertical Panels With Grip Handle\nView code\nMail Layout With Collapsible Nav And Saved Sizes\nView code"
+  },
+  {
+    "category": "Scroll Area15",
+    "docs": "https://ui.cnippet.dev/ui/layout/scroll-area",
+    "variants": "Tags\nv1.0.0-alpha.0\nv1.0.0-alpha.1\nv1.0.0-alpha.2\nv1.0.0-alpha.3\nv1.0.0-alpha.4\nv1.0.0-alpha.5\nv1.0.0-alpha.6\nv1.0.0-alpha.7\nv1.0.0-alpha.8\nv1.0.0-alpha.9\nv1.0.0-alpha.10\nv1.0.0-alpha.11\nv1.0.0-alpha.12\nv1.0.0-alpha.13\nv1.0.0-alpha.14\nv1.0.0-alpha.15\nv1.0.0-alpha.16\nv1.0.0-alpha.17\nv1.0.0-alpha.18\nv1.0.0-alpha.19\nv1.0.0-alpha.20\nv1.0.0-alpha.21\nv1.0.0-alpha.22\nv1.0.0-alpha.23\nv1.0.0-alpha.24\nv1.0.0-alpha.25\nv1.0.0-alpha.26\nv1.0.0-alpha.27\nv1.0.0-alpha.28\nv1.0.0-alpha.29\nv1.0.0-alpha.30\nv1.0.0-alpha.31\nv1.0.0-alpha.32\nv1.0.0-alpha.33\nv1.0.0-alpha.34\nv1.0.0-alpha.35\nv1.0.0-alpha.36\nv1.0.0-alpha.37\nv1.0.0-alpha.38\nv1.0.0-alpha.39\nv1.0.0-alpha.40\nv1.0.0-alpha.41\nv1.0.0-alpha.42\nv1.0.0-alpha.43\nv1.0.0-alpha.44\nv1.0.0-alpha.45\nv1.0.0-alpha.46\nv1.0.0-alpha.47\nv1.0.0-alpha.48\nv1.0.0-alpha.49\nDefault\nView code\nTags\nv1.0.0-alpha.0\nv1.0.0-alpha.1\nv1.0.0-alpha.2\nv1.0.0-alpha.3\nv1.0.0-alpha.4\nv1.0.0-alpha.5\nv1.0.0-alpha.6\nv1.0.0-alpha.7\nv1.0.0-alpha.8\nv1.0.0-alpha.9\nv1.0.0-alpha.10\nv1.0.0-alpha.11\nv1.0.0-alpha.12\nv1.0.0-alpha.13\nv1.0.0-alpha.14\nv1.0.0-alpha.15\nv1.0.0-alpha.16\nv1.0.0-alpha.17\nv1.0.0-alpha.18\nv1.0.0-alpha.19\nv1.0.0-alpha.20\nv1.0.0-alpha.21\nv1.0.0-alpha.22\nv1.0.0-alpha.23\nv1.0.0-alpha.24\nv1.0.0-alpha.25\nv1.0.0-alpha.26\nv1.0.0-alpha.27\nv1.0.0-alpha.28\nv1.0.0-alpha.29\nv1.0.0-alpha.30\nv1.0.0-alpha.31\nv1.0.0-alpha.32\nv1.0.0-alpha.33\nv1.0.0-alpha.34\nv1.0.0-alpha.35\nv1.0.0-alpha.36\nv1.0.0-alpha.37\nv1.0.0-alpha.38\nv1.0.0-alpha.39\nv1.0.0-alpha.40\nv1.0.0-alpha.41\nv1.0.0-alpha.42\nv1.0.0-alpha.43\nv1.0.0-alpha.44\nv1.0.0-alpha.45\nv1.0.0-alpha.46\nv1.0.0-alpha.47\nv1.0.0-alpha.48\nv1.0.0-alpha.49\nWith Scroll Fade\nView code\nHorizontal\nView code\nHorizontal With Scrollbar Gutter\nView code\nBoth Directions\nView code\nAlphabetical Contact List\nView code\nTask Backlog List\nView code\nWide Data Table\nView code\nActivity Timeline\nView code\nCode Viewer\nView code\nChat Feed\nView code\nNotification List\nView code\nSidebar Navigation\nView code\nServer Log Viewer\nView code\nFile Explorer\nView code"
+  },
+  {
+    "category": "Select15",
+    "docs": "https://ui.cnippet.dev/ui/pickers/select",
+    "variants": "Select timezone\nTimezone Select\nView code\nSmall\nSelect a plan\nDefault\nSelect a plan\nLarge\nSelect a plan\nSizes\nView code\nGrouped Framework Select\nView code\nMultiple Selection For Permissions\nView code\nSettings Navigation With Icons\nView code\nCurrency Select\nView code\nForm Field With Description\nView code\nPlan Select With Separator\nView code\nCountry Select With Flags\nView code\nTheme Select With Descriptions\nView code\nWith Disabled Options\nView code\nRegion Select With Groups\nView code\nPriority With Badges\nView code\nItems With Description\nView code\nSort Order With Icons\nView code"
+  },
+  {
+    "category": "Separator14",
+    "docs": "https://ui.cnippet.dev/ui/layout/separator",
+    "variants": "Cnippet UI\n\nComponents for product teams.\n\nBlog\nDocs\nSource\nShowcase: Horizontal And Vertical\nView code\nSettings\nManage preferences\nAccount\nProfile & security\nHelp\nSupport & docs\nSettings Menu Dividers\nView code\nKey-Value List\nView code\nDivider With Label\nView code\nOrder Summary\nView code\nBreadcrumb Dividers\nView code\nOnboarding Checklist\nView code\nGrouped Navigation Sections\nView code\nProfile Card\nView code\nSocial Stats Bar\nView code\nActivity Sections\nView code\nFooter Links\nView code\nSettings List With Descriptions\nView code\nToolbar With Separator Groups\nView code"
+  },
+  {
+    "category": "Sheet15",
+    "docs": "https://ui.cnippet.dev/ui/overlays/sheet",
+    "variants": "Open Sheet\nDefault\nView code\nOpen Sheet\nSheet With Inset\nView code\nSide Sheets\nView code\nScrollable Content\nView code\nShopping Cart\nView code\nNotification Center\nView code\nTeam Invite\nView code\nActivity Log\nView code\nNavigation Menu\nView code\nIssue Detail\nView code\nExport Data Panel\nView code\nUser Profile Viewer\nView code\nSupport Contact Form\nView code\nKeyboard Shortcuts Reference\nView code\nAPI Key Manager\nView code"
+  },
+  {
+    "category": "Sidebar3",
+    "docs": "https://ui.cnippet.dev/ui/layout/sidebar",
+    "variants": "Acme Inc\nPro plan\nWorkspace\nOverview\nInbox\n12\nAnalytics\nCustomers\nProjects\nWebsite redesign\nMobile app\nDesign system\nSettings\nMP\nMaya Patel\nmaya@acme.dev\nToggle Sidebar\nOverview\n\nRevenue\n\nOrders\n\nVisitors\n\nApp Shell With Icon Collapse, Groups, Badges And User Footer\nView code\nDocs Navigation With Collapsible Sections (Inset)\nView code\nFloating Right-Side Details Panel With Search\nView code"
+  },
+  {
+    "category": "Skeleton15",
+    "docs": "https://ui.cnippet.dev/ui/feedback/skeleton",
+    "variants": "Default\nView code\nSkeleton Only\nView code\nCard Component\nView code\nDashboard Stats Row\nView code\nList With Actions\nView code\nBlog Article\nView code\nData Table\nView code\nSidebar Dashboard Layout\nView code\nChat Thread\nView code\nSettings Page\nView code\nProduct Grid\nView code\nForm Fields\nView code\nEmail Inbox\nView code\nKanban Board\nView code\nProfile Hero Page\nView code"
+  },
+  {
+    "category": "Slider13",
+    "docs": "https://ui.cnippet.dev/ui/forms/slider",
+    "variants": "Volume\n64\nPrice range\n20 – 80\nDisabled\n40\nShowcase: Single, Range And Disabled\nView code\n5 GB\n20 GB\n35 GB\nWith Reference Labels\nView code\nWith Tick Marks\nView code\nWith Dynamic Tooltip Indicator\nView code\nRating Slider With Emoji Feedback\nView code\nPrice Range With Labels\nView code\nThree-Band Equalizer\nView code\nSession Timeout With Stops\nView code\nVolume Control With Mute Toggle\nView code\nDual-Thumb Price Range\nView code\nHue Color Picker\nView code\nTemperature Control\nView code\nDisplay Settings Sliders\nView code"
+  },
+  {
+    "category": "Sortable5",
+    "docs": "https://ui.cnippet.dev/ui/data/sortable",
+    "variants": "Sprint backlog\n\nDrag the handle, or focus it and use Space + arrow keys\n\nFix focus ring on Select\nBug\nAdd Stepper component\nFeature\nDocument Tag Input props\nDocs\nShip File Upload\nFeature\nToast stacks off-screen\nBug\nTask List With Drag Handles\nView code\n\nRank what matters most\n\nDrag to reorder. #1 is your top pick.\n\n1\nFaster page loads\n2\nDark mode for email\n3\nBetter search\n4\nOffline support\n5\nTwo-factor login\nDrag-To-Rank List\nView code\nHorizontal Shortcut Tabs\nView code\nDashboard Widget Grid\nView code\nKanban Board With Cross-Column Moves\nView code"
+  },
+  {
+    "category": "Spinner13",
+    "docs": "https://ui.cnippet.dev/ui/feedback/spinner",
+    "variants": "Sizes\nColors\nIn context\nSaving\nLoading results…\nShowcase: Sizes, Colors And In Context\nView code\nInput Group\nView code\nIn Buttons\nView code\nSpinner In Empty State\nView code\nOverlay Loading Spinner\nView code\nFull Page Loading State\nView code\nInline Loading Text With Spinner\nView code\nOverlay On Card\nView code\nStep-By-Step Workspace Loading\nView code\nPage Transition Overlay\nView code\nFile Upload Progress\nView code\nTable Row Loading State\nView code\nAuth Form With Spinner\nView code"
+  },
+  {
+    "category": "Stepper4",
+    "docs": "https://ui.cnippet.dev/ui/navigation/stepper",
+    "variants": "Cart\nReview items\n2\nShipping\nWhere it's going\n3\nPayment\nCard or wallet\n4\nConfirm\nPlace order\n\nShipping\n\nMaya Patel, 221 Mission St, San Francisco, CA 94105\n\nBack\nContinue\nCheckout Steps With Back And Continue\nView code\n\nGet started\n\n2 of 4 complete\n\nCreate a workspace\nName it and pick a region.\nConnect your domain\nPoint app.acme.dev at us with a CNAME record.\n3\nInvite your team\nSend invites by email or share a join link.\n4\nShip your first deploy\nPush to main and we'll build it.\nVertical Onboarding Checklist\nView code\nCompact Dot Progress With Step Count\nView code\nJump Back To Finished Steps\nView code"
+  },
+  {
+    "category": "Switch13",
+    "docs": "https://ui.cnippet.dev/ui/actions/switch",
+    "variants": "States\nOff\nOn\nDisabled\nSmall\nWith description\nMarketing emails\n\nNews, offers and product tips.\n\nSecurity alerts\n\nSign-ins from new devices.\n\nShowcase: States, Sizes And Descriptions\nView code\nNotification Settings\nEmail notifications\nSMS notifications\nPush notifications\nSwitch Group\nView code\nSwitch List In Card With Icons\nView code\nDestructive Switch With Confirmation Text\nView code\nCompact Settings Table With Switches\nView code\nSwitch With Descriptions In Card Grid\nView code\nCookie Preferences Manager\nView code\nNotification Delivery Channels\nView code\nPlan Feature Toggles\nView code\nPrivacy Settings With Icons\nView code\nDark Mode Toggle Card\nView code\nRequired Agreement Switch\nView code\nDo Not Disturb Mode\nView code"
+  },
+  {
+    "category": "Table12",
+    "docs": "https://ui.cnippet.dev/ui/data/table",
+    "variants": "A list of current projects.\nProject\tStatus\tTeam\tBudget\nWebsite Redesign\t\nPaid\tFrontend Team\t$12,500\nMobile App\t\nUnpaid\tMobile Team\t$8,750\nAPI Integration\t\nPending\tBackend Team\t$5,200\nDatabase Migration\t\nPaid\tDevOps Team\t$3,800\nUser Dashboard\t\nPaid\tUX Team\t$7,200\nSecurity Audit\t\nFailed\tSecurity Team\t$2,100\nTotal Budget\t$39,550\nDefault\nView code\nOrder\tCustomer\tStatus\tAmount\n#3210\t\nOlivia Martin\nFeb 1, 2025\n\tPaid\t$1,999.00\n#3209\t\nJackson Lee\nJan 28, 2025\n\tPending\t$39.00\n#3208\t\nIsabella Nguyen\nJan 25, 2025\n\tPaid\t$299.00\n#3207\t\nWilliam Kim\nJan 22, 2025\n\tRefunded\t$99.00\n#3206\t\nSofia Davis\nJan 18, 2025\n\tPaid\t$2,500.00\nOrders Table With Customer Info And Payment Status\nView code\nTeam Members Table With Avatars, Roles, And Status\nView code\nSubscriptions Table With Plan Badges And Billing Info\nView code\nSortable API Endpoints\nView code\nStorage Usage With Progress Bars\nView code\nAudit Log\nView code\nProduct Inventory With Stock Level Badges And Quantity\nView code\nInvoice History With Status Badges And Outstanding Total\nView code\nFeature Comparison Table With Checkmarks Across Plan Tiers\nView code\nServer Health Monitoring With CPU And Memory Progress Bars\nView code\nContributor Leaderboard With Rank, Avatar, And Change Indicator\nView code"
+  },
+  {
+    "category": "Tabs12",
+    "docs": "https://ui.cnippet.dev/ui/navigation/tabs",
+    "variants": "Default\nOverview\nAnalytics\nReports\n\nRevenue is up 12% on last month.\n\nUnderline\nOverview\nAnalytics\nReports\n\nRevenue is up 12% on last month.\n\nVertical\nOverview\nAnalytics\nReports\n\nRevenue is up 12% on last month.\n\nVertical underline\nOverview\nAnalytics\nReports\n\nRevenue is up 12% on last month.\n\nShowcase: Default, Underline And Vertical\nView code\nAccount\nPassword\nAccount\nUpdate your account information.\nName\nUsername\nSave changes\nWith Card And Input Element\nView code\nAccount Settings Tabs With Card Forms\nView code\nWith Icons\nView code\nWith Badge Counts\nView code\nWith Icons And Line Variant\nView code\nSegmented Control Tabs\nView code\nSettings Navigation With Vertical Underline Tabs And Profile Form\nView code\nCode File Viewer With Per-File Tabs And Copy Button\nView code\nProfile Repository Listing With Badge Counts Per Tab\nView code\nPricing Toggle Between Monthly And Yearly Billing With Plan Cards\nView code\nDashboard Metrics With Icon Tabs And Stat Card Content Panels\nView code"
+  },
+  {
+    "category": "Tag Input4",
+    "docs": "https://ui.cnippet.dev/ui/forms/tag-input",
+    "variants": "Invite teammates\nmaya@acme.dev\njordan@acme.dev\n\nPress Enter or comma after each address. You can paste a list.\n\nSend 2 invites\nEmail Invites With Validation And Paste Support\nView code\nSkills\nReact\nTailwind CSS\nSuggested\nTypeScript\nFigma\nAccessibility\nDesign systems\nMotion\nSkills With Suggested Tags\nView code\nRepository Topics With A Limit And Counter\nView code\nSmall Tag Filter With Icon\nView code"
+  },
+  {
+    "category": "Textarea6",
+    "docs": "https://ui.cnippet.dev/ui/forms/textarea",
+    "variants": "Bio\n\nA short intro for your profile.\n\nReason for refund\nPlease add at least 20 characters.\nInternal notes\nSizes\nShowcase: Description, Error, Disabled And Sizes\nView code\n0 words\n0 chars\nAuto-Grow With Live Word And Character Count\nView code\nWrite / Preview Markdown Toggle\nView code\nSupport Ticket With Category Chips And Message Field\nView code\nChat Message Composer With Bubble Thread And Send On Enter\nView code\nRelease Notes Editor With Title Input And Publish Action\nView code"
+  },
+  {
+    "category": "Time Picker3",
+    "docs": "https://ui.cnippet.dev/ui/pickers/time-picker",
+    "variants": "Book a demo\n\nThursday, Oct 22 · 30 minutes · times in PT\n\nStart time\n11:00 AM\n\nGreyed-out times are already booked.\n\nConfirm 11:00 AM\nAppointment Slot With Booked Times Disabled\nView code\nFrom\n9:00 AM\nTo\n10:30 AM\n\nDuration: 1 h 30 min\n\nStart And End Time With Duration\nView code\n24-Hour Quiet Hours With A Switch\nView code"
+  },
+  {
+    "category": "Timeline3",
+    "docs": "https://ui.cnippet.dev/ui/data/timeline",
+    "variants": "Activity\n\nMaya Patel commented\n\nRetry logic looks good. Can we cap the backoff at 30s?\n12 min ago\n\nLeo Park added needs-review\n\n2 hours ago\n\nAna Ruiz requested changes\n\nYesterday\n\nLeo Park opened #482: Retry failed webhooks\n\nOct 17\nPull Request Activity Feed With Avatars And Icons\nView code\n\nDeployments · production\n\nAdd saved views\n\na41f2c9\nBuilding · 1m 12s\n\nFix timezone in exports\n\n9be07d1\nReady · 14 min ago\n\nBump Next.js to 16.4\n\n3c5a8e0\nFailed · 1 hour ago\n\nCache pricing page\n\ne20d4b7\nReady · 3 hours ago\nDeployment History With Status Indicators\nView code\nOrder Tracking With Compact Dots\nView code"
+  },
+  {
+    "category": "Toast15",
+    "docs": "https://ui.cnippet.dev/ui/feedback/toast",
+    "variants": "Default Toast\nDefault\nView code\nSuccess Toast\nError Toast\nInfo Toast\nWarning Toast\nWith Status\nView code\nLoading\nView code\nWith Action\nView code\nPromise\nView code\nWith Varying Heights\nView code\nSubmit Button With Error Toast\nView code\nStaggered Notification Burst\nView code\nTimeout Control\nView code\nAuto-Progressing Deploy Pipeline\nView code\nAnchored Clipboard Copy With Tooltip-Style Toast\nView code\nTeam Invite With Per-Row Undo Action\nView code\nBackground CSV Export With Download Action On Complete\nView code\nSession Expiry Warning With Live Countdown And Renew Action\nView code\nUnsaved Changes Reminder With Save And Discard Actions\nView code"
+  },
+  {
+    "category": "Toggle8",
+    "docs": "https://ui.cnippet.dev/ui/actions/toggle",
+    "variants": "Variants\nDefault\nOutline\nSizes\nSmall\nDefault\nLarge\nIcon only\nStates\nPressed\nDisabled\nShowcase: Variants, Sizes, Icons And States\nView code\nIn call · 12:34\nMute\nStop video\nShare screen\nLeave\nVideo Call Controls Bar\nView code\nRole Filter Chips With Live Count\nView code\nBookmark Toggle Per Article Row With Saved Count\nView code\nRich-Text Formatting Toolbar With Markdown Preview\nView code\nSocial Post Interactions With Live Like And Repost Counts\nView code\nServer Settings Toggles With Icon Swap And Status Color\nView code\nTask List With Per-Task Priority Flag Toggles\nView code"
+  },
+  {
+    "category": "Toggle Group11",
+    "docs": "https://ui.cnippet.dev/ui/actions/toggle-group",
+    "variants": "Single\nMultiple\nOutline sizes\nDay\nWeek\nMonth\nDay\nWeek\nMonth\nVertical\nList\nBoard\nCalendar\nShowcase: Single, Multiple, Outline And Vertical\nView code\nFor Text Alignment\nView code\nView Mode Switching\nView code\nFor Color Theme\nView code\nFor Pricing Tier\nView code\nLanguage Picker With Live Code Snippet Preview\nView code\nPer-Column Sort Direction Control\nView code\nIssue Priority Picker With Color-Coded Labels\nView code\nDate Range Quick-Select With Live Stats Grid\nView code\nCode Viewer Toolbar With Multi-Select Options\nView code\nZoom Level Control With Live Scale Preview\nView code"
+  },
+  {
+    "category": "Toolbar10",
+    "docs": "https://ui.cnippet.dev/ui/actions/toolbar",
+    "variants": "Helvetica\nSave\nSpreadsheet Toolbar With Alignment, Number Format And Font\nView code\nRich Text Editor Toolbar With Formatting And Alignment Controls\nView code\nImage Editor Toolbar With Transform, Zoom, And Export Actions\nView code\nData Table Toolbar With Search Input, Filter Controls, And Add Row\nView code\nCode Editor Toolbar With Language Select, Word Wrap, Copy, And Run\nView code\nDocument Collaboration Toolbar With Edit/Preview Toggle And Share\nView code\nFile Browser Toolbar With Search, Sort And View Toggle\nView code\nCanvas Toolbar With Theme Toggle And Zoom Controls\nView code\nVideo Call Controls Toolbar\nView code\nBlock Editor Toolbar With Block Type And Inline Marks\nView code"
+  },
+  {
+    "category": "Tooltip17",
+    "docs": "https://ui.cnippet.dev/ui/overlays/tooltip",
+    "variants": "Hover me\nDefault\nView code\nGrouped Tooltips\nView code\nAnimated Tooltips\nView code\nPlacement\nView code\nInfo Icon\nView code\nRich Tooltip\nView code\nKeyboard Shortcut Toolbar\nView code\nAvatar Stack\nView code\nTrend Metrics\nView code\nColor Palette Inspector\nView code\nCopy To Clipboard\nView code\nFeature Gate\nView code\nForm Field Validation Hints With Info Icon Tooltips\nView code\nSystem Status Dots Revealing Service Name, Uptime, And Latency\nView code\nIcon-Only Sidebar Nav With Label And Description Tooltips\nView code\nPermissions Matrix With Role Access Details Per Cell\nView code\nDeployment Pipeline Steps With Status And Detail Per Stage\nView code"
+  }
+]

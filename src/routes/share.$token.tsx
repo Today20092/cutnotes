@@ -1,3 +1,5 @@
+import * as v from "valibot";
+import { idParam, param, secondsParam } from "@/lib/search-params";
 import { shareMeta, type SharePreview } from "@/lib/share-preview";
 import { getSharePreview } from "@/server/sharing";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,10 +11,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TeamLogo, useTeam } from "@/lib/team";
-import { draftComment, sortComments } from "@/lib/review";
+import { draftComment } from "@/lib/review";
+import { optimisticComment, replaceComment } from "@/lib/comment-cache";
 import { createGuestComment, getGuestReview } from "@/server/sharing";
 
+// An unknown value is dropped rather than shown as an error page.
+const searchSchema = v.object({
+  t: secondsParam,
+  comment: idParam,
+  filter: param(v.picklist(["todo", "resolved"])),
+});
+
 export const Route = createFileRoute("/share/$token")({
+  validateSearch: (search) => v.parse(searchSchema, search),
   ssr: "data-only",
   loader: ({ params }) => getSharePreview({ data: { token: params.token } }),
   head: ({ loaderData }) => ({ meta: shareMeta(loaderData, "Shared video unavailable") }),
@@ -30,6 +41,7 @@ const storedName = () => {
   }
 };
 const isRateLimited = (error: unknown) => error instanceof Response && error.status === 429;
+const isRevisionChanged = (error: unknown) => error instanceof Response && error.status === 409;
 const guestQuery = (token: string) =>
   queryOptions({
     queryKey: ["guest", token],
@@ -69,7 +81,7 @@ function Welcome({
   if (!preview)
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center gap-2 p-6 text-center">
-        <h1 className="text-xl font-semibold">This link is unavailable</h1>
+        <h1 className="text-title">This link is unavailable</h1>
         <p>Ask the person who sent it for a new one.</p>
         <SiteFeedback />
       </main>
@@ -97,7 +109,7 @@ function Welcome({
           submit();
         }}
       >
-        <h1 className="text-xl font-semibold">{preview?.title ?? "Welcome"}</h1>
+        <h1 className="text-title">{preview?.title ?? "Welcome"}</h1>
         <p className="text-muted-foreground">
           {preview?.description ??
             "This link is unavailable. Ask the person who sent it for a new one."}
@@ -150,7 +162,7 @@ function GuestReviewScreen({
   if (!review.data)
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center gap-2 p-6 text-center">
-        <h1 className="text-xl font-semibold">
+        <h1 className="text-title">
           {isRateLimited(review.error) ? "Too many requests" : "This link is unavailable"}
         </h1>
         <p className="text-muted-foreground">
@@ -187,7 +199,9 @@ function Loaded({
   useEffect(() => {
     if (focusHeading) heading.current?.focus();
   }, [focusHeading]); // The Welcome form that held focus is gone.
-  const actor = useGuestActor(token, name, page.permission === "comment");
+  const actor = useGuestActor(token, name, page.revision.id, page.permission === "comment");
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const team = useTeam().data;
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-4 p-4">
@@ -200,7 +214,7 @@ function Loaded({
       <a href="#comments" className="sr-only focus:not-sr-only">
         Skip to Comments
       </a>
-      <h1 ref={heading} tabIndex={-1} className="text-xl font-semibold wrap-anywhere">
+      <h1 ref={heading} tabIndex={-1} className="text-title wrap-anywhere">
         {page.title}
       </h1>
       <Review
@@ -210,6 +224,10 @@ function Loaded({
         comments={page.comments}
         renewPlayback={() => getGuestReview({ data: { token } })}
         actor={actor}
+        view={search}
+        onViewChange={(change) =>
+          void navigate({ search: (prev) => ({ ...prev, ...change }), replace: true })
+        }
       />
       <footer className="mt-4 border-t pt-2">
         <SiteFeedback />
@@ -219,30 +237,21 @@ function Loaded({
 }
 
 /** Guest adapter: Guests only send; Resolve, edit and delete stay with Members. */
-function useGuestActor(token: string, name: string, writable: boolean): CommentActor {
+function useGuestActor(
+  token: string,
+  name: string,
+  revisionId: string,
+  writable: boolean,
+): CommentActor {
   const client = useQueryClient();
   const { queryKey } = guestQuery(token);
   const write = useMutation({
-    mutationFn: (draft: Draft) => createGuestComment({ data: { ...draft, token, name } }),
-    onMutate: async (draft) => {
-      await client.cancelQueries({ queryKey });
-      client.setQueryData(
-        queryKey,
-        (old) =>
-          old && {
-            ...old,
-            comments: sortComments([
-              ...old.comments.filter((row) => row.id !== draft.id),
-              draftComment(draft, name, true),
-            ]),
-          },
-      );
-    },
-    onError: (_error, draft) =>
-      client.setQueryData(
-        queryKey,
-        (old) => old && { ...old, comments: old.comments.filter((row) => row.id !== draft.id) },
-      ),
+    mutationFn: (draft: Draft) =>
+      createGuestComment({ data: { ...draft, token, name, revisionId } }),
+    onMutate: (draft) =>
+      optimisticComment<GuestReview>(client, queryKey, draftComment(draft, name, true)),
+    onError: (_error, draft, previous) =>
+      replaceComment<GuestReview>(client, queryKey, draft.id, previous),
     onSettled: () => client.invalidateQueries({ queryKey }),
   });
   return {
@@ -253,6 +262,8 @@ function useGuestActor(token: string, name: string, writable: boolean): CommentA
     sendFailure: (error) =>
       isRateLimited(error)
         ? "Too many Comments right now. Your text is kept; wait a minute and try again."
-        : "Could not send Comment. Your text is kept; try again.",
+        : isRevisionChanged(error)
+          ? "A newer cut is available. Reload this page to watch it."
+          : "Could not send Comment. Your text is kept; try again.",
   };
 }

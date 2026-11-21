@@ -1,3 +1,5 @@
+import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
+import { Fieldset, FieldsetLegend } from "@/components/ui/fieldset";
 import { useMutation } from "@tanstack/react-query";
 import { MessageSquareWarning } from "lucide-react";
 import { useState } from "react";
@@ -116,8 +118,8 @@ function FeedbackForm({ error, onClose }: { error?: unknown; onClose: () => void
         send.mutate();
       }}
     >
-      <fieldset className="space-y-1">
-        <legend className="text-sm font-medium">What is it about?</legend>
+      <Fieldset className="max-w-none gap-3">
+        <FieldsetLegend className="text-sm">What is it about?</FieldsetLegend>
         <RadioGroup value={kind} onValueChange={(next) => setKind(next as FeedbackKind)}>
           {kinds.map(([value, text]) => (
             <label key={value} className="flex min-h-11 items-center gap-2">
@@ -126,11 +128,9 @@ function FeedbackForm({ error, onClose }: { error?: unknown; onClose: () => void
             </label>
           ))}
         </RadioGroup>
-      </fieldset>
-      <div className="flex flex-col gap-1">
-        <label htmlFor="feedback-message" className="text-sm font-medium">
-          Message
-        </label>
+      </Fieldset>
+      <Field className="items-stretch">
+        <FieldLabel htmlFor="feedback-message">Message</FieldLabel>
         <Textarea
           id="feedback-message"
           required
@@ -149,15 +149,13 @@ function FeedbackForm({ error, onClose }: { error?: unknown; onClose: () => void
             Write a message.
           </p>
         ) : (
-          <p id="feedback-message-hint" className="text-sm text-muted-foreground">
+          <FieldDescription id="feedback-message-hint">
             What were you doing, and what happened?
-          </p>
+          </FieldDescription>
         )}
-      </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor="feedback-contact" className="text-sm font-medium">
-          Your name or email (optional)
-        </label>
+      </Field>
+      <Field className="items-stretch">
+        <FieldLabel htmlFor="feedback-contact">Your name or email (optional)</FieldLabel>
         <Input
           id="feedback-contact"
           autoComplete="email"
@@ -165,7 +163,7 @@ function FeedbackForm({ error, onClose }: { error?: unknown; onClose: () => void
           value={contact}
           onChange={(event) => setContact(event.target.value)}
         />
-      </div>
+      </Field>
       <PendingButton type="submit" pending={send.isPending}>
         Send feedback
       </PendingButton>

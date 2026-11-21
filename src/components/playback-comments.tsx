@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Toast } from "@base-ui/react/toast";
-import { ToastProvider } from "@/components/ui/toast";
+import { Toasts, createToaster } from "@/components/ui/toast";
 import { playbackComments } from "@/lib/comment-time";
 import type { Comment } from "@/lib/review";
 
@@ -14,7 +13,7 @@ export function PlaybackComments({
   timeMs: number;
   read: (comment: Comment) => void;
 }) {
-  const [manager] = useState(() => Toast.createToastManager());
+  const [manager] = useState(() => createToaster());
   const last = useRef<string | null>(null);
   const toast = useRef<string | undefined>(undefined);
   const current = playbackComments(comments, timeMs);
@@ -26,26 +25,20 @@ export function PlaybackComments({
     }
     if (last.current === comment.id) return;
     last.current = comment.id;
-    if (toast.current) manager.close(toast.current);
-    toast.current = manager.add({
+    if (toast.current) manager.dismiss(toast.current);
+    toast.current = manager({
       title: `${comment.authorName} · ${Math.floor(comment.timecodeMs / 60000)}:${String(Math.floor(comment.timecodeMs / 1000) % 60).padStart(2, "0")}${current.length > 1 ? ` · +${current.length - 1} comments` : ""}`,
       description: <span className="line-clamp-2">{comment.body || "Drawing on this frame"}</span>,
-      timeout: 5000,
+      duration: 5000,
       data: { passive: true },
-      actionProps: {
-        children: "Read",
-        onClick: () => {
-          read(comment);
-          if (toast.current) manager.close(toast.current);
-        },
-      },
+      action: { label: "Read", onAction: () => read(comment) },
     });
   }, [comment, current.length, manager, read]);
   useEffect(
     () => () => {
-      if (toast.current) manager.close(toast.current);
+      if (toast.current) manager.dismiss(toast.current);
     },
     [manager],
   );
-  return <ToastProvider toastManager={manager} position="bottom-center" />;
+  return <Toasts toaster={manager} side="bottom" align="center" />;
 }

@@ -8,9 +8,11 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  // CI retries a failing test once; a pass on retry is reported as flaky, not hidden.
+  retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["json", { outputFile: "test-results/results.json" }]],
-  use: { baseURL },
+  // A CI retry records a trace, so a failure there can be replayed.
+  use: { baseURL, trace: "on-first-retry" },
   projects: [
     { name: "phone", use: { ...devices["Pixel 7"] } },
     { name: "desktop", use: { viewport: { width: 1280, height: 800 } } },
@@ -28,7 +30,8 @@ export default defineConfig({
       CLERK_PUBLISHABLE_KEY: `pk_live_${btoa("clerk.example.test$")}`,
       APP_ORIGIN: baseURL,
       TEAM_NAME: "Haithem Studio",
-      TEAM_LOGO_URL: "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
+      TEAM_LOGO_URL:
+        "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
       FIRST_OWNER_EMAIL: "first.owner@example.com",
     },
   },

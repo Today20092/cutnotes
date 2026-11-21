@@ -63,7 +63,7 @@ describe("permission matrix: create a Video or upload a Revision", () => {
     await seedProject("p1");
     const create = vi.spyOn(fakeMux, "createDirectUpload");
 
-    await expectRefused(await call(startUpload, viewer, newVideo), 403, "insufficient-role");
+    await expectRefused(await call(startUpload, viewer, newVideo), 404, "not-found");
 
     expect(await revisions()).toEqual([]);
     expect(await videoTitles()).toEqual([]);
@@ -85,11 +85,7 @@ describe("permission matrix: create a Video or upload a Revision", () => {
     await seedVideo("v1", "p1");
     await seedRevision({ id: "r1", videoId: "v1", uploadId: "u1" });
 
-    await expectRefused(
-      await call(cancelUpload, viewer, { revisionId: "r1" }),
-      403,
-      "insufficient-role",
-    );
+    await expectRefused(await call(cancelUpload, viewer, { revisionId: "r1" }), 404, "not-found");
     expect(await revisions()).toHaveLength(1);
   });
 });

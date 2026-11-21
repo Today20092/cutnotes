@@ -34,15 +34,27 @@ const ToastProvider = lazy(() =>
   import("@/components/ui/toast").then((module) => ({ default: module.ToastProvider })),
 );
 
-function Toaster() {
+function Toaster({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const loading = (
+    <main aria-busy="true">
+      <h1 className="sr-only">Loading</h1>
+    </main>
+  );
   return mounted ? (
-    <Suspense fallback={null}>
-      <ToastProvider position="top-center" />
+    <Suspense fallback={loading}>
+      <ToastProvider>{children}</ToastProvider>
     </Suspense>
-  ) : null;
+  ) : (
+    loading
+  );
 }
+
+// Dev builds only: production replaces DEV with false and drops the import.
+const AgentPanel = import.meta.env.DEV ? lazy(() => import("@/components/agent-panel")) : null;
+const showAgent = () =>
+  import.meta.env.MODE !== "e2e" || new URLSearchParams(location.search).has("agent");
 
 function Root() {
   const { queryClient } = Route.useRouteContext();
@@ -50,8 +62,14 @@ function Root() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
-        <Outlet />
-        <Toaster />
+        <Toaster>
+          <Outlet />
+          {AgentPanel && showAgent() && (
+            <Suspense>
+              <AgentPanel />
+            </Suspense>
+          )}
+        </Toaster>
       </QueryClientProvider>
     </AuthProvider>
   );
@@ -63,15 +81,16 @@ function RootError({ error }: ErrorComponentProps) {
   useEffect(() => recordProblem("screen", describeError(error)), [error]);
   return (
     <QueryClientProvider client={queryClient}>
-      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
-        <h1 className="text-xl font-semibold">Something went wrong</h1>
-        <p className="text-muted-foreground">Reload the page to try again.</p>
-        <div className="flex flex-wrap justify-center gap-2">
-          <Button onClick={() => location.reload()}>Reload</Button>
-          <SiteFeedback error={error} />
-        </div>
-      </main>
-      <Toaster />
+      <Toaster>
+        <main className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
+          <h1 className="text-title">Something went wrong</h1>
+          <p className="text-muted-foreground">Reload the page to try again.</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button onClick={() => location.reload()}>Reload</Button>
+            <SiteFeedback error={error} />
+          </div>
+        </main>
+      </Toaster>
     </QueryClientProvider>
   );
 }
@@ -88,7 +107,11 @@ export const Route = createRootRouteWithContext<{
       { name: "color-scheme", content: "light dark" },
       { title: "Cutnotes" },
     ],
-    links: [{ rel: "stylesheet", href: stylesUrl }],
+    // The route index for agents: every screen's URL, params and purpose.
+    links: [
+      { rel: "stylesheet", href: stylesUrl },
+      { rel: "help", href: "/llms.txt", type: "text/plain" },
+    ],
   }),
   shellComponent: RootShell,
   component: Root,

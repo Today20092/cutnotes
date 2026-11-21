@@ -28,7 +28,7 @@ it.each(["owner", "editor", "viewer"])(
     expect((await call(fn.editComment, caller, { ...input, body: "Corrected" })).status).toBe(200);
     expect((await review()).comments[0]?.body).toBe("Corrected");
     const resolved = await call(fn.resolveComment, caller, { ...input, resolved: true });
-    if (role === "viewer") await expectRefused(resolved, 403, "insufficient-role");
+    if (role === "viewer") await expectRefused(resolved, 404, "not-found");
     else {
       expect(resolved.status).toBe(200);
       expect((await review()).comments[0]?.resolvedAt).toEqual(expect.any(Number));

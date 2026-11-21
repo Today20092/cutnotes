@@ -1,5 +1,7 @@
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Progress } from "@/components/ui/progress";
 import { NativeSelect } from "@/components/ui/native-select";
-import { toastManager } from "@/components/ui/toast";
+import { toast } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Upload, X } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactElement } from "react";
@@ -42,13 +44,23 @@ function titleFromFile(name: string) {
 export function UploadSheet({
   trigger,
   destination,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   trigger: ReactElement;
   destination: Destination;
+  /** Set both to keep the sheet's open state in the URL. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const client = useQueryClient();
   const isMobile = useIsMobile();
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const open = controlledOpen ?? ownOpen;
+  const setOpen = (next: boolean) => {
+    setOwnOpen(next);
+    onOpenChange?.(next);
+  };
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState<File>();
   const [title, setTitle] = useState("");
@@ -67,15 +79,18 @@ export function UploadSheet({
     ? projectId
     : (projects[0]?.id ?? "");
 
+  // A sheet opened from the URL starts clean too.
+  useEffect(() => {
+    if (!open) return;
+    setFile(undefined);
+    setTitle("");
+    setError("");
+    limitCheck.current = Promise.resolve(null);
+  }, [open]);
+
   function changeOpen(next: boolean) {
     setOpen(next);
     setDragging(false);
-    if (next) {
-      setFile(undefined);
-      setTitle("");
-      setError("");
-      limitCheck.current = Promise.resolve(null);
-    }
   }
 
   function pickFile(picked: File | undefined) {
@@ -143,7 +158,7 @@ export function UploadSheet({
           {/* Drag feedback follows @cnippet/file-upload; keep the existing validation and queue. */}
           <div
             data-dragging={dragging || undefined}
-            className="flex flex-col gap-3 rounded-xl border border-dashed p-4 data-dragging:border-primary data-dragging:bg-accent"
+            className="flex flex-col gap-3 rounded-card border border-dashed p-4 data-dragging:border-primary data-dragging:bg-accent"
             onDragOver={(event) => {
               event.preventDefault();
               event.dataTransfer.dropEffect = "copy";
@@ -199,10 +214,8 @@ export function UploadSheet({
             </p>
           </div>
           {destination.kind === "new" && projects.length > 1 && (
-            <div className="flex flex-col gap-1">
-              <label htmlFor={projectFieldId} className="text-sm font-medium">
-                Project
-              </label>
+            <Field className="items-stretch">
+              <FieldLabel htmlFor={projectFieldId}>Project</FieldLabel>
               <NativeSelect
                 id={projectFieldId}
                 value={chosenProject}
@@ -214,19 +227,17 @@ export function UploadSheet({
                   </option>
                 ))}
               </NativeSelect>
-            </div>
+            </Field>
           )}
           {destination.kind === "new" && (
-            <div className="flex flex-col gap-1">
-              <label htmlFor={titleId} className="text-sm font-medium">
-                Video title
-              </label>
+            <Field className="items-stretch">
+              <FieldLabel htmlFor={titleId}>Video title</FieldLabel>
               <Input
                 id={titleId}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
               />
-            </div>
+            </Field>
           )}
           {noProjects && (
             <p className="text-sm text-muted-foreground">
@@ -296,14 +307,7 @@ function UploadRow({ item }: { item: UploadItem }) {
           )}
         </span>
       </div>
-      {active && (
-        <progress
-          className="h-2 w-full overflow-hidden rounded-full accent-primary"
-          aria-label={`Uploading ${item.label}`}
-          max={100}
-          value={item.percent}
-        />
-      )}
+      {active && <Progress aria-label={`Uploading ${item.label}`} max={100} value={item.percent} />}
       <p className="text-sm text-muted-foreground">{phaseText[item.phase](item)}</p>
     </li>
   );
@@ -317,11 +321,11 @@ export function UploadList() {
     for (const item of uploads) {
       if (item.phase !== "sent" || notified.current.has(item.id)) continue;
       notified.current.add(item.id);
-      toastManager.add({
+      toast({
         title: `${item.label} uploaded`,
         description: "Your video will appear when it is ready for review.",
         type: "success",
-        timeout: 5000,
+        duration: 5000,
       });
       dismissUpload(item.id);
     }

@@ -2,17 +2,21 @@ import { auth } from "@clerk/tanstack-react-start/server";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import * as v from "valibot";
-import { and, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { getDb, type Db } from "@/server/db";
 import {
   members,
+  projectMembers,
+  projectRoles,
   projects,
   revisions,
   roles,
   shareLinks,
   videos,
+  type AccessRole,
   type Member,
+  type ProjectRole,
   type Role,
 } from "@/server/db/schema";
 
@@ -26,9 +30,10 @@ export type RefusalCode =
   | "rate-limited"
   | "invalid-name"
   | "invalid-title"
-  | "invalid-status"
   | "already-sent"
-  | "upload-unavailable";
+  | "upload-unavailable"
+  | "not-latest-revision"
+  | "revision-changed";
 
 type BatchResults<Reads extends readonly unknown[]> = {
   -readonly [Index in keyof Reads]: Awaited<Reads[Index]>;
@@ -89,8 +94,49 @@ export const activeMember = (memberId: string, minimumRole: Role) =>
   sql`EXISTS (SELECT 1 FROM members AS acting WHERE acting.id = ${memberId}
     AND acting.removed_at IS NULL AND ${inArray(sql`acting.role`, roles.slice(roles.indexOf(minimumRole)))})`;
 
+export const memberIdForUser = (clerkUserId: string) =>
+  sql`(SELECT id FROM members WHERE clerk_user_id = ${clerkUserId})`;
+
+/** The SQL list of assignment roles at or above `minimumRole`, for an `IN` test. */
+const rolesFrom = (column: SQL, minimumRole: ProjectRole) =>
+  inArray(column, projectRoles.slice(projectRoles.indexOf(minimumRole)));
+
+/** Team roles control creation; project roles control access to existing work. */
+export const projectAccess = (
+  memberId: string | SQLWrapper,
+  projectId: string | SQLWrapper,
+  minimumRole: ProjectRole = "viewer",
+) =>
+  sql`EXISTS (SELECT 1 FROM members AS project_actor
+    JOIN projects AS accessible ON accessible.id = ${projectId} AND accessible.deleted_at IS NULL
+    WHERE project_actor.id = ${memberId} AND project_actor.removed_at IS NULL
+      AND (project_actor.role = 'owner' OR EXISTS (
+        SELECT 1 FROM project_members AS assignment
+        WHERE assignment.member_id = project_actor.id AND assignment.project_id = accessible.id
+          AND ${rolesFrom(sql`assignment.role`, minimumRole)}
+      )))`;
+
+export const projectRole = (memberId: string | SQLWrapper, projectId: string | SQLWrapper) =>
+  sql<AccessRole>`CASE WHEN EXISTS (SELECT 1 FROM members AS role_actor WHERE role_actor.id = ${memberId}
+      AND role_actor.role = 'owner' AND role_actor.removed_at IS NULL) THEN 'owner'
+    ELSE (SELECT assignment.role FROM project_members AS assignment
+      WHERE assignment.member_id = ${memberId} AND assignment.project_id = ${projectId}) END`;
+
+export const videoAccess = (
+  memberId: string | SQLWrapper,
+  videoId: string | SQLWrapper,
+  minimumRole: ProjectRole = "viewer",
+) =>
+  sql`EXISTS (SELECT 1 FROM videos AS accessible_video WHERE accessible_video.id = ${videoId}
+    AND accessible_video.deleted_at IS NULL AND ${projectAccess(memberId, sql`accessible_video.project_id`, minimumRole)})`;
+
+/** Editors upload to any Video in the Project; Uploaders only to Videos they created. */
+export const uploadAccess = (memberId: string, videoId: string | SQLWrapper) =>
+  sql`(${videoAccess(memberId, videoId, "editor")} OR (${videoAccess(memberId, videoId, "uploader")}
+    AND EXISTS (SELECT 1 FROM videos AS own_video WHERE own_video.id = ${videoId} AND own_video.created_by = ${memberId})))`;
+
 /** The Project still takes writes: live and not Complete. */
-export const openProject = (projectId: string | SQL) =>
+export const openProject = (projectId: string | SQLWrapper) =>
   sql`EXISTS (SELECT 1 FROM projects AS open WHERE open.id = ${projectId}
     AND open.deleted_at IS NULL AND open.completed_at IS NULL)`;
 
@@ -103,6 +149,13 @@ export const writableVideo = (videoId: string | SQL) =>
 export const readyRevision = (revisionId: string, videoId: string) =>
   sql`EXISTS (SELECT 1 FROM revisions AS cut WHERE cut.id = ${revisionId}
     AND cut.video_id = ${videoId} AND cut.state = 'ready' AND ${writableVideo(videoId)})`;
+
+/** The Revision is the newest ready cut of its Video (of `videoId`, when given). */
+export const latestReadyRevision = (revisionId: string, videoId?: string) =>
+  sql`EXISTS (SELECT 1 FROM revisions AS cut WHERE cut.id = ${revisionId}
+    AND cut.state = 'ready' AND ${videoId === undefined ? sql`1` : sql`cut.video_id = ${videoId}`}
+    AND NOT EXISTS (SELECT 1 FROM revisions AS newer WHERE newer.video_id = cut.video_id
+      AND newer.state = 'ready' AND newer.number > cut.number))`;
 
 /** Selects only: a screen's reads run before the Role is checked, so they must change nothing. */
 export type ScreenDb = Pick<Db, "select">;
@@ -144,7 +197,6 @@ export async function readShareLink(token: unknown) {
       id: shareLinks.id,
       permission: shareLinks.permission,
       title: videos.title,
-      projectName: projects.name,
       revisionId: revisions.id,
       number: revisions.number,
       frameRate: revisions.frameRate,
@@ -154,10 +206,12 @@ export async function readShareLink(token: unknown) {
     .from(shareLinks)
     .innerJoin(videos, eq(videos.id, shareLinks.videoId))
     .innerJoin(projects, eq(projects.id, videos.projectId))
+    // The pinned Revision; a link made before pinning (NULL) follows the latest ready one.
     .innerJoin(
       revisions,
-      sql`${revisions.id} = (SELECT latest.id FROM revisions AS latest
-      WHERE latest.video_id = ${videos.id} AND latest.state = 'ready' ORDER BY latest.number DESC LIMIT 1)`,
+      sql`${revisions.id} = COALESCE(${shareLinks.revisionId}, (SELECT latest.id FROM revisions AS latest
+      WHERE latest.video_id = ${videos.id} AND latest.state = 'ready' ORDER BY latest.number DESC LIMIT 1))
+      AND ${revisions.videoId} = ${videos.id} AND ${revisions.state} = 'ready'`,
     )
     .where(
       and(
@@ -216,7 +270,7 @@ async function writeActiveMember(
               WHERE other.role = 'owner' AND other.removed_at IS NULL AND other.id <> ${targetId})`,
       );
 
-  const [written, rows] = await db.batch([
+  const [written, , rows] = await db.batch([
     db
       .update(members)
       .set(change)
@@ -227,6 +281,14 @@ async function writeActiveMember(
           sql`EXISTS (SELECT 1 FROM members AS acting
                 WHERE acting.id = ${caller.id} AND acting.role = 'owner' AND acting.removed_at IS NULL)`,
           keepsAnOwner,
+        ),
+      ),
+    db
+      .delete(projectMembers)
+      .where(
+        and(
+          eq(projectMembers.memberId, targetId),
+          sql`EXISTS (SELECT 1 FROM members WHERE id = ${targetId} AND removed_at IS NOT NULL)`,
         ),
       ),
     db
@@ -273,7 +335,7 @@ async function claimFirstOwner(
   const [created] = await getDb()
     .insert(members)
     .select(
-      sql`SELECT ${crypto.randomUUID()}, ${clerkUserId}, ${email}, 'owner', ${Date.now()}, NULL
+      sql`SELECT ${crypto.randomUUID()}, ${clerkUserId}, ${email}, 'owner', ${Date.now()}, NULL, NULL
           WHERE NOT EXISTS (SELECT 1 FROM ${members} WHERE ${members.role} = 'owner')`,
     )
     .onConflictDoNothing()

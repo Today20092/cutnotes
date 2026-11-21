@@ -1,7 +1,6 @@
 "use client";
 
-import { mergeProps } from "@base-ui/react/merge-props";
-import { useRender } from "@base-ui/react/use-render";
+import { mergeProps, renderElement, type PartProps } from "@ui-sdk/react/primitive";
 import { cva, type VariantProps } from "class-variance-authority";
 import type React from "react";
 import { cn } from "@/lib/utils";
@@ -39,7 +38,7 @@ export const badgeVariants = cva(
   },
 );
 
-export interface BadgeProps extends useRender.ComponentProps<"span"> {
+export interface BadgeProps extends PartProps<"span"> {
   variant?: VariantProps<typeof badgeVariants>["variant"];
   size?: VariantProps<typeof badgeVariants>["size"];
 }
@@ -56,9 +55,5 @@ export function Badge({
     "data-slot": "badge",
   };
 
-  return useRender({
-    defaultTagName: "span",
-    props: mergeProps<"span">(defaultProps, props),
-    render,
-  });
+  return renderElement("span", mergeProps(defaultProps, props), render);
 }

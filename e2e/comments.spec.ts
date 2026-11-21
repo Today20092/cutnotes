@@ -10,6 +10,7 @@ import {
 } from "./support/database";
 import { signInAs } from "./support/session";
 import { sampleStream } from "./support/sample-stream";
+import { appAlert, pageListItem } from "./support/ui-sdk";
 
 const callTo = (name: string) => (url: URL) =>
   url.pathname.includes("/_serverFn/") &&
@@ -78,15 +79,23 @@ test("Drawing tools pause, undo, clear and replay over the picture after resizin
     "x",
     before!,
   );
-  const bounds = (await page.getByLabel("Drawing picture", { exact: true }).boundingBox())!;
-  const shape = (await page
-    .getByLabel("Drawing picture", { exact: true })
-    .locator("rect")
-    .boundingBox())!;
-  expect((shape.x - bounds.x) / bounds.width).toBeCloseTo(0.25, 1);
-  expect(shape.width / bounds.width).toBeCloseTo(0.5, 1);
-  expect((shape.y - bounds.y) / bounds.height).toBeCloseTo(0.25, 1);
-  expect(shape.height / bounds.height).toBeCloseTo(0.5, 1);
+  // Sample both boxes in one frame while the resize observer finishes updating the overlay.
+  await expect(async () => {
+    const [x, y, width, height] = await overlay.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      const shape = element.querySelector("rect")!.getBoundingClientRect();
+      return [
+        (shape.x - bounds.x) / bounds.width,
+        (shape.y - bounds.y) / bounds.height,
+        shape.width / bounds.width,
+        shape.height / bounds.height,
+      ];
+    });
+    expect(x).toBeCloseTo(0.25, 1);
+    expect(y).toBeCloseTo(0.25, 1);
+    expect(width).toBeCloseTo(0.5, 1);
+    expect(height).toBeCloseTo(0.5, 1);
+  }).toPass({ timeout: 5000 });
 });
 
 test("touch pen simplifies, cancelled gestures do not save, and failed sends keep the Drawing", async ({
@@ -144,7 +153,7 @@ test("touch pen simplifies, cancelled gestures do not save, and failed sends kee
   await expect(draw).toBeFocused();
   await page.route(createCall, (route) => route.abort());
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("Could not send");
+  await expect(appAlert(page)).toContainText("Could not send");
   await expect(overlay.locator("polyline")).toHaveCount(1);
   await page.unroute(createCall);
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
@@ -176,7 +185,7 @@ test("a Drawing over the shape cap is refused with a message and replay passes a
     await page.mouse.down();
     await page.mouse.up();
   }
-  await expect(page.getByRole("alert")).toContainText("Drawing is too large");
+  await expect(appAlert(page)).toContainText("Drawing is too large");
   await expect(overlay.locator("polyline")).toHaveCount(50);
   const axe = () =>
     new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
@@ -231,19 +240,16 @@ test("ready Revision history is one tap away and keeps feedback on its own cut",
   const newer = seedReadyRevision(id, clerkUserId, 2);
   seedComment(newer, clerkUserId, "Current cut feedback");
   await page.reload();
-  await expect(
-    page.getByRole("listitem").filter({ hasText: "Current cut feedback" }),
-  ).toBeVisible();
+  // The URL names the cut the review opened on, so a newer one is offered, not swapped in.
+  await expect(pageListItem(page).filter({ hasText: "Older cut feedback" })).toBeVisible();
+  await page.getByRole("link", { name: "Watch it" }).click();
+  await expect(pageListItem(page).filter({ hasText: "Current cut feedback" })).toBeVisible();
   await page.getByRole("button", { name: "Revision 1", exact: true }).click();
-  await expect(page.getByRole("listitem").filter({ hasText: "Older cut feedback" })).toBeVisible();
-  await expect(page.getByRole("listitem").filter({ hasText: "Current cut feedback" })).toHaveCount(
-    0,
-  );
+  await expect(pageListItem(page).filter({ hasText: "Older cut feedback" })).toBeVisible();
+  await expect(pageListItem(page).filter({ hasText: "Current cut feedback" })).toHaveCount(0);
   await page.getByLabel(/^Add a Comment/).fill("Still on the older cut");
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
-  await expect(
-    page.getByRole("listitem").filter({ hasText: "Still on the older cut" }),
-  ).toBeVisible();
+  await expect(pageListItem(page).filter({ hasText: "Still on the older cut" })).toBeVisible();
   await expect(
     page
       .getByRole("listitem")
@@ -266,12 +272,8 @@ test("ready Revision history is one tap away and keeps feedback on its own cut",
     ).violations,
   ).toEqual([]);
   await page.getByRole("button", { name: "Revision 2", exact: true }).click();
-  await expect(
-    page.getByRole("listitem").filter({ hasText: "Current cut feedback" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("listitem").filter({ hasText: "Still on the older cut" }),
-  ).toHaveCount(0);
+  await expect(pageListItem(page).filter({ hasText: "Current cut feedback" })).toBeVisible();
+  await expect(pageListItem(page).filter({ hasText: "Still on the older cut" })).toHaveCount(0);
 });
 
 test("opening a Video clears the Member's unread marker", async ({ page }) => {
@@ -280,18 +282,18 @@ test("opening a Video clears the Member's unread marker", async ({ page }) => {
   seedMember(other, "editor");
   seedComment(id, other, "New feedback from someone else", Date.now());
   await page.goto(`/projects/${id}`);
-  const tile = page.getByRole("listitem").filter({ hasText: "Playback cut" });
+  const tile = pageListItem(page).filter({ hasText: "Playback cut" });
   await expect(tile.getByText("Unread activity", { exact: true })).toBeVisible();
   await tile.getByRole("link").click();
   await expect(page.getByRole("heading", { name: "Playback cut" })).toBeVisible();
   await expect(
-    page.getByRole("listitem").filter({ hasText: "New feedback from someone else" }),
+    pageListItem(page).filter({ hasText: "New feedback from someone else" }),
   ).toBeVisible();
   await page
     .getByRole("navigation", { name: "breadcrumb" })
     .getByRole("link", { name: "Playback project" })
     .click();
-  await expect(page.getByRole("listitem").filter({ hasText: "Playback cut" })).toBeVisible();
+  await expect(pageListItem(page).filter({ hasText: "Playback cut" })).toBeVisible();
   await expect(page.getByText("Unread activity", { exact: true })).toHaveCount(0);
   expect(
     (
@@ -314,16 +316,16 @@ test("a Comment appears before the answer; a failed send keeps its text for retr
   });
   await page.getByLabel(/^Add a Comment/).fill("Keep this feedback");
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
-  await expect(page.getByRole("listitem").filter({ hasText: "Keep this feedback" })).toBeVisible();
+  await expect(pageListItem(page).filter({ hasText: "Keep this feedback" })).toBeVisible();
   release();
-  await expect(page.getByRole("alert")).toContainText("Could not send");
-  await expect(page.getByRole("listitem").filter({ hasText: "Keep this feedback" })).toHaveCount(0);
+  await expect(appAlert(page)).toContainText("Could not send");
+  await expect(pageListItem(page).filter({ hasText: "Keep this feedback" })).toHaveCount(0);
   await expect(page.getByLabel(/^Add a Comment/)).toHaveValue("Keep this feedback");
   await page.unroute(createCall);
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
-  await expect(page.getByRole("listitem").filter({ hasText: "Keep this feedback" })).toHaveCount(1);
+  await expect(pageListItem(page).filter({ hasText: "Keep this feedback" })).toHaveCount(1);
   await page.reload();
-  await expect(page.getByRole("listitem").filter({ hasText: "Keep this feedback" })).toHaveCount(1);
+  await expect(pageListItem(page).filter({ hasText: "Keep this feedback" })).toHaveCount(1);
 });
 
 test("Comments seek, edit, Resolve and delete with sensible focus and accessible states", async ({
@@ -340,7 +342,7 @@ test("Comments seek, edit, Resolve and delete with sensible focus and accessible
   await expect(page.getByText("Add a Comment at 0:03", { exact: true })).toBeVisible();
   await page.getByLabel(/^Add a Comment/).fill("Change this frame");
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
-  const row = page.getByRole("listitem").filter({ hasText: "Change this frame" });
+  const row = pageListItem(page).filter({ hasText: "Change this frame" });
   await expect(row.getByRole("button", { name: /^Edit Comment/ })).toBeEnabled();
   await page.locator("video").evaluate((video: HTMLVideoElement) => {
     video.currentTime = 0;
@@ -359,11 +361,11 @@ test("Comments seek, edit, Resolve and delete with sensible focus and accessible
   await page.getByLabel("Edit Comment text").fill("Edited feedback");
   await page.route(editCall, (route) => route.abort());
   await page.getByRole("button", { name: "Save Comment", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("Could not edit");
+  await expect(appAlert(page)).toContainText("Could not edit");
   await expect(page.getByLabel("Edit Comment text")).toHaveValue("Edited feedback");
   await page.unroute(editCall);
   await page.getByRole("button", { name: "Save Comment", exact: true }).click();
-  const edited = page.getByRole("listitem").filter({ hasText: "Edited feedback" });
+  const edited = pageListItem(page).filter({ hasText: "Edited feedback" });
   await edited.getByRole("checkbox", { name: /^Resolve Comment/ }).click();
   await expect(page.getByRole("button", { name: "To do", exact: true })).toBeFocused();
   await expect(edited).toHaveCount(0);
@@ -395,6 +397,29 @@ test("Comments seek, edit, Resolve and delete with sensible focus and accessible
   await expect(page.getByRole("button", { name: "To do", exact: true })).toBeFocused();
 });
 
+test("Undo and a failed delayed delete restore only the selected Comment", async ({ page }) => {
+  const { id, clerkUserId } = await openReview(page);
+  seedComment(id, clerkUserId, "Keep this Comment");
+  seedComment(id, clerkUserId, "Other Comment");
+  await page.reload();
+  const row = pageListItem(page).filter({ hasText: "Keep this Comment" });
+  const other = pageListItem(page).filter({ hasText: "Other Comment" });
+  await row.getByRole("button", { name: /^Delete Comment/ }).click();
+  await expect(row).toHaveCount(0);
+  await page.getByText("Undo", { exact: true }).click({ timeout: 3000 });
+  await expect(row).toBeVisible();
+  await expect(other).toBeVisible();
+
+  await page.route(callTo("deleteComment"), (route) => route.abort());
+  await row.getByRole("button", { name: /^Delete Comment/ }).click();
+  await expect(row).toHaveCount(0);
+  await expect(appAlert(page)).toContainText("Could not delete Comment", {
+    timeout: 10_000,
+  });
+  await expect(row).toBeVisible();
+  await expect(other).toBeVisible();
+});
+
 test("Viewers can write and manage their own Comments without Resolve controls", async ({
   page,
 }) => {
@@ -423,9 +448,7 @@ test("polling and returning to the screen replace the full Comment list includin
   const { id, clerkUserId } = await openReview(page);
   const commentId = seedComment(id, clerkUserId, "Arrived from another screen");
   await page.clock.fastForward(31_000);
-  await expect(
-    page.getByRole("listitem").filter({ hasText: "Arrived from another screen" }),
-  ).toBeVisible();
+  await expect(pageListItem(page).filter({ hasText: "Arrived from another screen" })).toBeVisible();
   removeSeededComment(commentId);
   await page.evaluate(() => {
     Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
@@ -436,9 +459,9 @@ test("polling and returning to the screen replace the full Comment list includin
     });
     document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
   });
-  await expect(
-    page.getByRole("listitem").filter({ hasText: "Arrived from another screen" }),
-  ).toHaveCount(0);
+  await expect(pageListItem(page).filter({ hasText: "Arrived from another screen" })).toHaveCount(
+    0,
+  );
 });
 
 test("retrying after a lost answer reuses the ID and never duplicates the optimistic Comment", async ({
@@ -460,8 +483,8 @@ test("retrying after a lost answer reuses the ID and never duplicates the optimi
   });
   await page.getByLabel(/^Add a Comment/).fill("Lost answer");
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("Could not send");
-  const row = page.getByRole("listitem").filter({ hasText: "Lost answer" });
+  await expect(appAlert(page)).toContainText("Could not send");
+  const row = pageListItem(page).filter({ hasText: "Lost answer" });
   await expect(row).toHaveCount(1);
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
   await expect.poll(() => payloads.length).toBe(2);
@@ -505,12 +528,12 @@ test("rapid writes are serialized per Video and only the last pending write refr
   releaseFirst();
   await expect.poll(() => sent).toBe(2);
   expect(reads).toBe(0);
-  await expect(page.getByRole("listitem").filter({ hasText: "Rapid submission" })).toHaveCount(1);
+  await expect(pageListItem(page).filter({ hasText: "Rapid submission" })).toHaveCount(1);
   releaseSecond();
   await expect(page.getByRole("button", { name: "Send Comment", exact: true })).toBeEnabled();
   expect(reads).toBe(1);
   await page.reload();
-  await expect(page.getByRole("listitem").filter({ hasText: "Rapid submission" })).toHaveCount(1);
+  await expect(pageListItem(page).filter({ hasText: "Rapid submission" })).toHaveCount(1);
 });
 
 test("a Guest goes from the welcome screen to a saved Comment, then sees a plain retry message when limited", async ({
@@ -523,11 +546,11 @@ test("a Guest goes from the welcome screen to a saved Comment, then sees a plain
   };
   seedMember(person.clerkUserId, "editor");
   const videoId = seedReview(person.clerkUserId);
-  await signInAs(page, person);
+  await signInAs(page, { clerkUserId: "user_first_owner", email: "first.owner@example.com" });
   await page.goto(`/videos/${videoId}`);
-  await page.getByRole("button", { name: "Share", exact: true }).click();
+  await page.getByRole("button", { name: "Send to customer" }).click();
   await page.getByLabel("Who is this link for?").fill("Client");
-  await page.getByRole("button", { name: "Create Share Link" }).click();
+  await page.getByRole("button", { name: "Create link" }).click();
   await expect(page.getByRole("button", { name: "Revoke link for Client" })).toBeVisible();
 
   const guest = await (await browser.newContext()).newPage();
@@ -543,7 +566,7 @@ test("a Guest goes from the welcome screen to a saved Comment, then sees a plain
   await expect(text).toHaveValue("");
   await guest.reload();
   await expect(guest.getByText("Dana · Guest")).toBeVisible();
-  await expect(guest.getByText(/Too dark here/)).toBeVisible();
+  await expect(pageListItem(guest).filter({ hasText: /Too dark here/ })).toBeVisible();
   await expect(guest.getByRole("button", { name: /^(Edit|Delete)/ })).toHaveCount(0);
 
   await page.reload();
@@ -562,4 +585,6 @@ test("a Guest goes from the welcome screen to a saved Comment, then sees a plain
     guest.getByText("Too many Comments right now. Your text is kept; wait a minute and try again."),
   ).toBeVisible();
   await expect(text).toHaveValue("One too many");
+  await expect(pageListItem(guest).filter({ hasText: "One too many" })).toHaveCount(0);
+  await expect(pageListItem(guest).filter({ hasText: "Too dark here" })).toBeVisible();
 });

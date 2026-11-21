@@ -1,9 +1,10 @@
-import { and, eq, inArray, notExists, or, sql } from "drizzle-orm";
-import { activeMember } from "@/server/access";
+import { and, eq, inArray, isNull, notExists, or, sql } from "drizzle-orm";
+import { latestReadyRevision, openProject, uploadAccess } from "@/server/access";
 import { getDb, type Db } from "@/server/db";
 import { revisions, videos } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
 import type { MuxAsset } from "@/server/mux/gateway";
+import { moveStage } from "@/server/project-stage";
 
 const MAX_DURATION_SECONDS = 12 * 60 * 60;
 
@@ -98,23 +99,46 @@ async function markReady(revisionId: string, data: Partial<MuxAsset>) {
 
   const now = Date.now();
   const db = getDb();
-  const ready = await db
-    .update(revisions)
-    .set({
-      state: "ready",
-      muxAssetId: sql`COALESCE(${revisions.muxAssetId}, ${assetId ?? null})`,
-      muxPlaybackId: playbackId,
-      durationMs: Math.round(duration * 1000),
-      frameRate: data.tracks?.find((track) => track.type === "video")?.max_frame_rate ?? null,
-      aspectRatio: data.aspect_ratio ?? null,
-      readyAt: now,
-    })
-    .where(and(eq(revisions.id, revisionId), isUnfinished))
-    .returning({ videoId: revisions.videoId });
-
-  if (ready[0]) {
-    await db.update(videos).set({ updatedAt: now }).where(eq(videos.id, ready[0].videoId));
-  }
+  const videoId = sql`(SELECT video_id FROM revisions WHERE id = ${revisionId})`;
+  // D1 runs a batch in order on one connection, so `changes()` is the previous statement's
+  // row count: only the write that made this Revision ready reopens the Video, and only a
+  // reopened Video moves the Stage. A late older cut is not the newest and changes neither.
+  const changedOne = sql`changes() = 1`;
+  // One batch, so a failure leaves the Revision unfinished and a retry transitions again.
+  await db.batch([
+    db
+      .update(revisions)
+      .set({
+        state: "ready",
+        muxAssetId: sql`COALESCE(${revisions.muxAssetId}, ${assetId ?? null})`,
+        muxPlaybackId: playbackId,
+        durationMs: Math.round(duration * 1000),
+        frameRate: data.tracks?.find((track) => track.type === "video")?.max_frame_rate ?? null,
+        aspectRatio: data.aspect_ratio ?? null,
+        readyAt: now,
+      })
+      .where(and(eq(revisions.id, revisionId), isUnfinished)),
+    // A new cut is in review again, even after an earlier one was approved.
+    db
+      .update(videos)
+      .set({ updatedAt: now, status: "review" })
+      .where(
+        and(
+          changedOne,
+          eq(videos.id, videoId),
+          isNull(videos.deletedAt),
+          openProject(videos.projectId),
+          latestReadyRevision(revisionId),
+        ),
+      ),
+    moveStage(
+      db,
+      sql`(SELECT project_id FROM videos WHERE id = ${videoId})`,
+      "in_review",
+      changedOne,
+      now,
+    ),
+  ]);
 }
 
 /** The sweep shares the webhook's conditional, monotonic transitions. */
@@ -201,7 +225,7 @@ function markUploadFailed(revisionId: string, errorCode: string) {
 
 /** Removes a Revision that never reached Mux, and a Video that held nothing else. */
 export function discardRevision(db: Db, revisionId: string, videoId: string, memberId?: string) {
-  const allowed = memberId ? activeMember(memberId, "editor") : undefined;
+  const allowed = memberId ? uploadAccess(memberId, videoId) : undefined;
   return db.batch([
     db
       .delete(revisions)

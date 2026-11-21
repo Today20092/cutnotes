@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { asc, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import {
   id,
   readAsMember,
@@ -8,7 +8,7 @@ import {
   requireMember,
   setMemberRole,
 } from "@/server/access";
-import { members, roles, type Role } from "@/server/db/schema";
+import { members, projectMembers, projects, roles, type Role } from "@/server/db/schema";
 
 export const listMembers = createServerFn({ method: "POST" }).handler(async () => {
   const { member, results } = await readAsMember("owner", (db) => [
@@ -16,14 +16,40 @@ export const listMembers = createServerFn({ method: "POST" }).handler(async () =
       .select({
         id: members.id,
         displayName: members.displayName,
+        avatarUrl: members.avatarUrl,
         role: members.role,
         createdAt: members.createdAt,
+        invitedBy: sql<
+          string | null
+        >`(SELECT creator.display_name FROM invites i JOIN members creator ON creator.id = i.created_by WHERE i.used_by = members.id ORDER BY i.used_at DESC LIMIT 1)`,
+        invitationNote: sql<
+          string | null
+        >`(SELECT note FROM invites WHERE used_by = members.id ORDER BY used_at DESC LIMIT 1)`,
       })
       .from(members)
       .where(isNull(members.removedAt))
       .orderBy(asc(members.createdAt), asc(members.id)),
+    db
+      .select({
+        memberId: projectMembers.memberId,
+        id: projects.id,
+        name: projects.name,
+        role: projectMembers.role,
+      })
+      .from(projectMembers)
+      .innerJoin(
+        projects,
+        and(eq(projects.id, projectMembers.projectId), isNull(projects.deletedAt)),
+      )
+      .orderBy(asc(projects.name), asc(projects.id)),
   ]);
-  return { youId: member.id, members: results[0] };
+  return {
+    youId: member.id,
+    members: results[0].map((person) => ({
+      ...person,
+      projects: results[1].filter((assignment) => assignment.memberId === person.id),
+    })),
+  };
 });
 
 export const changeMemberRole = createServerFn({ method: "POST" })

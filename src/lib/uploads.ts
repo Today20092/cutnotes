@@ -1,5 +1,5 @@
-import type { QueryClient } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
+import { createUploadQueue } from "@/lib/upload-queue";
 import { projectListQuery } from "@/lib/projects";
 import { cancelUpload, startUpload } from "@/server/videos";
 
@@ -9,195 +9,40 @@ const PROBE_TIMEOUT_MS = 10_000;
 // Must be a multiple of 256 KB. To be tuned on real phones.
 const CHUNK_SIZE_KB = 8192;
 
-export type UploadTarget = { projectId: string; title: string } | { videoId: string };
-
-export type UploadPhase =
-  | "waiting"
-  | "sending"
-  | "paused"
-  | "sent"
-  | "failed"
-  | "cancel-failed"
-  | "too-late";
-
-export type UploadItem = {
-  id: string;
-  label: string;
-  phase: UploadPhase;
-  percent: number;
-};
-
-type Transfer = {
-  file: File;
-  target: UploadTarget;
-  client: QueryClient;
-  abort?: () => void;
-  revisionId?: string;
-  cancelled?: boolean;
-  creating?: boolean;
-};
-
-let items: UploadItem[] = [];
-const transfers = new Map<string, Transfer>();
-const listeners = new Set<() => void>();
-
-const isRunning = ({ phase }: UploadItem) => phase === "sending" || phase === "paused";
-const isUnfinished = (item: UploadItem) => item.phase === "waiting" || isRunning(item);
+export type { UploadTarget, UploadPhase, UploadItem } from "@/lib/upload-queue";
 
 function warnBeforeLeaving(event: BeforeUnloadEvent) {
   event.preventDefault();
 }
 
-let warning = false;
-function publish(next: UploadItem[]) {
-  items = next;
-  const shouldWarn = items.some(isUnfinished);
-  if (shouldWarn !== warning) {
-    warning = shouldWarn;
-    window[shouldWarn ? "addEventListener" : "removeEventListener"](
-      "beforeunload",
-      warnBeforeLeaving,
-    );
-  }
-  listeners.forEach((listener) => listener());
-}
-
-function update(id: string, changes: Partial<UploadItem>) {
-  const current = items.find((item) => item.id === id);
-  if (!current) return;
-  // Progress fires far more often than the rounded percent changes.
-  if (Object.entries(changes).every(([key, value]) => current[key as keyof UploadItem] === value)) {
-    return;
-  }
-  publish(items.map((item) => (item === current ? { ...item, ...changes } : item)));
-}
-
-function remove(id: string) {
-  transfers.delete(id);
-  publish(items.filter((item) => item.id !== id));
-}
-
-const refresh = (client: QueryClient) =>
-  client.invalidateQueries({ queryKey: projectListQuery.queryKey });
-
-/** One upload at a time: a phone on a weak connection cannot serve several. */
-function startNext() {
-  if (items.some(isRunning)) return;
-  const next = items.find((item) => item.phase === "waiting");
-  if (next) void send(next.id);
-}
-
-async function discardOnServer(transfer: Transfer) {
-  if (!transfer.revisionId) return;
-  await cancelUpload({ data: { revisionId: transfer.revisionId } });
-  transfer.revisionId = undefined;
-  void refresh(transfer.client);
-}
-
-function fail(id: string, transfer: Transfer) {
-  update(id, { phase: "failed" });
-  // Retry starts over, so the abandoned Revision should not linger.
-  discardOnServer(transfer).catch(() => {});
-  startNext();
-}
-
-async function send(id: string) {
-  const transfer = transfers.get(id);
-  if (!transfer) return;
-  update(id, { phase: "sending", percent: 0 });
-
-  try {
-    transfer.creating = true;
-    const started = await startUpload({ data: transfer.target });
-    transfer.creating = false;
-    transfer.revisionId = started.revisionId;
-    void refresh(transfer.client);
-    if (transfer.cancelled) {
-      await stopUpload(id);
-      return;
-    }
-
+const queue = createUploadQueue({
+  start: (target) => startUpload({ data: target }),
+  cancel: (revisionId) => cancelUpload({ data: { revisionId } }),
+  refresh: (client) => {
+    void client.invalidateQueries({ queryKey: projectListQuery.queryKey });
+  },
+  warn: (enabled) =>
+    window[enabled ? "addEventListener" : "removeEventListener"]("beforeunload", warnBeforeLeaving),
+  transfer: async (endpoint, file, cancelled, events) => {
     // Browser-only, so it stays out of the Worker's bundle.
     const { createUpload } = await import("@mux/upchunk");
-    if (transfer.cancelled) return;
-    const upload = createUpload({
-      endpoint: started.uploadUrl,
-      file: transfer.file,
-      chunkSize: CHUNK_SIZE_KB,
-    });
-    transfer.abort = () => upload.abort();
-    upload.on("progress", ({ detail }: CustomEvent<number>) =>
-      update(id, { percent: Math.floor(detail) }),
-    );
-    upload.on("offline", () => update(id, { phase: "paused" }));
-    upload.on("online", () => update(id, { phase: "sending" }));
-    upload.on("error", () => fail(id, transfer));
-    upload.on("success", () => {
-      update(id, { phase: "sent", percent: 100 });
-      void refresh(transfer.client);
-      startNext();
-    });
-  } catch {
-    transfer.creating = false;
-    if (transfer.cancelled) {
-      remove(id);
-      startNext();
-    } else fail(id, transfer);
-  }
-}
+    if (cancelled()) return () => {};
+    const upload = createUpload({ endpoint, file, chunkSize: CHUNK_SIZE_KB });
+    upload.on("progress", ({ detail }: CustomEvent<number>) => events.progress(detail));
+    upload.on("offline", events.offline);
+    upload.on("online", events.online);
+    upload.on("error", events.error);
+    upload.on("success", events.success);
+    return () => upload.abort();
+  },
+});
 
-export function enqueueUpload(input: {
-  file: File;
-  label: string;
-  target: UploadTarget;
-  client: QueryClient;
-}) {
-  const id = crypto.randomUUID();
-  transfers.set(id, {
-    file: input.file,
-    target: input.target,
-    client: input.client,
-  });
-  publish([...items, { id, label: input.label, phase: "waiting", percent: 0 }]);
-  startNext();
-}
-
-export function retryUpload(id: string) {
-  update(id, { phase: "waiting", percent: 0 });
-  startNext();
-}
-
-export const dismissUpload = remove;
-
-export async function stopUpload(id: string) {
-  const transfer = transfers.get(id);
-  if (!transfer) return;
-  transfer.cancelled = true;
-  transfer.abort?.();
-  // Keep progress and the leave-page warning until the server returns its Revision.
-  if (transfer.creating) return;
-  try {
-    await discardOnServer(transfer);
-    remove(id);
-  } catch (error) {
-    update(id, {
-      phase: error instanceof Response && error.status === 409 ? "too-late" : "cancel-failed",
-    });
-  }
-  startNext();
-}
-
-const subscribe = (listener: () => void) => {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-};
-
+export const enqueueUpload = queue.enqueue;
+export const retryUpload = queue.retry;
+export const dismissUpload = queue.dismiss;
+export const stopUpload = queue.stop;
 export const useUploads = () =>
-  useSyncExternalStore(
-    subscribe,
-    () => items,
-    () => items,
-  );
+  useSyncExternalStore(queue.subscribe, queue.snapshot, queue.snapshot);
 
 /** Null when the browser cannot read the file. The server re-checks at `ready`. */
 function probeDuration(file: File) {

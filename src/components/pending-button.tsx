@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -8,7 +8,7 @@ export function PendingButton({
   disabled,
   children,
   ...props
-}: ComponentProps<typeof Button> & { pending: boolean }) {
+}: Omit<ComponentProps<typeof Button>, "children"> & { pending: boolean; children?: ReactNode }) {
   return (
     <Button {...props} disabled={pending || disabled} aria-busy={pending || undefined}>
       {pending && <Spinner data-icon="inline-start" aria-hidden role="presentation" />}

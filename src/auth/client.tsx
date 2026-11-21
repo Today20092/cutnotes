@@ -26,6 +26,11 @@ export function useAccountEmail() {
   return useUser().user?.primaryEmailAddress?.emailAddress;
 }
 
+export function useManageProfile() {
+  const clerk = useClerk();
+  return () => clerk.openUserProfile();
+}
+
 export function useSignOut() {
   const clerk = useClerk();
   return () => clerk.signOut();

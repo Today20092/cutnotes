@@ -124,9 +124,9 @@ test("audit matrix", async ({ page, browser }, testInfo) => {
   ];
 
   await page.goto(`/videos/${id}`);
-  await page.getByRole("button", { name: "Share", exact: true }).click();
+  await page.getByRole("button", { name: "Send to customer" }).click();
   await page.getByLabel("Who is this link for?").fill("Client");
-  await page.getByRole("button", { name: "Create Share Link" }).click();
+  await page.getByRole("button", { name: "Create link" }).click();
   await page.getByRole("button", { name: "Revoke link for Client" }).waitFor();
   const guestContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const guest = await guestContext.newPage();

@@ -6,6 +6,7 @@ const comments: Comment[] = [
   {
     id: "b",
     authorName: "Editor & client",
+    authorAvatarUrl: null,
     timecodeMs: 4500,
     body: 'Fix <this> "shot"\u0000',
     drawing: [
@@ -25,6 +26,7 @@ const comments: Comment[] = [
   {
     id: "a",
     authorName: "Client",
+    authorAvatarUrl: null,
     timecodeMs: 1000,
     body: "Done",
     drawing: null,

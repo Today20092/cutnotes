@@ -1,7 +1,10 @@
+import { PersonAvatar } from "@/components/person-avatar";
+import { Frame, FrameHeader, FramePanel } from "@/components/ui/frame";
+import { Badge } from "@/components/ui/badge";
 import { SettingsLayout } from "@/components/settings-layout";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, LogOut, MessageSquareWarning, UserPlus, Users } from "lucide-react";
-import { useAccountEmail, useSignOut } from "@/auth/client";
+import { useAccountEmail, useManageProfile, useSignOut } from "@/auth/client";
 import { appShellQuery, MemberScreen } from "@/components/member-screen";
 import { PageBreadcrumb, PageHeading } from "@/components/project-parts";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +16,7 @@ export const Route = createFileRoute("/settings")({
 });
 
 const teamLinks = [
-  { to: "/members", label: "Members", detail: "Change Roles or remove people", icon: Users },
+  { to: "/members", label: "Team", detail: "Roles, Project access, or remove people", icon: Users },
   { to: "/invites", label: "Invites", detail: "Invite someone to the Team", icon: UserPlus },
   {
     to: "/feedback",
@@ -26,6 +29,7 @@ const teamLinks = [
 function SettingsPage() {
   const signOut = useSignOut();
   const email = useAccountEmail();
+  const manageProfile = useManageProfile();
   return (
     <MemberScreen query={appShellQuery} skeleton={<Skeleton className="h-40" />}>
       {({ member }) => (
@@ -35,52 +39,68 @@ function SettingsPage() {
             current="Settings"
           />
           <PageHeading title="Settings" />
-          <section
-            aria-labelledby="account-heading"
-            className="flex flex-col gap-4 rounded-xl border bg-card p-4 sm:p-6"
-          >
-            <h2 id="account-heading" className="text-lg font-semibold">
-              Your account
-            </h2>
-            <dl>
-              <dt className="text-sm text-muted-foreground">Name</dt>
-              <dd className="wrap-anywhere">{member.displayName}</dd>
-              {email && (
-                <>
-                  <dt className="mt-2 text-sm text-muted-foreground">Email</dt>
-                  <dd className="wrap-anywhere">{email}</dd>
-                </>
-              )}
-              <dt className="mt-2 text-sm text-muted-foreground">Role</dt>
-              <dd className="capitalize">{member.role}</dd>
-            </dl>
-          </section>
-          {member.role === "owner" && (
-            <section
-              aria-labelledby="team-heading"
-              className="flex flex-col gap-4 rounded-xl border bg-card p-4 sm:p-6"
-            >
-              <h2 id="team-heading" className="text-lg font-semibold">
-                Team
+          <Frame role="region" aria-labelledby="account-heading">
+            <FrameHeader>
+              <h2 id="account-heading" className="text-section">
+                Your account
               </h2>
-              <ul className="divide-y">
-                {teamLinks.map(({ to, label, detail, icon: Icon }) => (
-                  <li key={to}>
-                    <Link
-                      to={to}
-                      className="flex min-h-14 items-center gap-3 rounded-md px-2 py-3 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
-                    >
-                      <Icon className="size-5 shrink-0" aria-hidden />
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-medium">{label}</span>
-                        <span className="block text-sm text-muted-foreground">{detail}</span>
-                      </span>
-                      <ChevronRight className="size-4 shrink-0" aria-hidden />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            </FrameHeader>
+            <FramePanel>
+              <div className="mb-4 flex items-center gap-3">
+                <PersonAvatar
+                  name={member.displayName}
+                  src={member.avatarUrl}
+                  className="size-12"
+                />
+                <Button variant="secondary" onClick={manageProfile}>
+                  Manage profile
+                </Button>
+              </div>
+              <dl>
+                <dt className="text-sm text-muted-foreground">Name</dt>
+                <dd className="wrap-anywhere">{member.displayName}</dd>
+                {email && (
+                  <>
+                    <dt className="mt-2 text-sm text-muted-foreground">Email</dt>
+                    <dd className="wrap-anywhere">{email}</dd>
+                  </>
+                )}
+                <dt className="mt-2 text-sm text-muted-foreground">Role</dt>
+                <dd>
+                  <Badge variant="secondary" className="capitalize">
+                    {member.role}
+                  </Badge>
+                </dd>
+              </dl>
+            </FramePanel>
+          </Frame>
+          {member.role === "owner" && (
+            <Frame role="region" aria-labelledby="team-heading">
+              <FrameHeader>
+                <h2 id="team-heading" className="text-section">
+                  Team
+                </h2>
+              </FrameHeader>
+              <FramePanel className="py-0">
+                <ul className="divide-y">
+                  {teamLinks.map(({ to, label, detail, icon: Icon }) => (
+                    <li key={to}>
+                      <Link
+                        to={to}
+                        className="flex min-h-14 items-center gap-3 rounded-md px-2 py-3 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+                      >
+                        <Icon className="size-5 shrink-0" aria-hidden />
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-medium">{label}</span>
+                          <span className="block text-sm text-muted-foreground">{detail}</span>
+                        </span>
+                        <ChevronRight className="size-4 shrink-0" aria-hidden />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </FramePanel>
+            </Frame>
           )}
           <Button variant="secondary" className="w-fit" onClick={signOut}>
             <LogOut aria-hidden /> Sign out

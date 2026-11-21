@@ -4,20 +4,28 @@ import {
   insertRow,
   insertRowIfMissing,
   members,
+  projectMembers,
   projects,
   revisions,
   shareTokenQuery,
   videos,
   type Statement,
 } from "../../test/support/rows";
+import { e2eState } from "./port";
 
 /** Adds a Member to the Seam 2 database, for Roles no screen can create yet. */
-export function seedMember(clerkUserId: string, role: "editor" | "viewer", displayName = "Seeded") {
+export function seedMember(
+  clerkUserId: string,
+  role: "editor" | "viewer",
+  displayName = "Seeded",
+  avatarUrl: string | null = null,
+) {
   executeSql(
     insertRowIfMissing(members, {
       id: clerkUserId,
       clerkUserId,
       displayName,
+      avatarUrl,
       role,
       createdAt: 1,
     }),
@@ -34,6 +42,10 @@ export function seedReview(clerkUserId: string, ready = true) {
       createdAt: 1,
       updatedAt: 1,
     }),
+    {
+      sql: "INSERT INTO project_members (project_id,member_id,role,added_by,created_at) SELECT ?,id,CASE WHEN role = 'viewer' THEN 'viewer' ELSE 'editor' END,id,1 FROM members WHERE id = ?",
+      params: [id, clerkUserId],
+    },
     insertRow(videos, {
       id,
       projectId: id,
@@ -135,11 +147,126 @@ function wrangler(...args: string[]) {
       "DB",
       "--local",
       "--persist-to",
-      ".wrangler/e2e",
+      e2eState,
       ...args,
     ],
     { encoding: "utf8" },
   );
   if (result.status !== 0) throw new Error(result.stderr || result.stdout);
   return result.stdout;
+}
+
+/** Explicit access for tests that switch identities while reviewing an existing project. */
+export function assignProjectMember(
+  memberId: string,
+  projectId: string,
+  role: "editor" | "viewer" = "viewer",
+) {
+  executeSql({
+    sql: "INSERT INTO project_members (project_id, member_id, role, added_by, created_at) SELECT id, ?, ?, created_by, 1 FROM projects WHERE id = ? ON CONFLICT (project_id, member_id) DO UPDATE SET role = excluded.role",
+    params: [memberId, role, projectId],
+  });
+}
+
+/**
+ * A Project the Uploader is assigned to, holding two ready Videos:
+ * one created by `otherId` and one by the Uploader. Returns the IDs to open.
+ */
+export function seedUploaderProject(uploaderId: string, otherId: string, suffix: string) {
+  const projectId = crypto.randomUUID();
+  const videoIds = { others: crypto.randomUUID(), own: crypto.randomUUID() };
+  const video = (id: string, title: string, createdBy: string) => [
+    insertRow(videos, {
+      id,
+      projectId,
+      title,
+      status: "review",
+      createdBy,
+      createdAt: 1,
+      updatedAt: 1,
+    }),
+    insertRow(revisions, {
+      id,
+      videoId: id,
+      number: 1,
+      state: "ready",
+      uploadedBy: createdBy,
+      muxPlaybackId: "sample",
+      durationMs: 8000,
+      frameRate: 25,
+      createdAt: 1,
+      readyAt: 1,
+    }),
+  ];
+  executeSql(
+    insertRow(projects, {
+      id: projectId,
+      name: `Uploader project ${suffix}`,
+      createdBy: otherId,
+      createdAt: 1,
+      updatedAt: 1,
+    }),
+    insertRow(projectMembers, {
+      projectId,
+      memberId: uploaderId,
+      role: "uploader",
+      addedBy: otherId,
+      createdAt: 1,
+    }),
+    ...video(videoIds.others, `Their cut ${suffix}`, otherId),
+    ...video(videoIds.own, `My cut ${suffix}`, uploaderId),
+  );
+  return { projectId, ...videoIds };
+}
+
+type SeededRole = "viewer" | "uploader" | "editor";
+
+/** A Project made by the Member with this Clerk user ID, in any Stage, with people assigned. Returns its ID. */
+export function seedProject(
+  createdByClerkUserId: string,
+  name: string,
+  stage: "new" | "editing" | "in_review" | "done" = "new",
+  people: { memberId: string; role: SeededRole }[] = [],
+) {
+  const id = crypto.randomUUID();
+  executeSql(
+    {
+      sql: "INSERT INTO projects (id, name, stage, created_by, created_at, updated_at) SELECT ?, ?, ?, id, 1, 1 FROM members WHERE clerk_user_id = ?",
+      params: [id, name, stage, createdByClerkUserId],
+    },
+    ...people.map(({ memberId, role }) => ({
+      sql: "INSERT INTO project_members (project_id, member_id, role, added_by, created_at) SELECT ?, ?, ?, id, 1 FROM members WHERE clerk_user_id = ?",
+      params: [id, memberId, role, createdByClerkUserId],
+    })),
+  );
+  return id;
+}
+
+/** A Video with one ready Revision in a Project. Returns its ID. */
+export function seedVideo(projectId: string, title: string, createdBy: string) {
+  const id = crypto.randomUUID();
+  executeSql(
+    insertRow(videos, {
+      id,
+      projectId,
+      title,
+      status: "review",
+      createdBy,
+      createdAt: 1,
+      updatedAt: 1,
+    }),
+    insertRow(revisions, {
+      id,
+      videoId: id,
+      number: 1,
+      state: "ready",
+      uploadedBy: createdBy,
+      muxPlaybackId: "sample",
+      durationMs: 8000,
+      frameRate: 25,
+      createdAt: 1,
+      readyAt: 1,
+    }),
+  );
+  return id;
 }

@@ -1,3 +1,5 @@
+import { PersonAvatar } from "@/components/person-avatar";
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { PlaybackComments } from "@/components/playback-comments";
 import { PendingButton } from "@/components/pending-button";
 import { Pencil } from "lucide-react";
@@ -15,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useDrawingControls } from "@/components/drawing-controls";
 import { VideoPlayer } from "@/components/player/video-player";
-import { toastManager } from "@/components/ui/toast";
+import { toast } from "@/components/ui/toast";
 import { activeCommentId } from "@/lib/comment-time";
 import { COMMENT_UNDO_MS, type Comment } from "@/lib/review";
 import { cn } from "@/lib/utils";
@@ -28,9 +30,9 @@ export const timeLabel = (ms: number) =>
 export const selectedRowClass =
   "aria-[current=true]:border-l-4 aria-[current=true]:border-current aria-[current=true]:pl-2 aria-[current=true]:font-semibold";
 
-/** Shared by the Member and Guest lists; the underline survives forced colours. */
+/** Shared by the Member and Guest lists; the underline marks the choice without relying on colour. */
 const segmentClass =
-  "h-11 aria-pressed:underline aria-pressed:decoration-2 aria-pressed:underline-offset-4 sm:h-8";
+  "h-11 aria-pressed:underline aria-pressed:decoration-2 aria-pressed:underline-offset-4 sm:pointer-fine:h-8";
 
 export function CommentMarkers<
   Row extends { id: string; timecodeMs: number; body: string; resolvedAt: number | null },
@@ -51,7 +53,9 @@ export function CommentMarkers<
     const observer = new ResizeObserver(([entry]) =>
       setSize({
         width: entry!.contentRect.width,
-        marker: 1.5 * parseFloat(getComputedStyle(document.documentElement).fontSize),
+        marker:
+          (matchMedia("(pointer: coarse)").matches ? 2.75 : 1.5) *
+          parseFloat(getComputedStyle(document.documentElement).fontSize),
       }),
     );
     observer.observe(track.current!);
@@ -59,7 +63,7 @@ export function CommentMarkers<
   }, []);
   const left = (comment: Row) =>
     Math.max(2, Math.min(98, (comment.timecodeMs / (durationMs || 1)) * 100));
-  // Targets are 1.5rem wide, including enlarged text. Every Comment stays selectable in the list.
+  // Targets are 1.5rem wide (2.75rem on a touch screen), including enlarged text. Every Comment stays selectable in the list.
   const groups: Row[][] = [];
   for (const comment of [...comments].sort((a, b) => a.timecodeMs - b.timecodeMs)) {
     const group = groups.at(-1);
@@ -72,7 +76,7 @@ export function CommentMarkers<
       ref={track}
       role="group"
       aria-label="Comment timeline markers"
-      className="relative mx-2.5 h-6"
+      className="relative mx-2.5 h-6 pointer-coarse:h-11"
     >
       {groups.map((group) => {
         const first = group[0]!;
@@ -81,7 +85,7 @@ export function CommentMarkers<
           <button
             key={first.id}
             type="button"
-            className="absolute inset-y-0 w-6 -translate-x-1/2 rounded-full text-center text-[0.625rem] leading-6 focus-visible:outline-2 aria-[current=true]:bg-white aria-[current=true]:text-black forced-colors:aria-[current=true]:outline-2"
+            className="absolute inset-y-0 w-6 -translate-x-1/2 rounded-full text-center text-xs leading-6 pointer-coarse:w-11 pointer-coarse:leading-11 focus-visible:outline-2 aria-[current=true]:bg-white aria-[current=true]:text-black forced-colors:aria-[current=true]:outline-2"
             style={{ left: `${left(first)}%` }}
             aria-label={
               group.length > 1
@@ -117,6 +121,7 @@ export function CommentFilter({
   return (
     <ToggleGroup
       aria-label="Comment filters"
+      variant="outline"
       className="mt-6 mb-1"
       value={[resolved ? "resolved" : "todo"]}
       onValueChange={(next: string[]) => {
@@ -152,7 +157,7 @@ export function CommentComposer({
 }) {
   return (
     <form
-      className="mt-3 flex flex-col gap-3 rounded-xl border bg-card p-3"
+      className="mt-3 flex flex-col gap-3 rounded-card border bg-card p-3"
       onSubmit={(event) => {
         event.preventDefault();
         send();
@@ -186,6 +191,9 @@ export function CommentComposer({
   );
 }
 
+/** What the review screen keeps in its URL: the selected Comment, a moment to open at, and the filter. */
+export type ReviewView = { comment?: string; t?: number; filter?: "todo" | "resolved" };
+
 export type Draft = { id: string; body: string; timecodeMs: number; drawing: Shape[] | null };
 
 /** What differs between a Member and a Guest on the review screen. */
@@ -210,7 +218,15 @@ export function Review({
   comments,
   renewPlayback,
   actor,
+  view,
+  onViewChange,
+  belowPlayer,
 }: {
+  /** Shown right under the player, such as the review decision. */
+  belowPlayer?: ReactNode;
+  view: ReviewView;
+  /** Writes the changed keys to the URL; `undefined` removes one. */
+  onViewChange: (change: Partial<ReviewView>) => void;
   videoId: string;
   revision: { id: string; frameRate: number | null; durationMs: number | null };
   playback: ComponentProps<typeof VideoPlayer>["playback"];
@@ -220,16 +236,28 @@ export function Review({
 }) {
   const [seek, setSeek] = useState<{ timeMs: number }>();
   const [timeMs, setTimeMs] = useState(0);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = comments.find((comment) => comment.id === view.comment);
+  const selectedId = selected?.id ?? null;
   const pen = useDrawingControls({
     timeMs,
     seek: (ms) => setSeek({ timeMs: ms }),
-    deselect: () => setSelectedId(null),
+    deselect: () => onViewChange({ comment: undefined }),
   });
+  // A link opens at its Comment, or at its `t`.
+  useEffect(() => {
+    // A Resolved Comment's link shows the Resolved list.
+    if (selected?.resolvedAt != null && !view.filter) onViewChange({ filter: "resolved" });
+    const at = selected?.timecodeMs ?? (view.t === undefined ? undefined : view.t * 1000);
+    if (at === undefined) return;
+    setSeek({ timeMs: at });
+    setTimeMs(at);
+    // Once, on arrival: later selections come from clicks.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   function select(comment: Comment) {
     setSeek({ timeMs: comment.timecodeMs });
-    setSelectedId(comment.id);
     setTimeMs(comment.timecodeMs);
+    onViewChange({ comment: comment.id, t: undefined });
     pen.stop();
   }
   return (
@@ -277,6 +305,7 @@ export function Review({
           }
         />
       </div>
+      {belowPlayer}
       <Comments
         comments={comments}
         scope={revision.id}
@@ -285,6 +314,8 @@ export function Review({
         select={select}
         selectedId={selectedId}
         drawing={pen.drawing}
+        resolved={view.filter === "resolved"}
+        setResolved={(next) => onViewChange({ filter: next ? "resolved" : undefined })}
         sent={pen.reset}
         drawingControls={actor.writable && pen.controls}
       />
@@ -300,9 +331,13 @@ function Comments({
   select,
   selectedId,
   drawing,
+  resolved,
+  setResolved,
   sent,
   drawingControls,
 }: {
+  resolved: boolean;
+  setResolved: (resolved: boolean) => void;
   comments: Comment[];
   /** A new Revision starts a new draft ID. */
   scope: string;
@@ -314,7 +349,6 @@ function Comments({
   sent: () => void;
   drawingControls: ReactNode;
 }) {
-  const [resolved, setResolved] = useState(false);
   const [body, setBody] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editedBody, setEditedBody] = useState("");
@@ -337,21 +371,20 @@ function Comments({
   /** The status region speaks it; the toast shows it to everyone else. */
   function announce(message: string) {
     setStatus(message);
-    toastManager.add({ title: message });
+    toast({ title: message });
   }
   function removeComment(comment: Comment) {
     setFailure("");
     const undo = actor.remove!(comment, () => setFailure("Could not delete Comment. Try again."));
     focusAfterRemoval();
     setStatus("Comment deleted");
-    const toastId = toastManager.add({
+    toast({
       title: "Comment deleted",
-      timeout: COMMENT_UNDO_MS,
-      actionProps: {
-        children: "Undo",
-        onClick: () => {
+      duration: COMMENT_UNDO_MS,
+      action: {
+        label: "Undo",
+        onAction: () => {
           undo();
-          toastManager.close(toastId);
           announce("Comment restored");
         },
       },
@@ -421,7 +454,7 @@ function Comments({
       aria-labelledby="comments-heading"
       className="min-w-0 outline-none"
     >
-      <h2 id="comments-heading" className="text-lg font-semibold">
+      <h2 id="comments-heading" className="text-section">
         Comments
       </h2>
       <p role="status" className="sr-only">
@@ -447,9 +480,13 @@ function Comments({
       )}
       <CommentFilter resolved={resolved} setResolved={setResolved} tab={tab} />
       {rows.length === 0 ? (
-        <p className="py-3 text-muted-foreground">
-          {resolved ? "No Resolved Comments." : "No Comments to do."}
-        </p>
+        <Empty className="py-8 md:py-8">
+          <EmptyHeader>
+            <EmptyTitle className="text-sm font-normal text-muted-foreground">
+              {resolved ? "No Resolved Comments." : "No Comments to do."}
+            </EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <ul className="divide-y" aria-label="Comments">
           {rows.map((comment) => {
@@ -465,7 +502,12 @@ function Comments({
                   comment.id === activeId && "-mx-2 rounded-lg bg-muted/60 px-2",
                 )}
               >
-                <p className="text-sm text-muted-foreground">
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <PersonAvatar
+                    name={comment.authorName}
+                    src={comment.authorAvatarUrl}
+                    className="size-6"
+                  />
                   {comment.authorName}
                   {comment.isGuest && " · Guest"}
                 </p>

@@ -14,3 +14,21 @@ export function playbackComments<T extends { timecodeMs: number; resolvedAt: num
   const latest = Math.max(...eligible.map((row) => row.timecodeMs));
   return eligible.filter((row) => row.timecodeMs === latest);
 }
+/** Non-drop timecode, using the same frame rounding as marker exports. */
+function timecode(ms: number, frameRate: number | null) {
+  const fps = frameRate || 30;
+  const base = Math.round(fps);
+  const frame = Math.round((ms * fps) / 1000);
+  const seconds = Math.floor(frame / base);
+  return [Math.floor(seconds / 60), seconds % 60, frame % base] as const;
+}
+
+export function frameTime(ms: number, frameRate: number | null) {
+  const [minutes, seconds, frames] = timecode(ms, frameRate);
+  return `${minutes}:${String(seconds).padStart(2, "0")}:${String(frames).padStart(2, "0")}`;
+}
+
+export function spokenFrameTime(ms: number, frameRate: number | null) {
+  const [minutes, seconds, frames] = timecode(ms, frameRate);
+  return `${minutes ? `${minutes} min ` : ""}${seconds} sec, frame ${frames}`;
+}

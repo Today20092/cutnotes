@@ -274,8 +274,7 @@ export function Review({
     if (at === undefined) return;
     setSeek({ timeMs: at });
     setTimeMs(at);
-    // Once, on arrival: later selections come from clicks.
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- Runs once, on arrival: later selections come from clicks.
   }, []);
   function select(comment: Comment) {
     setSeek({ timeMs: comment.timecodeMs });

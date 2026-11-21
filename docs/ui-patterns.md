@@ -19,11 +19,11 @@ The interface is React TSX with TanStack Start, Tailwind CSS, and Base UI/shadcn
 
 `video-status.tsx` owns the workflow labels and semantic colors for the read-only Status badges (the Status changes only through the review decision bar):
 
-| Meaning | Label | Semantic token |
+| Meaning | Label | Color |
 | --- | --- | --- |
-| Awaiting review | Review | info / blue |
-| Changes required | Rework | warning / amber |
-| Review finished | Done | success / green |
+| Awaiting review | Review | violet |
+| Changes required | Rework | rose |
+| Review finished | Done | cyan |
 
 Text remains visible, so color is supplementary. Error and destructive feedback retains red. Dark mode uses lighter semantic foregrounds on dark surfaces. Color belongs to the status or outcome, not decorative page sections.
 
@@ -31,9 +31,9 @@ Text remains visible, so color is supplementary. Error and destructive feedback 
 
 | Component | Where | What it is for |
 | --- | --- | --- |
-| `StageBadge` | `stage-badge.tsx` | The Stage as text on a tinted chip: New gray, Editing amber, In review blue, Done green. Video Statuses borrow the same tones through `ToneBadge`. Colour belongs to a Stage or Status, never decoration; red is for failures and destructive actions. |
+| `StageBadge` | `stage-badge.tsx` | The Stage as text on a tinted chip: New gray, Editing amber, In review blue, Done green. On the Project page, Owners and the Project’s Editor can use this badge to move an open Project and undo the move. |
 | `StageBoard` | `stage-board.tsx`, `lib/review-board.ts` | The home board. Four labelled sections (one per Stage) of Project cards, with `?stage=` (one column), `?view=list` (stacked) and `?sheet=complete&project=`. Moves by drag, keyboard or card menu, announced, with Undo. |
-| `ProjectCard` | `stage-board.tsx` | One Project as an `<article>` named "Project, Stage": a name link, StageBadge, hint ("Changes requested · Rev N"), open-note count and an AvatarStack. A poster shows only when a Video has one. |
+| `ProjectCard` | `stage-board.tsx` | One Project as an `<article>` named "Project, Stage": a name link, StageBadge, hint ("Changes requested · Rev N"), To do Comment count when positive, and an AvatarStack. On phones, the thumbnail opens the Project. |
 | `AvatarStack` | `people.tsx` | The people with access as overlapping avatars with an accessible list. Owners are left out because they always have access. |
 | `PeopleStrip` | `people.tsx` | On the Project page: avatars, names and roles, "Only Team Owners have access" when empty, and **Manage people** (a link to `?sheet=people`) for Owners. |
 | `PeopleSheet` | `people-sheet.tsx` | Who can open a Project: one list (Owners implicit, assigned people with a role select and Remove, Pending Invites with Revoke), then **Add from Team** and **Invite link**. |

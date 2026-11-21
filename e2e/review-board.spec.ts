@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { assignProjectMember, seedMember } from "./support/database";
+import { assignProjectMember, seedComment, seedMember } from "./support/database";
 import { announcements, openVideo, signInWithReview } from "./support/review-page";
 import { signInAs } from "./support/session";
 
@@ -102,6 +102,9 @@ test("a Reviewer reads the board but cannot move cards", async ({ page }, testIn
   await card(page, "New").focus();
   await page.keyboard.press("Space");
   await expect(card(page, "New")).not.toHaveAttribute("data-grabbed", "");
+  await card(page, "New").getByRole("link", { name: "Playback project" }).click();
+  await expect(page.getByText("New", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Stage:/ })).toHaveCount(0);
 });
 
 test("Request changes and Approve on the review page move the Project", async ({ page }) => {
@@ -109,15 +112,49 @@ test("Request changes and Approve on the review page move the Project", async ({
   await openVideo(page, id);
   const decision = page.getByRole("region", { name: "Review decision" });
   await decision.getByRole("button", { name: "Request changes" }).click();
-  await expect(decision.getByText("Changes requested", { exact: true })).toBeVisible();
+  await expect(decision.getByText("Rework", { exact: true })).toBeVisible();
   await page.goto("/");
   await expect(card(page, "Editing")).toContainText("Changes requested · Rev 1");
 
   await openVideo(page, id);
   await decision.getByRole("button", { name: "Approve" }).click();
-  await expect(decision.getByText("Approved", { exact: true })).toBeVisible();
+  await expect(decision.getByText("Done", { exact: true })).toBeVisible();
   // Only an Owner is offered Send to customer next.
   await expect(decision.getByRole("link", { name: "Send to customer" })).toHaveCount(0);
   await page.goto("/");
   await expect(card(page, "Done")).toBeVisible();
+});
+
+test("Home shows To do Comments and opens a Project from the phone thumbnail", async ({
+  page,
+}, testInfo) => {
+  const { id, clerkUserId } = await signInWithReview(page);
+  await page.goto("/");
+  const project = card(page, "New");
+  await expect(project).toBeVisible();
+  await expect(project.getByText(/to do|open notes/i)).toHaveCount(0);
+
+  seedComment(id, clerkUserId, "Check the opening");
+  seedComment(id, clerkUserId, "Check the credits");
+  await page.reload();
+  await expect(project.getByText("2 to do", { exact: true })).toBeVisible();
+  await expect(project.getByRole("img", { name: /^People with access:/ })).toBeVisible();
+  if (testInfo.project.name === "phone") await project.locator('a[tabindex="-1"]').tap();
+  else await project.getByRole("link", { name: "Playback project" }).click();
+  await expect(page).toHaveURL(new RegExp(`/projects/${id}$`));
+});
+
+test("the Project Stage badge moves the Project and offers Undo to its Editor", async ({
+  page,
+}) => {
+  const { id } = await signInWithReview(page);
+  await page.goto(`/projects/${id}`);
+  await page.getByRole("button", { name: "Stage: New" }).press("Enter");
+  await page.getByRole("menuitem", { name: "Move to Editing" }).click();
+  await expect(page.getByRole("button", { name: "Stage: Editing" })).toBeVisible();
+  await expect(page.getByText("Playback project moved to Editing")).toBeVisible();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(page.getByText("Playback project moved back to New")).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Stage: New" })).toBeVisible();
 });

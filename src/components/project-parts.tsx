@@ -388,12 +388,10 @@ export function Poster({ url }: { url: string | null }) {
 
 export function VideoCard({
   video,
-  editableTitle,
   actions,
   showProject = false,
 }: {
   video: VideoSummary;
-  editableTitle?: ReactNode;
   /** Controls at the end of the title row, such as a More actions menu. */
   actions?: ReactNode;
   /** Off inside the Project itself, where the name is already the page title. */
@@ -405,21 +403,24 @@ export function VideoCard({
   return (
     <>
       <div className="w-full shrink-0 min-[400px]:w-28 sm:w-full">
-        {editableTitle ? (
-          <Link
-            to="/videos/$videoId"
-            params={{ videoId: video.id }}
-            aria-label={`Open ${video.title}`}
-          >
-            <Poster key={video.posterUrl} url={video.posterUrl} />
-          </Link>
-        ) : (
+        <Link
+          to="/videos/$videoId"
+          params={{ videoId: video.id }}
+          aria-label={`Open ${video.title}`}
+          className="block rounded focus-visible:outline-2 focus-visible:outline-ring"
+        >
           <Poster key={video.posterUrl} url={video.posterUrl} />
-        )}
+        </Link>
       </div>
       <div className="mt-2 flex min-w-0 flex-1 items-start justify-between gap-2 min-[400px]:mt-0 sm:mt-2">
         <div className="min-w-0 flex-1 wrap-anywhere">
-          <div className="font-medium">{editableTitle ?? video.title}</div>
+          <Link
+            to="/videos/$videoId"
+            params={{ videoId: video.id }}
+            className="rounded font-medium underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            {video.title}
+          </Link>
           {video.unread && (
             <span className="flex items-center gap-1.5 text-sm font-semibold">
               <span aria-hidden className="size-2 rounded-full bg-primary" />

@@ -107,7 +107,7 @@ function ProjectBoard({ list }: { list: ProjectList }) {
               destination={{ kind: "new", projects: uploadTargets }}
               trigger={
                 <Button variant="secondary">
-                  <Upload aria-hidden /> Upload
+                  <Upload aria-hidden /> New Video
                 </Button>
               }
             />

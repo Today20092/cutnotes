@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId, useRef, useState } from "react";
 import { InviteLinkForm, inviteStatus } from "@/components/invites-manager";
@@ -67,16 +68,28 @@ function PersonName({
   name,
   avatarUrl,
   detail,
+  linkToMember = false,
 }: {
   name: string;
   avatarUrl: string | null;
   detail: string;
+  linkToMember?: boolean;
 }) {
   return (
     <div className="flex min-w-0 flex-1 items-center gap-3 wrap-anywhere">
       <PersonAvatar name={name} src={avatarUrl} />
       <div className="min-w-0">
-        <p className="font-medium">{name}</p>
+        {linkToMember ? (
+          <Link
+            to="/members"
+            search={{ q: name }}
+            className="font-medium underline underline-offset-4"
+          >
+            {name}
+          </Link>
+        ) : (
+          <p className="font-medium">{name}</p>
+        )}
         <p className="text-sm text-muted-foreground">{detail}</p>
       </div>
     </div>
@@ -109,7 +122,8 @@ export function PeopleSheet({
         <SheetHeader>
           <SheetTitle>People</SheetTitle>
           <SheetDescription>
-            Who can open {name}. Team Owners always have access. Guest review links are separate.
+            Who can open {name}. Team Owners always have access. Share Links for Guests are
+            separate.
           </SheetDescription>
         </SheetHeader>
         {canManage ? (
@@ -213,7 +227,7 @@ function ManagePeople({ projectId }: { projectId: string }) {
         </h3>
         {available && available.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Every Team member already has access. To bring in someone new, use an invite link below.
+            No other Members to add. To bring in someone new, create an Invite below.
           </p>
         ) : (
           <form
@@ -262,9 +276,16 @@ function ManagePeople({ projectId }: { projectId: string }) {
           Invite link
         </h3>
         <p className="text-sm text-muted-foreground">
-          For someone new, or a Team member. The link works once and opens this project only.
+          For someone new, or a Team member. The link works once and opens this Project only.
         </p>
         <InviteLinkForm nested projectId={projectId} />
+        <Link
+          to="/invites"
+          search={{ project: projectId }}
+          className="w-fit underline underline-offset-4"
+        >
+          See all Invites for this Project
+        </Link>
       </section>
       <section aria-labelledby={`${memberField}-heading`} className="flex flex-col gap-2">
         <h3
@@ -286,6 +307,7 @@ function ManagePeople({ projectId }: { projectId: string }) {
                 name={person.displayName}
                 avatarUrl={person.avatarUrl}
                 detail="Owner · always has access"
+                linkToMember
               />
             </li>
           ))}
@@ -294,7 +316,8 @@ function ManagePeople({ projectId }: { projectId: string }) {
               <PersonName
                 name={person.displayName}
                 avatarUrl={person.avatarUrl}
-                detail={`Added by ${person.addedBy ?? "a former member"}`}
+                detail={`Added by ${person.addedBy ?? "a former Member"}`}
+                linkToMember
               />
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                 <RoleSelect

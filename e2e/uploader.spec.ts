@@ -36,11 +36,22 @@ test("an Uploader reviews an assigned Project but manages only the Videos they c
   await page.goto("/");
   await page.getByRole("link", { name: `Uploader project ${suffix}`, exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(`Uploader project ${suffix}`);
-  // An Uploader gets no Status control or rename on the project tiles either.
+  // An Uploader can upload a Revision only to a Video they created.
   await expect(page.getByRole("combobox", { name: /^Status/ })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /^(Rename|More actions)/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Stage:/ })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: `More actions for Their cut ${suffix}` }),
+  ).toHaveCount(0);
+  const more = page.getByRole("button", { name: `More actions for My cut ${suffix}` });
+  await more.click();
+  await expect(page.getByRole("menuitem", { name: "Rename" })).toHaveCount(0);
+  await page.getByRole("menuitem", { name: "Upload new Revision" }).click();
+  const upload = page.getByRole("dialog", { name: `Upload My cut ${suffix} again` });
+  await expect(upload).toBeVisible();
+  await upload.getByRole("button", { name: "Close" }).click();
+  await expect(more).toBeFocused();
 
-  await page.getByRole("link", { name: new RegExp(`Their cut ${suffix}`) }).click();
+  await page.getByRole("link", { name: `Their cut ${suffix}`, exact: true }).click();
   await expect(page.getByRole("heading", { name: `Their cut ${suffix}`, level: 1 })).toBeVisible();
   await expect(page.getByText(`Needs a cut ${suffix}`)).toBeVisible();
   await expect(page.getByRole("combobox", { name: /Status/ })).toHaveCount(0);

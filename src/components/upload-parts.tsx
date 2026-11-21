@@ -47,7 +47,7 @@ export function UploadSheet({
   open: controlledOpen,
   onOpenChange,
 }: {
-  trigger: ReactElement;
+  trigger?: ReactElement;
   destination: Destination;
   /** Set both to keep the sheet's open state in the URL. */
   open?: boolean;
@@ -141,7 +141,7 @@ export function UploadSheet({
 
   return (
     <Sheet open={open} onOpenChange={changeOpen}>
-      <SheetTrigger render={trigger} />
+      {trigger && <SheetTrigger render={trigger} />}
       <SheetContent
         side={isMobile ? "bottom" : "right"}
         className={isMobile ? undefined : desktopDialogClass}

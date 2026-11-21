@@ -70,7 +70,7 @@ async function openNewProject(page: Page, label: string, testInfo: TestInfo) {
 }
 
 async function startUpload(page: Page, title: string) {
-  await page.getByRole("button", { name: "Upload" }).click();
+  await page.getByRole("button", { name: /^(New Video|Upload first cut)$/ }).click();
   await page.getByLabel("Video file").setInputFiles(file);
   await page.getByLabel("Video title").fill(title);
   await page.getByRole("button", { name: "Start upload" }).click();
@@ -126,7 +126,7 @@ test("an upload is followed from progress through processing to a signed poster"
   });
   await openNewProject(page, "Follow", testInfo);
 
-  await page.getByRole("button", { name: "Upload" }).click();
+  await page.getByRole("button", { name: /^(New Video|Upload first cut)$/ }).click();
   await expect(page.getByText(/1080p H\.264 MP4/)).toBeVisible();
   await page.getByLabel("Video file").setInputFiles(file);
   await expect(page.getByLabel("Video title")).toHaveValue("main-cut");
@@ -165,7 +165,7 @@ test("an upload is followed from progress through processing to a signed poster"
 test("a file over 20 GB is refused before anything is sent", async ({ page }, testInfo) => {
   const revisions = await routeMux(page);
   await openNewProject(page, "Too big", testInfo);
-  await page.getByRole("button", { name: "Upload" }).click();
+  await page.getByRole("button", { name: /^(New Video|Upload first cut)$/ }).click();
 
   await page.getByLabel("Video file").evaluate((input) => {
     const big = new File(["x"], "huge.mp4", { type: "video/mp4" });
@@ -194,7 +194,7 @@ test("a file over 12 hours is refused before anything is sent", async ({ page },
   });
   const revisions = await routeMux(page);
   await openNewProject(page, "Too long", testInfo);
-  await page.getByRole("button", { name: "Upload" }).click();
+  await page.getByRole("button", { name: /^(New Video|Upload first cut)$/ }).click();
 
   await page.getByLabel("Video file").setInputFiles(file);
 
@@ -374,18 +374,19 @@ test("a rename appears before the server answers and the Status is read-only", a
   await page.getByRole("menuitem", { name: "Rename" }).click();
   await page.getByLabel("Video title").fill("Fine cut");
   await page.getByRole("button", { name: "Save title" }).click();
-  await expect(page.getByRole("button", { name: "Rename Fine cut" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Fine cut", exact: true })).toBeVisible();
   gate.release();
 
   await page.reload();
-  await expect(page.getByRole("button", { name: "Rename Fine cut" })).toBeVisible();
+  await page.getByRole("link", { name: "Fine cut", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Fine cut", level: 1 })).toBeVisible();
 });
 
 test("a Viewer sees the grid but no upload or management controls", async ({ page }, testInfo) => {
   await routeMux(page);
   await openNewProject(page, "Viewer", testInfo);
   await startUpload(page, "Watch only");
-  await expect(page.getByRole("button", { name: "Rename Watch only" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Watch only", exact: true })).toBeVisible();
 
   const viewer = {
     clerkUserId: `user_upload_viewer_${testInfo.project.name}`,
@@ -396,8 +397,37 @@ test("a Viewer sees the grid but no upload or management controls", async ({ pag
   await signInAs(page, viewer);
   await page.reload();
 
-  await expect(page.getByText("Watch only")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Upload" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Watch only", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^(New Video|Upload first cut)$/ })).toHaveCount(0);
   await expect(page.getByLabel(/^Status of/)).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^Rename Watch/ })).toHaveCount(0);
+});
+
+test("the Project page uploads a new Revision to the selected Video", async ({
+  page,
+}, testInfo) => {
+  await routeMux(page);
+  await openNewProject(page, "New Revision", testInfo);
+  await startUpload(page, "Review cut");
+  const title = page.getByRole("link", { name: "Review cut", exact: true });
+  const more = page.getByRole("button", { name: "More actions for Review cut" });
+  await expect(title).toBeVisible();
+  await expect(page.getByRole("button", { name: "New Video", exact: true })).toBeVisible();
+  await expect(page.getByText("Review", { exact: true })).toBeVisible();
+
+  await more.click();
+  await page.getByRole("menuitem", { name: "Upload new Revision" }).click();
+  const upload = page.getByRole("dialog", { name: "Upload Review cut again" });
+  await expect(upload).toBeVisible();
+  await expect(page).toHaveURL(/sheet=upload-revision&video=/);
+  await upload.getByRole("button", { name: "Close" }).click();
+  await expect(more).toBeFocused();
+  await more.click();
+  await page.getByRole("menuitem", { name: "Upload new Revision" }).click();
+  await expect(upload.getByLabel("Video title")).toHaveCount(0);
+  await upload.getByLabel("Video file").setInputFiles(file);
+  await upload.getByRole("button", { name: "Start upload" }).click();
+
+  await expect(page.getByText(/^Revision 2/)).toBeVisible();
+  await expect(title).toHaveCount(1);
 });

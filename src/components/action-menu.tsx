@@ -41,11 +41,13 @@ export function ActionMenu<Id extends string = string>({
   actions,
   current,
   onCurrentChange,
+  triggerContent,
 }: {
   label: string;
   actions: Action<Id>[];
   current?: string;
   onCurrentChange?: (id: Id | undefined) => void;
+  triggerContent?: ReactNode;
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
   if (actions.length === 0) return null;
@@ -58,9 +60,17 @@ export function ActionMenu<Id extends string = string>({
     <>
       <Menu>
         <MenuTrigger
-          render={<Button ref={trigger} variant="ghost" size="icon" aria-label={label} />}
+          render={
+            <Button
+              ref={trigger}
+              variant="ghost"
+              size={triggerContent ? "sm" : "icon"}
+              className={triggerContent ? "min-h-11 px-1 sm:pointer-fine:min-h-0" : undefined}
+              aria-label={label}
+            />
+          }
         >
-          <Ellipsis aria-hidden />
+          {triggerContent ?? <Ellipsis aria-hidden />}
         </MenuTrigger>
         <MenuPopup align="end">
           {actions.map((action) => (

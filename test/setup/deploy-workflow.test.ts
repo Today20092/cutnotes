@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -42,7 +42,7 @@ function select(overrides: Record<string, string | undefined>) {
     if (result.error) throw result.error;
     return {
       status: result.status,
-      output: result.status === 0 ? readFileSync(output, "utf8") : "",
+      output: result.status === 0 && existsSync(output) ? readFileSync(output, "utf8") : "",
     };
   } finally {
     rmSync(dir, { recursive: true });
@@ -66,9 +66,20 @@ test("staging is deployed by hand from a passing main commit", () => {
   ).toEqual({ status: 0, output: "environment=staging\nsha=tested\n" });
 });
 
+test("a Check for an older main commit skips without failing", () => {
+  expect(workflow).toContain("if: needs.candidate.outputs.sha != ''");
+  expect(select({ CURRENT_SHA: "newer" })).toEqual({ status: 0, output: "" });
+});
+
 test.each([
   { CHECKED_BRANCH: "feature" },
-  { CURRENT_SHA: "newer" },
+  {
+    EVENT: "workflow_dispatch",
+    REQUESTED_ENVIRONMENT: "production",
+    REQUESTED_REF: "refs/heads/main",
+    REQUESTED_SHA: "tested",
+    CURRENT_SHA: "newer",
+  },
   { CHECK_CONCLUSION: "failure" },
   {
     EVENT: "workflow_dispatch",

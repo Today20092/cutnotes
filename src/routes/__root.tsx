@@ -103,7 +103,11 @@ export const Route = createRootRouteWithContext<{
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      // resizes-content: the on-screen keyboard shrinks the layout, so bottom sheets and inputs stay above it.
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, interactive-widget=resizes-content",
+      },
       { name: "color-scheme", content: "light dark" },
       { title: "Cutnotes" },
     ],

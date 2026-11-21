@@ -211,17 +211,17 @@ test("Comment writes are announced, name their Comment, and keep focus", async (
   const status = page.locator("section[aria-labelledby=comments-heading] [role=status]");
   await page.getByLabel(/^Add a Comment/).fill("Announce me");
   await page.getByRole("button", { name: "Send Comment" }).click();
-  await expect(status).toHaveText("Comment added at 0:00");
+  await expect(status).toHaveText("Comment added at 0 sec, frame 0");
   expect(await focusIsLost(page)).toBe(false);
 
-  await page.getByRole("button", { name: "Edit Comment by Seeded at 0:00" }).click();
+  await page.getByRole("button", { name: "Edit Comment by Seeded at 0 sec, frame 0" }).click();
   await expect(page.getByLabel("Edit Comment text")).toBeFocused();
   await page.getByRole("button", { name: "Cancel edit" }).click();
 
-  await page.getByRole("checkbox", { name: "Resolve Comment by Seeded at 0:00" }).click();
+  await page.getByRole("checkbox", { name: "Resolve Comment by Seeded at 0 sec, frame 0" }).click();
   await expect(status).toHaveText("Comment resolved");
   await expect(
-    page.getByRole("button", { name: /^Comment at 0:00, resolved: Announce me/ }),
+    page.getByRole("button", { name: /^Comment at 0 sec, frame 0, resolved: Announce me/ }),
   ).toBeVisible();
 });
 
@@ -275,7 +275,7 @@ test("consecutive Comments at the same time produce a fresh status update", asyn
   const status = page.locator("section[aria-labelledby=comments-heading] [role=status]");
   await page.getByLabel(/^Add a Comment/).fill("First");
   await page.getByRole("button", { name: "Send Comment" }).click();
-  await expect(status).toHaveText("Comment added at 0:00");
+  await expect(status).toHaveText("Comment added at 0 sec, frame 0");
   let release = () => {};
   const pending = new Promise<void>((resolve) => (release = resolve));
   await page.route(
@@ -294,7 +294,7 @@ test("consecutive Comments at the same time produce a fresh status update", asyn
   } finally {
     release();
   }
-  await expect(status).toHaveText("Comment added at 0:00");
+  await expect(status).toHaveText("Comment added at 0 sec, frame 0");
 });
 
 test("selection is visible without colour and the Comment field has a clear boundary", async ({
@@ -354,7 +354,7 @@ test("keyboard focus remains visible over video and in forced colours", async ({
   await page.locator("video").focus();
   await expect(page.locator("video")).toHaveCSS("outline-width", "2px");
   await page.emulateMedia({ forcedColors: "active" });
-  const filter = page.getByRole("button", { name: "To do", exact: true });
+  const filter = page.getByRole("button", { name: /^To do \(/ });
   await filter.focus();
   await page.keyboard.press("Tab");
   await page.keyboard.press("Shift+Tab");
@@ -371,7 +371,7 @@ test("Comments too close to tap apart share one marker", async ({ page }, testIn
   await open();
   const markers = page.getByRole("group", { name: "Comment timeline markers" }).getByRole("button");
   await expect(markers).toHaveCount(1);
-  await expect(markers).toHaveAccessibleName("2 Comments from 0:01");
+  await expect(markers).toHaveAccessibleName("2 Comments from 1 sec, frame 0");
   await markers.click();
   await expect(page.getByRole("button", { name: /First close/ }).last()).toHaveAttribute(
     "aria-current",
@@ -465,7 +465,7 @@ test("a Guest arriving from the welcome screen lands on the heading and hears th
   await guest.getByLabel(/^Add a Comment/).fill("Heard");
   await guest.getByRole("button", { name: "Send Comment" }).click();
   await expect(guest.locator("section[aria-labelledby=comments-heading] [role=status]")).toHaveText(
-    "Comment added at 0:00",
+    "Comment added at 0 sec, frame 0",
   );
   await guest.context().close();
 });

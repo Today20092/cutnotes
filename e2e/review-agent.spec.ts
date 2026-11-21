@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { seedComment, seedReadyRevision } from "./support/database";
-import { openQueue, openVideo, signInWithReview } from "./support/review-page";
+import { commentList, openVideo, signInWithReview } from "./support/review-page";
 
 /**
  * One review task done two ways, as an agent's tool calls:
@@ -52,10 +52,10 @@ async function setUp(page: Page, query = "?agent") {
 
 async function expectTaskDone(page: Page, id: string) {
   await openVideo(page, id);
-  const queue = await openQueue(page);
-  await expect(queue.getByRole("button", { name: /^0:05 Agent note/ })).toBeVisible();
-  await expect(queue.getByRole("button", { name: /Lift the shadows/ })).toHaveCount(0);
-  await expect(queue.getByRole("button", { name: /Trim the intro/ })).toBeVisible();
+  const list = commentList(page);
+  await expect(list.getByRole("button", { name: /^5 sec, frame 0 Agent note/ })).toBeVisible();
+  await expect(list.getByRole("button", { name: /Lift the shadows/ })).toHaveCount(0);
+  await expect(list.getByRole("button", { name: /Trim the intro/ })).toBeVisible();
   await page.goto("/");
   await expect(page.getByRole("article", { name: "Playback project, Editing" })).toBeVisible();
 }
@@ -79,21 +79,20 @@ test("browser-style tools: read the ARIA tree, then click and type", async ({ pa
   // The composer uses the playback time, so the agent scrubs to 5 of 8 seconds by position.
   await m.act(page.mouse.click(box.x + (box.width * 5.2) / 8, box.y + box.height / 2));
   await look();
-  const label = page.getByText(/^Add a Comment at /);
-  for (
-    let tries = 0;
-    tries < 10 && (await label.textContent()) !== "Add a Comment at 0:05";
-    tries++
-  ) {
-    const later = ((await label.textContent()) ?? "") < "Add a Comment at 0:05";
+  const timecode = page.locator("label[for=comment-body] span[aria-hidden=true]");
+  for (let tries = 0; tries < 10 && (await timecode.textContent()) !== "0:05:00"; tries++) {
+    const later = ((await timecode.textContent()) ?? "") < "0:05:00";
     await m.act(scrub.press(later ? "ArrowRight" : "ArrowLeft"));
     await look();
   }
+  await expect(timecode).toHaveText("0:05:00");
   await m.act(page.getByLabel(/^Add a Comment at/).fill("Agent note"));
   await m.act(page.getByRole("button", { name: "Send Comment" }).click());
   await look();
   await m.act(
-    page.getByRole("checkbox", { name: "Resolve Comment by Other reviewer at 0:01" }).click(),
+    page
+      .getByRole("checkbox", { name: "Resolve Comment by Other reviewer at 1 sec, frame 0" })
+      .click(),
   );
   await look();
   await m.act(page.getByRole("button", { name: "Request changes" }).click());
@@ -117,13 +116,11 @@ test("ui-sdk agent bridge: snapshot, then act on components by name", async ({ p
 
   const video = m.read(await agent.snapshot()) as { component: string; actions: string[] }[];
   sample = video;
-  // The queue is behind a closed Collapsible: the agent opens it, then uses what it reveals.
-  expect(video.some((entry) => entry.component === "collapsible")).toBe(true);
+  expect(video.some((entry) => entry.component === "comment-list")).toBe(true);
   const done = await m.act(
     agent.act([
-      { ref: "Review queue", action: "open" },
-      { ref: "Open notes", action: "addNote", args: ["0:05", "Agent note"] },
-      { ref: "Open notes", action: "resolve", args: ["Lift the shadows"] },
+      { ref: "comment-list", action: "addComment", args: ["0:05", "Agent note"] },
+      { ref: "comment-list", action: "resolve", args: ["Lift the shadows"] },
     ]),
     null,
   );
@@ -200,13 +197,11 @@ test("a cut that becomes ready while reviewing is offered, never swapped in", as
 test("the dev Agent panel shows the snapshot and runs scripted steps", async ({ page }) => {
   await setUp(page);
   await page.getByRole("button", { name: "Read the page" }).click();
-  await expect(page.getByLabel("Agent output")).toContainText('"component": "collapsible"');
-  await page.getByRole("button", { name: "Resolve the first open note" }).click();
-  await expect(page.getByLabel("Agent log")).toContainText("Resolve the first open note: ok");
+  await expect(page.getByLabel("Agent output")).toContainText('"component": "comment-list"');
+  await page.getByRole("button", { name: "Resolve the first To do Comment" }).click();
+  await expect(page.getByLabel("Agent log")).toContainText("Resolve the first To do Comment: ok");
   await expect(
-    page
-      .getByRole("list", { name: "Open notes" })
-      .getByRole("button", { name: /Lift the shadows/ }),
+    page.getByRole("list", { name: "Comments" }).getByRole("button", { name: /Lift the shadows/ }),
   ).toHaveCount(0);
   await page.goto("/?agent");
   await page.getByRole("button", { name: "Move the first Project to In review" }).click();

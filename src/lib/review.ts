@@ -47,7 +47,9 @@ type Write =
   | { action: "create"; data: NewComment; comment: Comment }
   | { action: "edit"; data: CommentTarget & { body: string } }
   | { action: "delete"; data: CommentTarget; comment: Comment }
-  | { action: "resolve"; data: CommentTarget & { resolved: boolean } };
+  | { action: "resolve"; data: CommentTarget & { resolved: boolean; expectedResolvedAt?: number } };
+
+type WriteResult = { id: string; resolvedAt?: number | null };
 
 export function useCommentWrite(videoId: string, revision?: number) {
   const client = useQueryClient();
@@ -59,7 +61,7 @@ export function useCommentWrite(videoId: string, revision?: number) {
   }, []);
   const write = useMutation(
     reviewWrite(client, videoId, {
-      mutationFn: (write: Write) => {
+      mutationFn: (write: Write): Promise<WriteResult> => {
         switch (write.action) {
           case "create":
             return createComment({ data: write.data });
@@ -132,6 +134,7 @@ export function useMemberActor(
   const open = page.video?.completedAt === null;
   return {
     writable: open,
+    linkAuthors: page.member.role === "owner",
     closedNote: "This Project is Complete. Comments are read-only.",
     pending: write.isPending,
     send: (draft) =>
@@ -142,8 +145,13 @@ export function useMemberActor(
       }),
     resolve:
       open && canWrite(page.video?.role ?? "viewer")
-        ? (comment, resolved) =>
-            write.mutateAsync({ action: "resolve", data: { ...target(comment.id), resolved } })
+        ? async (comment, resolved, expectedResolvedAt) => {
+            const result = await write.mutateAsync({
+              action: "resolve",
+              data: { ...target(comment.id), resolved, expectedResolvedAt },
+            });
+            return result.resolvedAt ?? null;
+          }
         : undefined,
     edit: open
       ? (comment, body) =>

@@ -6,30 +6,25 @@ import { agent } from "@/lib/agent";
 type Step = { ref: string; action: string; args?: unknown[] };
 type Script = { name: string; steps: () => Step[] | string | Promise<Step[] | string> };
 
-const openQueue: Step = { ref: "Review queue", action: "open" };
-
 const scripts: Script[] = [
   {
-    name: "Add a note at 0:05",
+    name: "Add a Comment at 0:05",
     steps: () => [
-      openQueue,
       {
-        ref: "Open notes",
-        action: "addNote",
+        ref: "comment-list",
+        action: "addComment",
         args: ["0:05", "Agent note: check the colour here"],
       },
     ],
   },
   {
-    name: "Resolve the first open note",
-    // Open the queue, then read its notes from a fresh snapshot, as an agent would.
-    steps: async () => {
-      await agent.act({ steps: [openQueue] });
-      const queue = agent.snapshot().find((entry) => entry.label === "Open notes");
-      const first = (queue?.items as { value: string }[] | undefined)?.[0];
+    name: "Resolve the first To do Comment",
+    steps: () => {
+      const list = agent.snapshot().find((entry) => entry.component === "comment-list");
+      const first = (list?.items as { value: string }[] | undefined)?.[0];
       return first
-        ? [{ ref: "Open notes", action: "resolve", args: [first.value] }]
-        : "No open notes on this page.";
+        ? [{ ref: "comment-list", action: "resolve", args: [first.value] }]
+        : "No Comments to do on this page.";
     },
   },
   {

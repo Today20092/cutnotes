@@ -244,7 +244,7 @@ test("ready Revision history is one tap away and keeps feedback on its own cut",
   await expect(pageListItem(page).filter({ hasText: "Older cut feedback" })).toBeVisible();
   await page.getByRole("link", { name: "Watch it" }).click();
   await expect(pageListItem(page).filter({ hasText: "Current cut feedback" })).toBeVisible();
-  await page.getByRole("button", { name: "Revision 1", exact: true }).click();
+  await page.getByRole("button", { name: /^Revision 1 ·/ }).click();
   await expect(pageListItem(page).filter({ hasText: "Older cut feedback" })).toBeVisible();
   await expect(pageListItem(page).filter({ hasText: "Current cut feedback" })).toHaveCount(0);
   await page.getByLabel(/^Add a Comment/).fill("Still on the older cut");
@@ -271,7 +271,7 @@ test("ready Revision history is one tap away and keeps feedback on its own cut",
         .analyze()
     ).violations,
   ).toEqual([]);
-  await page.getByRole("button", { name: "Revision 2", exact: true }).click();
+  await page.getByRole("button", { name: /^Revision 2 ·/ }).click();
   await expect(pageListItem(page).filter({ hasText: "Current cut feedback" })).toBeVisible();
   await expect(pageListItem(page).filter({ hasText: "Still on the older cut" })).toHaveCount(0);
 });
@@ -339,7 +339,9 @@ test("Comments seek, edit, Resolve and delete with sensible focus and accessible
   await page.locator("video").evaluate((video: HTMLVideoElement) => {
     video.currentTime = 3;
   });
-  await expect(page.getByText("Add a Comment at 0:03", { exact: true })).toBeVisible();
+  await expect(
+    page.locator("label[for=comment-body]").getByText("0:03:00", { exact: true }),
+  ).toBeVisible();
   await page.getByLabel(/^Add a Comment/).fill("Change this frame");
   await page.getByRole("button", { name: "Send Comment", exact: true }).click();
   const row = pageListItem(page).filter({ hasText: "Change this frame" });
@@ -347,15 +349,15 @@ test("Comments seek, edit, Resolve and delete with sensible focus and accessible
   await page.locator("video").evaluate((video: HTMLVideoElement) => {
     video.currentTime = 0;
   });
-  await row.getByRole("button", { name: "0:03 Change this frame", exact: true }).click();
+  await row.getByRole("button", { name: "3 sec, frame 0 Change this frame", exact: true }).click();
   await expect(
-    row.getByRole("button", { name: "0:03 Change this frame", exact: true }),
+    row.getByRole("button", { name: "3 sec, frame 0 Change this frame", exact: true }),
   ).toHaveAttribute("aria-current", "true");
   await expect
     .poll(() => page.locator("video").evaluate((video: HTMLVideoElement) => video.currentTime))
     .toBeCloseTo(3, 1);
   await expect(
-    page.getByRole("button", { name: "Comment at 0:03: Change this frame", exact: true }),
+    page.getByRole("button", { name: "Comment at 3 sec, frame 0: Change this frame", exact: true }),
   ).toBeVisible();
   await row.getByRole("button", { name: /^Edit Comment/ }).click();
   await page.getByLabel("Edit Comment text").fill("Edited feedback");
@@ -367,7 +369,7 @@ test("Comments seek, edit, Resolve and delete with sensible focus and accessible
   await page.getByRole("button", { name: "Save Comment", exact: true }).click();
   const edited = pageListItem(page).filter({ hasText: "Edited feedback" });
   await edited.getByRole("checkbox", { name: /^Resolve Comment/ }).click();
-  await expect(page.getByRole("button", { name: "To do", exact: true })).toBeFocused();
+  await expect(page.getByRole("button", { name: /^To do \(/ })).toBeFocused();
   await expect(edited).toHaveCount(0);
   await page.getByRole("button", { name: "Resolved", exact: true }).click();
   await expect(edited).toBeVisible();
@@ -391,10 +393,10 @@ test("Comments seek, edit, Resolve and delete with sensible focus and accessible
     ).toEqual([]);
   }
   await edited.getByRole("checkbox", { name: /^Unresolve Comment/ }).click();
-  await page.getByRole("button", { name: "To do", exact: true }).click();
+  await page.getByRole("button", { name: /^To do \(/ }).click();
   await edited.getByRole("button", { name: /^Delete Comment/ }).click();
   await expect(edited).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "To do", exact: true })).toBeFocused();
+  await expect(page.getByRole("button", { name: /^To do \(/ })).toBeFocused();
 });
 
 test("Undo and a failed delayed delete restore only the selected Comment", async ({ page }) => {
@@ -565,12 +567,21 @@ test("a Guest goes from the welcome screen to a saved Comment, then sees a plain
   await send("Too dark here");
   await expect(text).toHaveValue("");
   await guest.reload();
-  await expect(guest.getByText("Dana · Guest")).toBeVisible();
+  await expect(guest.getByText("Dana", { exact: true })).toBeVisible();
   await expect(pageListItem(guest).filter({ hasText: /Too dark here/ })).toBeVisible();
   await expect(guest.getByRole("button", { name: /^(Edit|Delete)/ })).toHaveCount(0);
 
   await page.reload();
   await expect(page.getByText("Dana · Guest")).toBeVisible();
+  await pageListItem(page)
+    .filter({ hasText: "Too dark here" })
+    .getByRole("checkbox", { name: /^Resolve Comment/ })
+    .click();
+  await expect(pageListItem(page).filter({ hasText: "Too dark here" })).toHaveCount(0);
+  await guest.reload();
+  await expect(pageListItem(guest).filter({ hasText: "Too dark here" })).toContainText("Resolved");
+  await expect(guest.getByRole("group", { name: "Comment filters" })).toHaveCount(0);
+  await expect(guest.getByRole("link", { name: "Dana" })).toHaveCount(0);
 
   // Thirty real sends could straddle the limiter's one-minute window. Seam 1 covers the real limit; this covers the screen.
   await guest.route(callTo("createGuestComment"), (route) =>

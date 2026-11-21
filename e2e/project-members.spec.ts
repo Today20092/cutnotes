@@ -61,6 +61,7 @@ test("an Owner assigns a project, sends a scoped invitation, and removes access"
   await second.getByRole("button", { name: /^Revoke/ }).click();
   await page.getByRole("button", { name: / now$/ }).click();
   await expect(sheet.getByRole("button", { name: /^Revoke/ })).toHaveCount(1);
+  await expect(sheet.getByRole("button", { name: "Copy link" })).toHaveCount(0);
 
   await sheet.getByRole("button", { name: "Close" }).click();
   await expect(sheet).toHaveCount(0);
@@ -96,6 +97,14 @@ test("an Owner assigns a project, sends a scoped invitation, and removes access"
     0,
   );
   await expect(invitedPage.getByRole("button", { name: /^Upload( first cut)?$/ })).toBeVisible();
+
+  await page.goto("/invites");
+  const historyProject = page
+    .getByRole("listitem")
+    .filter({ hasText: `For Taylor ${suffix}` })
+    .getByRole("link", { name, exact: true });
+  await historyProject.click();
+  await expect(page).toHaveURL(projectUrl);
 
   // The older `#people` link still opens the sheet; the accepted invitation became an assignment.
   await page.goto("/");

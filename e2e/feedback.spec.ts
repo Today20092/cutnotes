@@ -42,13 +42,17 @@ test("signed-out feedback works without Clerk and the Owner can handle it", asyn
   await report.getByLabel("Handled note (optional)").fill("Verified and resolved");
   await report.getByRole("button", { name: "Mark handled" }).click();
   await expect(report).toHaveCount(0);
-  await page.getByRole("checkbox", { name: "Show handled reports" }).check();
+  const showHandled = page.getByRole("checkbox", { name: "Show handled reports" });
+  await expect(showHandled).toHaveCSS("border-top-left-radius", "3px");
+  await showHandled.press("Space");
+  await expect(showHandled).toBeChecked();
   await expect(report).toBeVisible();
   await expect(report.getByText("Verified and resolved")).toBeVisible();
 });
 
 test("Members and Guests can submit using the keyboard", async ({ page }) => {
   await signInAs(page, { clerkUserId: "user_first_owner", email: "first.owner@example.com" });
+  const suffix = crypto.randomUUID();
   for (const path of ["/", `/share/${"a".repeat(32)}`]) {
     await page.goto(path);
     await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toBeVisible();
@@ -57,7 +61,7 @@ test("Members and Guests can submit using the keyboard", async ({ page }) => {
     await page.keyboard.press("Enter");
     const message = page.getByLabel("Message", { exact: true });
     await message.focus();
-    await page.keyboard.type("Keyboard feedback from " + path);
+    await page.keyboard.type(`Keyboard feedback from ${path} ${suffix}`);
     await message.press("Tab");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Enter");
@@ -65,6 +69,14 @@ test("Members and Guests can submit using the keyboard", async ({ page }) => {
       page.getByRole("status").filter({ hasText: "Your feedback was sent" }),
     ).toBeVisible();
   }
+  await page.goto("/feedback");
+  const memberReport = page
+    .getByRole("listitem")
+    .filter({ hasText: `Keyboard feedback from / ${suffix}` });
+  await memberReport.getByRole("link", { name: "first.owner@example.com", exact: true }).click();
+  await expect(
+    page.getByRole("combobox", { name: "Role for first.owner@example.com" }),
+  ).toBeVisible();
 });
 
 test("the stalled sign-in screen can report while Clerk never loads", async ({ page }) => {

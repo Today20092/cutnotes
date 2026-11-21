@@ -108,6 +108,7 @@ export const videos = sqliteTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     status: text("status", { enum: videoStatuses }).notNull(),
+    decisionUndo: text("decision_undo"),
     createdBy: text("created_by")
       .notNull()
       .references(() => members.id),
@@ -211,6 +212,7 @@ export const shareLinks = sqliteTable(
     revokedAt: integer("revoked_at"),
     // The Revision the Guest sees. NULL only on links made before pinning: they follow the latest.
     revisionId: text("revision_id").references(() => revisions.id, { onDelete: "cascade" }),
+    lastOpenedAt: integer("last_opened_at"),
   },
   (table) => [index("share_links_video_id_idx").on(table.videoId)],
 );

@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import { idParam, param, secondsParam } from "@/lib/search-params";
+import { idParam, secondsParam } from "@/lib/search-params";
 import { shareMeta, type SharePreview } from "@/lib/share-preview";
 import { getSharePreview } from "@/server/sharing";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,7 +19,6 @@ import { createGuestComment, getGuestReview } from "@/server/sharing";
 const searchSchema = v.object({
   t: secondsParam,
   comment: idParam,
-  filter: param(v.picklist(["todo", "resolved"])),
 });
 
 export const Route = createFileRoute("/share/$token")({
@@ -56,7 +55,7 @@ function GuestPage() {
   const preview = Route.useLoaderData();
   const [name, setName] = useState(storedName);
   const entered = useRef(false);
-  if (!name)
+  if (!name && preview?.permission !== "view")
     return (
       <Welcome
         preview={preview}
@@ -151,7 +150,16 @@ function GuestReviewScreen({
   name: string;
   focusHeading: boolean;
 }) {
-  const review = useQuery(guestQuery(token));
+  const opened = useRef<string | null>(null);
+  const review = useQuery({
+    ...guestQuery(token),
+    refetchOnMount: "always",
+    queryFn: async () => {
+      const result = await getGuestReview({ data: { token, opened: opened.current !== token } });
+      if (result) opened.current = token;
+      return result;
+    },
+  });
   if (review.isPending)
     return (
       <main className="p-4">
@@ -208,12 +216,15 @@ function Loaded({
       {team && (
         <p className="flex items-center gap-2 text-sm font-medium wrap-anywhere">
           <TeamLogo team={team} />
-          {team.name} wants your feedback
+          {team.name}{" "}
+          {page.permission === "view" ? "shared this Video with you" : "wants your feedback"}
         </p>
       )}
-      <a href="#comments" className="sr-only focus:not-sr-only">
-        Skip to Comments
-      </a>
+      {actor.writable && (
+        <a href="#comments" className="sr-only focus:not-sr-only">
+          Skip to Comments
+        </a>
+      )}
       <h1 ref={heading} tabIndex={-1} className="text-title wrap-anywhere">
         {page.title}
       </h1>
@@ -256,7 +267,8 @@ function useGuestActor(
   });
   return {
     writable,
-    closedNote: "This link is view-only.",
+    guest: true,
+    closedNote: "",
     pending: write.isPending,
     send: write.mutateAsync,
     sendFailure: (error) =>

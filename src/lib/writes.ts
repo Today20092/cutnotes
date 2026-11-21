@@ -166,14 +166,14 @@ export function videoWrite<
 }
 
 /** A write to one Video's Review, with its own optimistic update; refreshes after the last write. */
-export function reviewWrite<Input, Context>(
+export function reviewWrite<Input, Context, Result>(
   client: QueryClient,
   videoId: string,
   options: Pick<
-    MutationOptions<unknown, Error, Input, Context>,
+    MutationOptions<Result, Error, Input, Context>,
     "mutationFn" | "onMutate" | "onError"
   >,
-): MutationOptions<unknown, Error, Input, Context> {
+): MutationOptions<Result, Error, Input, Context> {
   return {
     ...options,
     mutationKey: videoWrites(videoId),

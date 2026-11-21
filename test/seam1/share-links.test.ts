@@ -107,6 +107,32 @@ const expectDead = async (response: Response) => {
   expect(await response.json()).toEqual({ code: "not-found" });
 };
 
+it("tracks opened links and counts Comments per link, including Resolved ones", async () => {
+  const first = await createLink();
+  const second = await createLink();
+  type Activity = { id: string; commentCount: number; lastOpenedAt: number | null };
+  const list = async () =>
+    (
+      await resultOf<{ links: Activity[] }>(
+        await call(fn.listShareLinks, "user_owner", { videoId: "v" }),
+      )
+    ).links;
+  const activity = (links: Activity[], id: string) => links.find((link) => link.id === id);
+  await callServerFn(fn.getSharePreview, { data: { token: first.token } });
+  await page(first.token);
+  expect(activity(await list(), first.id)).toMatchObject({ lastOpenedAt: null, commentCount: 0 });
+  await page(first.token, { opened: true });
+  const before = activity(await list(), first.id)?.lastOpenedAt;
+  expect(before).toEqual(expect.any(Number));
+  expect((await comment(first.token)).status).toBe(200);
+  await env.DB.exec("UPDATE comments SET resolved_at = 1");
+  await page(first.token);
+  const links = await list();
+  expect(activity(links, first.id)).toMatchObject({ lastOpenedAt: before, commentCount: 1 });
+  expect(activity(links, second.id)).toMatchObject({ lastOpenedAt: null, commentCount: 0 });
+  expect((await page(first.token)).comments).toMatchObject([{ resolvedAt: 1 }]);
+});
+
 it.each(["owner"])(
   "a %s lists and revokes links; revoked links stop reads and Comments but stay out of the list",
   async (role) => {

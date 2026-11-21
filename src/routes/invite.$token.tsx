@@ -20,7 +20,7 @@ export const Route = createFileRoute("/invite/$token")({
 const unavailableTitles = {
   used: "This Invite has already been used",
   expired: "This Invite has expired",
-  revoked: "This Invite was cancelled",
+  revoked: "This Invite was revoked",
   unknown: "This Invite link is not valid",
 };
 
@@ -46,7 +46,7 @@ function InvitePage() {
       />
     );
   }
-  return <Redeem team={team.data} token={token} />;
+  return <Redeem key={token} team={team.data} token={token} />;
 }
 
 function Redeem({ team, token }: { team: Team; token: string }) {
@@ -85,7 +85,7 @@ function Redeem({ team, token }: { team: Team; token: string }) {
         title="Something went wrong"
         action={<Button onClick={() => mutate()}>Try again</Button>}
       >
-        Your Invite has not been used. Please try again.
+        Please try again.
       </InviteOutcomeScreen>
     );
   }
@@ -108,7 +108,7 @@ function Redeem({ team, token }: { team: Team; token: string }) {
         team={team}
         title={
           result.projectId
-            ? "You already have access to this project"
+            ? "You already have access to this Project"
             : "You are already on this Team"
         }
         action={
@@ -118,7 +118,7 @@ function Redeem({ team, token }: { team: Team; token: string }) {
               params={{ projectId: result.projectId }}
               className={buttonVariants()}
             >
-              Open project
+              Open Project
             </Link>
           ) : (
             <Link to="/" className={buttonVariants()}>

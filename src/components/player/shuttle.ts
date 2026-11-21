@@ -81,7 +81,10 @@ export function createShuttleController(
     play,
     toggle() {
       if (playing()) pause();
-      else play();
+      else {
+        rate = 1;
+        play();
+      }
     },
     shuttle(direction: -1 | 1) {
       const sameDirection = playing() && Math.sign(rate) === direction;

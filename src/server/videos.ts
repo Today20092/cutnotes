@@ -17,7 +17,7 @@ import {
   writableVideo,
 } from "@/server/access";
 import { getDb, type Db } from "@/server/db";
-import { members, revisions, videos, type VideoStatus } from "@/server/db/schema";
+import { members, projects, revisions, videos, type VideoStatus } from "@/server/db/schema";
 import { getMuxGateway } from "@/server/mux";
 import { moveStage } from "@/server/project-stage";
 import { discardRevision } from "@/server/revision-lifecycle";
@@ -53,7 +53,7 @@ async function insertRevision(
   if (newVideo) {
     const [, inserted] = await db.batch([
       db.insert(videos).select(
-        sql`SELECT ${videoId}, ${newVideo.projectId}, ${newVideo.title}, 'review', ${memberId}, ${now}, ${now}, NULL
+        sql`SELECT ${videoId}, ${newVideo.projectId}, ${newVideo.title}, 'review', NULL, ${memberId}, ${now}, ${now}, NULL
               WHERE ${openProject(newVideo.projectId)} AND ${projectAccess(memberId, newVideo.projectId, "uploader")}`,
       ),
       insertRow,
@@ -228,29 +228,32 @@ async function decide(memberId: string, raw: DecisionInput, status: VideoStatus)
   const projectId = sql`(SELECT project_id FROM videos WHERE id = ${videoId})`;
   const editor = videoAccess(memberId, videoId, "editor");
   const allowed = and(editor, latestReadyRevision(revisionId, videoId));
+  const decisionId = crypto.randomUUID();
+  const nextStage = status === "rework" ? "editing" : "done";
+  const movesStage =
+    status === "rework"
+      ? sql`1`
+      : sql`NOT EXISTS (
+    SELECT 1 FROM videos AS other WHERE other.project_id = ${projectId}
+    AND other.deleted_at IS NULL AND other.id <> ${videoId} AND other.status <> 'done'
+  )`;
+  const receipt = sql`(SELECT json_object(
+      'id', ${decisionId}, 'member', ${memberId}, 'revision', ${revisionId}, 'status', ${videos.status},
+      'statusAfter', ${status},
+      'stageBefore', p.stage,
+      'stageAfter', CASE WHEN ${movesStage} THEN ${nextStage} ELSE p.stage END,
+      'stageAt', CASE WHEN ${movesStage} AND p.stage <> ${nextStage} THEN ${now} ELSE p.updated_at END
+    ) FROM projects AS p WHERE p.id = ${videos.projectId})`;
   const [decided] = await db.batch([
     db
       .update(videos)
-      .set({ status, updatedAt: now })
+      .set({ status, updatedAt: now, decisionUndo: receipt })
       .where(and(eq(videos.id, videoId), writableVideo(videoId), allowed))
       .returning({ id: videos.id, title: videos.title, status: videos.status }),
-    status === "rework"
-      ? moveStage(db, projectId, "editing", allowed, now)
-      : // Done only once every live Video in the Project is done.
-        moveStage(
-          db,
-          projectId,
-          "done",
-          and(
-            allowed,
-            sql`NOT EXISTS (SELECT 1 FROM videos AS other WHERE other.project_id = ${projectId}
-              AND other.deleted_at IS NULL AND other.status <> 'done')`,
-          ),
-          now,
-        ),
+    moveStage(db, projectId, nextStage, and(allowed, movesStage), now),
   ]);
   const [video] = decided;
-  if (video) return video;
+  if (video) return { ...video, decisionId };
   // Only someone who may decide learns that a newer cut is ready.
   const [decider] = await db
     .select({ id: videos.id })
@@ -272,6 +275,59 @@ export const approveVideo = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const member = await requireMember("viewer");
     return decide(member.id, data, "done");
+  });
+
+const undoDecisionSchema = v.object({ videoId: idField, revisionId: idField, decisionId: idField });
+
+export const undoReviewDecision = createServerFn({ method: "POST" })
+  .validator((data: v.InferInput<typeof undoDecisionSchema>) => data)
+  .handler(async ({ data }) => {
+    const member = await requireMember("viewer");
+    const { videoId, revisionId, decisionId } = parse(undoDecisionSchema, data);
+    const db = getDb();
+    const now = Date.now();
+    const undoId = crypto.randomUUID();
+    const field = (name: string) => sql`json_extract(${videos.decisionUndo}, ${`$.${name}`})`;
+    const target = and(
+      eq(videos.id, videoId),
+      writableVideo(videoId),
+      videoAccess(member.id, videoId, "editor"),
+    );
+    const projectStillCurrent = sql`EXISTS (
+      SELECT 1 FROM projects AS p WHERE p.id = ${videos.projectId}
+      AND p.stage = ${field("stageAfter")} AND p.updated_at = ${field("stageAt")}
+    )`;
+    // The temporary ID lets the Stage write follow only a successful Status restore in this batch.
+    const restored = and(eq(videos.id, videoId), sql`${field("id")} = ${undoId}`);
+    const [written] = await db.batch([
+      db
+        .update(videos)
+        .set({
+          status: field("status"),
+          decisionUndo: sql`json_set(${videos.decisionUndo}, '$.id', ${undoId})`,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            target,
+            latestReadyRevision(revisionId, videoId),
+            sql`${field("id")} = ${decisionId} AND ${field("member")} = ${member.id}
+              AND ${field("revision")} = ${revisionId} AND ${videos.status} = ${field("statusAfter")}`,
+            projectStillCurrent,
+          ),
+        )
+        .returning({ id: videos.id }),
+      db.update(projects).set({
+        stage: sql`(SELECT ${field("stageBefore")} FROM videos WHERE ${restored})`,
+        updatedAt: now,
+      }).where(sql`${projects.id} = (SELECT ${videos.projectId} FROM videos WHERE ${restored}
+        AND ${field("stageBefore")} <> ${field("stageAfter")})`),
+      db.update(videos).set({ decisionUndo: null }).where(restored),
+    ]);
+    if (written[0]) return written[0];
+    if (!(await db.select({ id: videos.id }).from(videos).where(target))[0])
+      refuse(404, "not-found");
+    refuse(409, "decision-changed");
   });
 
 export const deleteVideo = createServerFn({ method: "POST" })

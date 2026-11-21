@@ -1,0 +1,58 @@
+name: Dependabot auto-merge
+
+# Merges Dependabot minor and patch PRs once the full Check passes, then deploys.
+# Major updates are left for a person.
+#
+# A merge made with GITHUB_TOKEN creates no push event, so Check would not run on
+# main and Deploy would not start. This job therefore runs Check on the merge
+# commit itself (workflow_dispatch) and then starts Deploy (workflow_dispatch),
+# which accepts a passing dispatched Check for the current main commit.
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  merge:
+    # Only Dependabot's own PRs, and only when Dependabot made the latest push.
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - id: meta
+        uses: dependabot/fetch-metadata@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge after Check, run Check on main, deploy
+        # update-type is the highest change in the PR, so a group with any major is skipped.
+        if: steps.meta.outputs.update-type == 'version-update:semver-minor' || steps.meta.outputs.update-type == 'version-update:semver-patch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # Let the Check run register its jobs before watching them.
+          sleep 30
+          gh pr checks "$PR" --required --watch --fail-fast --interval 60
+          gh pr merge "$PR" --merge
+          sha=$(gh pr view "$PR" --json mergeCommit --jq .mergeCommit.oid)
+          gh workflow run check.yml --ref main
+          run=""
+          for _ in $(seq 30); do
+            sleep 10
+            run=$(gh run list --workflow check.yml --event workflow_dispatch --commit "$sha" --json databaseId --jq '.[0].databaseId // empty')
+            [ -n "$run" ] && break
+          done
+          # Empty when main moved past this merge before Check started; that newer push deploys instead.
+          test -n "$run"
+          gh run watch "$run" --exit-status --interval 60
+          gh workflow run deploy.yml --ref main -f environment=production

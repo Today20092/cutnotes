@@ -1,12 +1,17 @@
-# Weekly, grouped update PRs. Each one runs the Check job.
-# Never auto-merge them: a merge to main deploys to production.
+# One monthly PR for all minor and patch updates, so one CI run and no bun.lock
+# conflicts between PRs. Major updates come one PR each.
+# .github/workflows/dependabot-auto-merge.yml merges minor and patch PRs once
+# the full Check passes, then deploys. Majors wait for a person.
 version: 2
 updates:
   - package-ecosystem: bun
     directory: /
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    # Skip releases younger than 7 days: a compromised or broken release is
+    # usually pulled within that time. Security updates are not delayed.
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
     ignore:
@@ -22,25 +27,19 @@ updates:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
     groups:
-      tanstack:
-        patterns: ["@tanstack/*"]
-      react:
-        patterns: ["react", "react-dom", "@types/react", "@types/react-dom", "@vitejs/plugin-react"]
-      ui:
-        patterns: ["@ui-sdk/*", "tailwindcss", "@tailwindcss/*", "tailwind-merge", "tw-animate-css", "shadcn", "lucide-react"]
-      tests:
-        patterns: ["vitest", "@vitest/*", "@playwright/test", "@axe-core/*"]
-      tooling:
-        patterns: ["oxlint", "oxfmt", "knip", "typescript"]
-      node:
-        patterns: ["node-linux-x64", "node-win-x64", "@types/node"]
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(ci)"
     groups:
-      actions:
+      minor-and-patch:
         patterns: ["*"]
+        update-types: ["minor", "patch"]

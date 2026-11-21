@@ -43,7 +43,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun scripts/node.ts node_modules/@playwright/test/cli.js install --with-deps chromium
       - run: bun run test:seam2 --project=${{ matrix.project }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: test-results-${{ matrix.project }}

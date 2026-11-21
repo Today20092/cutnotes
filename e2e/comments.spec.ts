@@ -567,8 +567,8 @@ test("a Guest goes from the welcome screen to a saved Comment, then sees a plain
   await send("Too dark here");
   await expect(text).toHaveValue("");
   await guest.reload();
-  await expect(guest.getByText("Dana", { exact: true })).toBeVisible();
-  await expect(pageListItem(guest).filter({ hasText: /Too dark here/ })).toBeVisible();
+  const guestComment = pageListItem(guest).filter({ hasText: "Too dark here" });
+  await expect(guestComment).toContainText("Dana");
   await expect(guest.getByRole("button", { name: /^(Edit|Delete)/ })).toHaveCount(0);
 
   await page.reload();
@@ -578,8 +578,9 @@ test("a Guest goes from the welcome screen to a saved Comment, then sees a plain
     .getByRole("checkbox", { name: /^Resolve Comment/ })
     .click();
   await expect(pageListItem(page).filter({ hasText: "Too dark here" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeVisible();
   await guest.reload();
-  await expect(pageListItem(guest).filter({ hasText: "Too dark here" })).toContainText("Resolved");
+  await expect(guestComment).toContainText("Resolved");
   await expect(guest.getByRole("group", { name: "Comment filters" })).toHaveCount(0);
   await expect(guest.getByRole("link", { name: "Dana" })).toHaveCount(0);
 

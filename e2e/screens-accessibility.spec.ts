@@ -533,7 +533,11 @@ test("Send to customer sheet and Guest pages", async ({ page, browser }, testInf
   await expect(guest.getByRole("navigation")).toHaveCount(0);
   await guest.getByLabel(/^Add a Comment/).fill("Too dark here");
   await guest.getByRole("button", { name: "Send Comment" }).click();
-  await expect(guest.getByText("Dana", { exact: true })).toBeVisible();
+  const comment = guest
+    .getByRole("list", { name: "Comments", exact: true })
+    .getByRole("listitem")
+    .filter({ hasText: "Too dark here" });
+  await expect(comment).toContainText("Dana");
   await expect(guest.getByLabel(/^Add a Comment/)).toHaveValue("");
   await expectAccessible(guest, "Guest review");
 

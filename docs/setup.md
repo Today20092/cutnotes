@@ -6,12 +6,12 @@ Use a Cloudflare account on the Workers Paid plan. Install Bun and run commands 
 
 ## Environments and service connections
 
-Use [the Git workflow](branch-workflow.md) for branch roles and promotion. Keep three places for work:
+Use [the Git workflow](branch-workflow.md) for branches and releases. Keep three places for work:
 
 | Environment | Purpose | Connections |
 | --- | --- | --- |
 | Local | Agent edits and automated tests | Local D1. Automated tests use test Clerk tokens and a fake Mux gateway. Ordinary `bun run dev` uses the credentials supplied in `.dev.vars`. |
-| Staging | Shared review of the selected `development` commit | Separate Worker, D1 database, Clerk test configuration and Mux environment; sample videos and test Members. |
+| Staging | Real-service review of a `main` commit, deployed by hand | Separate Worker, D1 database, Clerk test configuration and Mux environment; sample videos and test Members. |
 | Production | The Team's real work, released from `main` | Production Worker, D1 database, Clerk application and Mux environment. |
 
 The Worker serves pages and checks Roles and Share Links. D1 stores Team and review records; it does not store uploaded video. The browser uploads directly to Mux and plays video from Mux. Mux sends signed events to the Worker's `/api/mux/webhook` endpoint. Clerk handles Member sign-in. The hourly Worker task reconciles Revisions and removes work due for deletion.
@@ -47,8 +47,8 @@ The GitHub `staging` and `production` environments already exist. Each has `CLOU
    ```
 
    Replace `SECRET_NAME` with one actual name at a time. Do not use production values. Existing production runtime secrets stay on the production Worker; supply its matching Clerk publishable key to GitHub for production builds.
-3. Merge the workflow and config changes through a reviewed PR. The Deploy workflow must exist on `main` for `workflow_run` and manual dispatch to activate. Then merge the same changes into `development` and let Check verify the combined candidate before staging deploys.
-4. Configure the `production` environment to allow only `main`, with no required reviewers or wait timer. A passing push to `main` automatically deploys production. A passing `development` push deploys staging independently. To retry a failed deployment, use Actions → Deploy from the matching branch and select its environment; no staging-confirmation input is required.
+3. Merge the workflow and config changes through a reviewed PR. The Deploy workflow must exist on `main` for `workflow_run` and manual dispatch to activate. Staging deploys only when you run Deploy by hand.
+4. Configure the `production` environment to allow only `main`, with no required reviewers or wait timer. A passing push to `main` automatically deploys production. To deploy staging, or retry a failed production deployment, use Actions → Deploy from `main` and select the environment; no staging-confirmation input is required.
 
 Deployment logs include the Worker version/deployment identifiers. The job summary records the source SHA, target origin and D1 recovery bookmark captured automatically before migrations. A failed availability check requires investigation; it does not automatically reverse migrations. Missing staging secrets do not prevent production deployment.
 
@@ -149,7 +149,7 @@ Apply D1 migrations before deploying this feature. Reports include a build commi
 
 ## Release an existing install
 
-1. Select the reviewed release commit using [the promotion rules](branch-workflow.md#promotion). Use a clean release checkout and install from `bun.lock`. Record the commit, check results, target Worker, database and origin. Keep unrelated local work outside the release checkout.
+1. Select the reviewed release commit using [the release rules](branch-workflow.md#work-and-release). Use a clean release checkout and install from `bun.lock`. Record the commit, check results, target Worker, database and origin. Keep unrelated local work outside the release checkout.
 2. Test new migrations on a staging database representing the previous release. Prefer additive changes that allow the previous Worker to keep running; remove old fields in a later release. Before production migration, record a usable D1 recovery point or backup and the recovery procedure. A database restore can discard writes made after that point.
 3. Verify real-service behavior on staging when available: Member sign-in and Role checks; a sample Revision upload; the signed webhook reaching Ready; playback; a Comment; Share Link access and revocation; and deletion of the sample work. Automated browser tests use service replacements and do not prove these connections work. Confirm the hourly cleanup is enabled for the intended install. Staging readiness is not a separate production gate.
 4. Merge the approved release into `main`. After Check passes, Actions deploys the exact current SHA using production credentials, records a D1 recovery bookmark and applies pending migrations. There is no additional approval or deployment command. The commands below are only for a separate single-target self-hosted install provisioned by the setup script. Check the target before running them.
@@ -160,7 +160,7 @@ Apply D1 migrations before deploying this feature. Reports include a build commi
    bun scripts/node.ts node_modules/wrangler/bin/wrangler.js deploy
    ```
 
-5. Record the commit and Worker deployment identifier. Check production sign-in, playback and a permitted Comment using designated test work, then inspect Worker errors and webhook delivery failures. Mark the release successful only after these checks pass. Bring main-only changes back into `development`.
+5. Record the commit and Worker deployment identifier. Check production sign-in, playback and a permitted Comment using designated test work, then inspect Worker errors and webhook delivery failures. Mark the release successful only after these checks pass.
 
 ### Recover a failed release
 

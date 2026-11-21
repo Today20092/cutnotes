@@ -46,7 +46,7 @@ const expiryDate = (timestamp: number) =>
   new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(timestamp);
 
 /** A Project Invite offers a Project role; a Team Invite a Team Role. */
-export const inviteRoleLabel = (value: InviteRole, scoped: boolean) =>
+const inviteRoleLabel = (value: InviteRole, scoped: boolean) =>
   scoped ? roleLabel(value) : (roleChoices.find((choice) => choice.role === value)?.label ?? value);
 
 export type Invite = Awaited<ReturnType<typeof listInvites>>["invites"][number];

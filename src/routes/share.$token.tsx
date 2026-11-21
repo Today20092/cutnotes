@@ -237,7 +237,11 @@ function Loaded({
         actor={actor}
         view={search}
         onViewChange={(change) =>
-          void navigate({ search: (prev) => ({ ...prev, ...change }), replace: true })
+          void navigate({
+            search: (prev) => ({ ...prev, ...change }),
+            replace: true,
+            resetScroll: false,
+          })
         }
       />
       <footer className="mt-4 border-t pt-2">

@@ -9,7 +9,7 @@ import { moveStage } from "@/server/project-stage";
 const MAX_DURATION_SECONDS = 12 * 60 * 60;
 
 /** Direct-upload statuses after which Mux will never create an asset. */
-export const TERMINAL_UPLOAD_STATUSES = ["cancelled", "errored", "timed_out"];
+const TERMINAL_UPLOAD_STATUSES = ["cancelled", "errored", "timed_out"];
 
 /** Upload events carry upload fields; asset events carry the asset itself. */
 type MuxEvent = {

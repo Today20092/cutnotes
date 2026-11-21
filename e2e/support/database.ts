@@ -77,6 +77,7 @@ export function seedComment(
   body: string,
   createdAt = 1,
   timecodeMs = 1000,
+  resolvedAt: number | null = null,
 ) {
   const id = crypto.randomUUID();
   executeSql(
@@ -88,6 +89,7 @@ export function seedComment(
       timecodeMs,
       body,
       createdAt,
+      resolvedAt,
     }),
   );
   return id;

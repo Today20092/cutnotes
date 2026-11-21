@@ -51,7 +51,7 @@ type Write =
 
 type WriteResult = { id: string; resolvedAt?: number | null };
 
-export function useCommentWrite(videoId: string, revision?: number) {
+function useCommentWrite(videoId: string, revision?: number) {
   const client = useQueryClient();
   const queryKey = reviewQuery(videoId, undefined, revision).queryKey;
   const waiting = useRef(new Map<string, () => void>());

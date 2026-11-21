@@ -311,14 +311,8 @@ test("selection is visible without colour and the Comment field has a clear boun
   await expect(row).toHaveAttribute("aria-current", "true");
   await expect(row).toHaveCSS("border-left-style", "solid");
   await expect(row).toHaveCSS("font-weight", "600");
-  await expect(page.getByRole("button", { name: "To do" })).toHaveCSS(
-    "text-decoration-line",
-    "underline",
-  );
-  await expect(page.getByRole("button", { name: "Resolved" })).not.toHaveCSS(
-    "text-decoration-line",
-    "underline",
-  );
+  await expect(page.getByRole("button", { name: "To do" })).toHaveCSS("font-weight", "600");
+  await expect(page.getByRole("button", { name: "Resolved" })).not.toHaveCSS("font-weight", "600");
   await expect(page.getByLabel(/^Add a Comment/)).toHaveAttribute("aria-describedby", /.+/);
   for (const colorScheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme });

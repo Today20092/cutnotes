@@ -1,0 +1,46 @@
+# Weekly, grouped update PRs. Each one runs the Check job.
+# Never auto-merge them: a merge to main deploys to production.
+version: 2
+updates:
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    ignore:
+      # Pinned together to one workerd version for Windows. See the pin note in README.md.
+      - dependency-name: wrangler
+      - dependency-name: "@cloudflare/vite-plugin"
+      - dependency-name: "@cloudflare/vitest-plugin"
+      # The pinned Node runtime (scripts/node.ts) and its types stay on Node 24.
+      - dependency-name: node-linux-x64
+        update-types: ["version-update:semver-major"]
+      - dependency-name: node-win-x64
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+    groups:
+      tanstack:
+        patterns: ["@tanstack/*"]
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom", "@vitejs/plugin-react"]
+      ui:
+        patterns: ["@ui-sdk/*", "tailwindcss", "@tailwindcss/*", "tailwind-merge", "tw-animate-css", "shadcn", "lucide-react"]
+      tests:
+        patterns: ["vitest", "@vitest/*", "@playwright/test", "@axe-core/*"]
+      tooling:
+        patterns: ["oxlint", "oxfmt", "knip", "typescript"]
+      node:
+        patterns: ["node-linux-x64", "node-win-x64", "@types/node"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      actions:
+        patterns: ["*"]

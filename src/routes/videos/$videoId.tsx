@@ -46,7 +46,11 @@ function Review() {
   const navigate = Route.useNavigate();
   const { revision } = search;
   const setSearch = (change: Partial<typeof search>) =>
-    void navigate({ search: (prev) => ({ ...prev, ...change }), replace: true });
+    void navigate({
+      search: (prev) => ({ ...prev, ...change }),
+      replace: true,
+      resetScroll: false,
+    });
   // A copied link opens the same cut at the same moment.
   const linkParams = new URLSearchParams();
   if (search.revision) linkParams.set("revision", String(search.revision));

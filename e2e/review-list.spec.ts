@@ -20,6 +20,22 @@ test("the Comment list counts To do and offers Undo after Resolve", async ({ pag
   await expect(list.getByText("Lift the shadows")).toBeVisible();
 });
 
+test("switching the Comment filter keeps the reader's place", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "Only the stacked phone layout scrolls the page.");
+  const { id, clerkUserId } = await signInWithReview(page);
+  // Equal lists, so the page keeps its height and only a scroll reset could move it.
+  for (let n = 0; n < 8; n++)
+    seedComment(id, clerkUserId, `Note ${n}`, n + 1, 1000 + n, n % 2 ? Date.now() : null);
+  await openVideo(page, id);
+  const resolved = page.getByRole("button", { name: "Resolved", exact: true });
+  await resolved.scrollIntoViewIfNeeded();
+  const before = await page.evaluate(() => window.scrollY);
+  expect(before).toBeGreaterThan(0);
+  await resolved.click();
+  await expect(page).toHaveURL(/filter=resolved/);
+  expect(await page.evaluate(() => window.scrollY)).toBe(before);
+});
+
 test("swiping right resolves a Comment on touch", async ({ page, context, isMobile }) => {
   const { id, clerkUserId } = await signInWithReview(page);
   seedComment(id, clerkUserId, "Swipe to resolve");

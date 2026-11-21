@@ -58,7 +58,7 @@
     "@types/react-dom": "19",
     "@vitejs/plugin-react": "6.3.0",
     "@vitest/runner": "4.1.12",
-    "@vitest/snapshot": "4.1.12",
+    "@vitest/snapshot": "5.1.0",
     "drizzle-kit": "0.31.11",
     "knip": "6.47.0",
     "oxfmt": "0.78.0",

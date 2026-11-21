@@ -181,16 +181,22 @@ test("the review page's params", async ({ page }, testInfo) => {
   // The latest Revision by default, then named in the URL; `revision` picks one; a number with
   // no ready Revision opens nothing and links to the latest.
   await open("");
-  await expect(pressed("Revision 2")).toHaveAttribute("aria-pressed", "true");
+  await expect(pressed("Revision 2 · 0 to do")).toHaveAttribute("aria-pressed", "true");
   await expect(page).toHaveURL(/revision=2/);
+  await page.getByRole("link", { name: "Revision 1 has 1 Comment to do." }).click();
+  await expect(page).toHaveURL(/revision=1#comments/);
+  await expect(page.getByRole("link", { name: "Other reviewer" })).toHaveAttribute(
+    "href",
+    /members\?q=Other(?:%20|\+)reviewer/,
+  );
   await open("?revision=1");
-  await expect(pressed("Revision 1")).toHaveAttribute("aria-pressed", "true");
+  await expect(pressed("Revision 1 · 1 to do")).toHaveAttribute("aria-pressed", "true");
   await open("?revision=99&t=banana");
   await expect(page.getByText("Revision 99 cannot be opened.")).toBeVisible();
   await expect(page.locator("video")).toHaveCount(0);
   await page.getByRole("link", { name: "Watch Revision 2" }).click();
-  await expect(pressed("Revision 2")).toHaveAttribute("aria-pressed", "true");
-  await pressed("Revision 1").click();
+  await expect(pressed("Revision 2 · 0 to do")).toHaveAttribute("aria-pressed", "true");
+  await pressed("Revision 1 · 1 to do").click();
   await expect(page).toHaveURL(/revision=1/);
   await page.getByRole("link", { name: "Watch it" }).click();
   await expect(page).toHaveURL(/revision=2/);
@@ -212,7 +218,7 @@ test("the review page's params", async ({ page }, testInfo) => {
   await open("?revision=1&filter=resolved");
   await expect(pressed("Resolved")).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByText("No Resolved Comments.")).toBeVisible();
-  await pressed("To do").click();
+  await pressed("To do (1)").click();
   await expect(page).not.toHaveURL(/filter=/);
 
   // Sheets. The customer sheet names the Revision it sends in the URL, and never swaps it.

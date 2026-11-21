@@ -79,7 +79,7 @@ export const getReview = createServerFn({ method: "POST" })
         video: null,
         revision: null,
         playback: null,
-        history: [] as { id: string; number: number }[],
+        history: [] as { id: string; number: number; todoCount: number }[],
         comments: [] as Comment[],
       };
     // Renewal stays on the Revision being watched, even if a newer cut is ready. A Revision
@@ -97,11 +97,20 @@ export const getReview = createServerFn({ method: "POST" })
             durationSeconds: revision.durationMs / 1000,
           })
         : null;
+    const todoByRevision = new Map<string, number>();
+    for (const comment of feedback) {
+      if (comment.resolvedAt === null)
+        todoByRevision.set(comment.revisionId, (todoByRevision.get(comment.revisionId) ?? 0) + 1);
+    }
     return {
       member: caller,
       readAt,
       video,
-      history: ready.map(({ id, number }) => ({ id, number })),
+      history: ready.map(({ id, number }) => ({
+        id,
+        number,
+        todoCount: todoByRevision.get(id) ?? 0,
+      })),
       revision: revision
         ? {
             id: revision.id,

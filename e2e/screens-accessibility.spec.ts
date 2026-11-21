@@ -6,6 +6,7 @@ import {
   seedComment,
   seedMember,
   seedReview,
+  seedReadyRevision,
   shareTokenFor,
 } from "./support/database";
 import { signInAs, type Person } from "./support/session";
@@ -505,6 +506,7 @@ test("Send to customer sheet and Guest pages", async ({ page, browser }, testInf
   await expect(page.getByRole("button", { name: "Revoke link for Client" })).toBeVisible();
   await expect(sheet.getByRole("listitem").getByText("Revision 1")).toBeVisible();
   await expect(sheet.getByRole("listitem").getByText("Comment and draw")).toBeVisible();
+  await expect(sheet.getByRole("listitem")).toContainText("Never opened · 0 Comments");
   await expect(page.getByText("already issued keeps working until it expires")).toBeVisible();
   await page.mouse.move(0, 0); // The new row can appear under the pointer on a phone.
   await expectAccessible(page, "Send to customer sheet");
@@ -531,8 +533,36 @@ test("Send to customer sheet and Guest pages", async ({ page, browser }, testInf
   await expect(guest.getByRole("navigation")).toHaveCount(0);
   await guest.getByLabel(/^Add a Comment/).fill("Too dark here");
   await guest.getByRole("button", { name: "Send Comment" }).click();
-  await expect(guest.getByText("Dana · Guest")).toBeVisible();
+  const comment = guest
+    .getByRole("list", { name: "Comments", exact: true })
+    .getByRole("listitem")
+    .filter({ hasText: "Too dark here" });
+  await expect(comment).toContainText("Dana");
+  await expect(guest.getByLabel(/^Add a Comment/)).toHaveValue("");
   await expectAccessible(guest, "Guest review");
+
+  seedReadyRevision(videoId, person.clerkUserId, 2);
+  await page.reload();
+  const clientLink = sheet.getByRole("listitem").filter({ hasText: "Client" });
+  await expect(clientLink).toContainText("Older Revision");
+  await expect(clientLink).toContainText(/Last opened .* · 1 Comment/);
+
+  await page.getByLabel("Who is this link for?").fill("Legal");
+  await page.getByRole("radio", { name: "View only" }).click();
+  await page.getByRole("button", { name: "Create link" }).click();
+  const legal = sheet.getByRole("listitem").filter({ hasText: "Legal" });
+  const href = (await legal
+    .getByRole("link", { name: "Send on WhatsApp for Legal" })
+    .getAttribute("href"))!;
+  const sharedUrl = new URL(href).searchParams.get("text")!.split("\n").at(-1)!;
+  const viewer = await (await browser.newContext()).newPage();
+  await viewer.goto(sharedUrl);
+  await expect(viewer.getByText("Haithem Studio shared this Video with you")).toBeVisible();
+  await expect(viewer.getByRole("heading", { name: "Playback cut" })).toBeVisible();
+  await expect(viewer.getByLabel("Your name")).toHaveCount(0);
+  await expect(viewer.getByRole("region", { name: "Comments" })).toHaveCount(0);
+  await expect(viewer.getByRole("group", { name: "Comment filters" })).toHaveCount(0);
+  await viewer.context().close();
 
   const dead = await (await browser.newContext()).newPage();
   await dead.addInitScript(() => localStorage.setItem("cutnotes-guest-name", "Dana"));

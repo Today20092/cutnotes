@@ -2,8 +2,9 @@ import { createParts } from "@ui-sdk/react/primitive";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { PendingButton } from "@/components/pending-button";
-import { WriteFeedback } from "@/components/project-parts";
 import { VideoStatusBadge } from "@/components/video-status";
+import { toast } from "@/components/ui/toast";
+import { COMMENT_UNDO_MS } from "@/lib/review";
 import { useReviewDecision } from "@/lib/projects";
 import { reviewDecision } from "@/lib/review-decision";
 import type { VideoStatus } from "@/lib/video-status";
@@ -66,15 +67,39 @@ function DecisionButtons({
   revision: { id: string; number: number };
   sendable: boolean;
 }) {
-  const decision = useReviewDecision(videoId, revision.id);
+  const { decision, undo } = useReviewDecision(videoId, revision.id);
+  const busy = decision.isPending || undo.isPending;
   const [said, setSaid] = useState("");
   const [failure, setFailure] = useState("");
 
   function decide(choice: "requestChanges" | "approve") {
     setFailure("");
     decision.mutate(choice, {
-      onSuccess: () =>
-        setSaid(choice === "approve" ? `${title} is approved` : `Changes requested on ${title}`),
+      onSuccess: ({ decisionId }) => {
+        const message =
+          choice === "approve" ? `${title} is approved` : `Changes requested on ${title}`;
+        setSaid(message);
+        toast({
+          title: message,
+          duration: COMMENT_UNDO_MS,
+          action: {
+            label: "Undo",
+            onAction: async () => {
+              try {
+                await undo.mutateAsync(decisionId);
+                setSaid("Decision undone");
+                decision.reset();
+                toast({ title: "Decision undone" });
+              } catch {
+                toast({
+                  title: "Could not undo decision",
+                  description: "The Video or Project may have changed. Check its current Status.",
+                });
+              }
+            },
+          },
+        });
+      },
       onError: (error) =>
         setFailure(
           error instanceof Response && error.status === 409
@@ -90,7 +115,7 @@ function DecisionButtons({
       disabled={[
         ...(status === "rework" ? (["requestChanges"] as const) : []),
         ...(status === "done" ? (["approve"] as const) : []),
-        ...(decision.isPending ? (["approve", "requestChanges"] as const) : []),
+        ...(busy ? (["approve", "requestChanges"] as const) : []),
       ]}
       onDecide={decide}
       className="flex flex-wrap items-center gap-2 pt-3"
@@ -103,20 +128,20 @@ function DecisionButtons({
         <PendingButton
           variant="secondary"
           pending={decision.isPending && decision.variables === "requestChanges"}
-          disabled={decision.isPending || status === "rework"}
+          disabled={busy || status === "rework"}
           onClick={() => decide("requestChanges")}
         >
           Request changes
         </PendingButton>
         <PendingButton
           pending={decision.isPending && decision.variables === "approve"}
-          disabled={decision.isPending || status === "done"}
+          disabled={busy || status === "done"}
           onClick={() => decide("approve")}
         >
           Approve
         </PendingButton>
       </div>
-      {sendable && decision.isSuccess && decision.variables === "approve" && (
+      {sendable && status === "done" && decision.isSuccess && decision.variables === "approve" && (
         <p className="w-full text-sm">
           {title} is approved.{" "}
           <Link
@@ -130,7 +155,14 @@ function DecisionButtons({
           </Link>
         </p>
       )}
-      <WriteFeedback status={said} failure={failure} />
+      <p role="status" className="sr-only">
+        {said}
+      </p>
+      {failure && (
+        <p role="alert" className="text-sm text-destructive wrap-anywhere">
+          {failure}
+        </p>
+      )}
     </Decision.Root>
   );
 }

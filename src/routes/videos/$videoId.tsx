@@ -11,7 +11,6 @@ import { MemberScreen } from "@/components/member-screen";
 import { canUpload, canWrite, PageBreadcrumb, PageHeading } from "@/components/project-parts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Review as ReviewPanel, type ReviewView } from "@/components/comments";
-import { ReviewQueue } from "@/components/review-queue";
 import { ReviewDecisionBar } from "@/components/review-decision-bar";
 import { CustomerLinkSheet } from "@/components/customer-link-sheet";
 import { reviewQuery, useMemberActor, type ReviewPage } from "@/lib/review";
@@ -150,6 +149,7 @@ function Review() {
                             ? page.revision
                             : null
                         }
+                        latestNumber={page.history[0]?.number}
                         requested={revision}
                         open={search.sheet === "customer"}
                         onOpenChange={(open) => setSheet("customer", open)}
@@ -214,7 +214,7 @@ function Review() {
                     value={cut.id}
                     className="h-11 aria-pressed:underline aria-pressed:decoration-2 aria-pressed:underline-offset-4 sm:pointer-fine:h-8"
                   >
-                    Revision {cut.number}
+                    Revision {cut.number} · {cut.todoCount} to do
                   </ToggleGroupItem>
                 ))}
               </ToggleGroup>
@@ -313,26 +313,45 @@ function ReviewContent({
   onViewChange: (change: Partial<ReviewView>) => void;
 }) {
   const actor = useMemberActor(page, videoId, cacheRevision);
+  const olderWithTodos = page.history.filter(
+    (cut) => cut.number < page.revision!.number && cut.todoCount > 0,
+  );
   return (
-    <>
-      <ReviewPanel
-        videoId={videoId}
-        revision={page.revision!}
-        playback={page.playback!}
-        comments={page.comments}
-        actor={actor}
-        view={view}
-        onViewChange={onViewChange}
-        belowPlayer={belowPlayer}
-      />
-      <ReviewQueue
-        comments={page.comments}
-        actor={actor}
-        // The review panel owns playback; its list button seeks and selects.
-        select={(comment) =>
-          document.querySelector<HTMLButtonElement>(`#comment-${comment.id} button`)?.click()
-        }
-      />
-    </>
+    <ReviewPanel
+      videoId={videoId}
+      revision={page.revision!}
+      playback={page.playback!}
+      comments={page.comments}
+      actor={actor}
+      view={view}
+      onViewChange={onViewChange}
+      belowPlayer={belowPlayer}
+      emptyToDo={
+        olderWithTodos.length > 0 && (
+          <ul className="flex flex-col gap-1 text-sm">
+            {olderWithTodos.map((cut) => (
+              <li key={cut.id}>
+                <Link
+                  to="/videos/$videoId"
+                  params={{ videoId }}
+                  search={{
+                    revision: cut.number,
+                    sheet: undefined,
+                    t: undefined,
+                    comment: undefined,
+                    filter: undefined,
+                  }}
+                  hash="comments"
+                  className="font-medium underline underline-offset-4"
+                >
+                  Revision {cut.number} has {cut.todoCount}{" "}
+                  {cut.todoCount === 1 ? "Comment" : "Comments"} to do.
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    />
   );
 }

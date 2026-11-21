@@ -17,7 +17,7 @@ test("the last Comment reached stays active until the next", () => {
   assert.equal(activeCommentId(rows, 9000), "b");
 });
 
-import { playbackComments } from "../../src/lib/comment-time";
+import { frameTime, playbackComments, spokenFrameTime } from "../../src/lib/comment-time";
 test("playback previews group the latest unresolved timestamp and expire", () => {
   const rows = [
     { id: "a", timecodeMs: 1000, resolvedAt: null },
@@ -35,4 +35,13 @@ test("playback previews group the latest unresolved timestamp and expire", () =>
   );
   assert.deepEqual(playbackComments(rows, 7000), []);
   assert.deepEqual(playbackComments(rows, 0), []);
+});
+
+test("frame time follows the Revision rate and carries into the next second", () => {
+  assert.equal(frameTime(5040, 25), "0:05:01");
+  assert.equal(frameTime(5040, 60), "0:05:02");
+  assert.equal(frameTime(5990, 25), "0:06:00");
+  assert.equal(frameTime(333, null), "0:00:10");
+  assert.equal(frameTime(60060, 29.97), "1:00:00");
+  assert.equal(spokenFrameTime(60060, 29.97), "1 min 0 sec, frame 0");
 });

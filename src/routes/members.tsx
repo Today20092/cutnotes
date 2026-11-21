@@ -20,7 +20,11 @@ function MembersPage() {
   const { q, remove } = Route.useSearch();
   const navigate = Route.useNavigate();
   const setSearch = (change: { q?: string; remove?: string }) =>
-    void navigate({ search: (prev) => ({ ...prev, ...change }), replace: true });
+    void navigate({
+      search: (prev) => ({ ...prev, ...change }),
+      replace: true,
+      resetScroll: false,
+    });
   return (
     <MemberScreen query={appShellQuery} skeleton={<Skeleton className="h-40" />}>
       {({ member }) =>

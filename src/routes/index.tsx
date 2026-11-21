@@ -60,7 +60,11 @@ function ProjectBoard({ list }: { list: ProjectList }) {
   const navigate = Route.useNavigate();
   const { stage, view, sheet, project } = Route.useSearch();
   const setSearch = (change: Partial<typeof Route.types.fullSearchSchema>) =>
-    void navigate({ search: (prev) => ({ ...prev, ...change }), replace: true });
+    void navigate({
+      search: (prev) => ({ ...prev, ...change }),
+      replace: true,
+      resetScroll: false,
+    });
   const createProject = useCreateProject();
   const [failure, setFailure] = useState("");
   const writable = canWrite(list.member.role);

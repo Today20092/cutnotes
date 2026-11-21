@@ -23,7 +23,9 @@ export async function sessionToken(
   // A cold Worker can compile its server functions after the request has already been signed.
   const exp = now + (options.expiresInSeconds ?? 300);
   const issuedAt = Math.min(now - 60, exp - 120);
-  const unsigned = `${encode({ alg: "RS256", typ: "JWT", kid: "seam1" })}.${encode({
+  // `cat` marks a session token; @clerk/backend 3.31+ rejects a header token without it.
+  const header = { alg: "RS256", typ: "JWT", kid: "seam1", cat: "cl_B7d4PD111AAA" };
+  const unsigned = `${encode(header)}.${encode({
     sub: person.clerkUserId,
     sid: `sess_${person.clerkUserId}`,
     iss: "https://clerk.example.test",

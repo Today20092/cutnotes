@@ -1,34 +1,50 @@
 import { useState } from "react";
 import type { Action } from "@/components/action-menu";
-import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import { projectStages, stageLabels, type ProjectStage } from "@/lib/project-stage";
 import { useSetProjectStage, type ProjectSummary } from "@/lib/projects";
+import { COMMENT_UNDO_MS } from "@/lib/review";
 
 type Move = { projectId: string; name: string; from: ProjectStage; to: ProjectStage };
 
+export function dismissStageUndo(projectId: string) {
+  toast.dismiss(`stage-undo-${projectId}`);
+}
+
 export function useProjectStageMoves() {
   const setStage = useSetProjectStage();
-  const [status, setStatus] = useState("");
+  const [status, setStatusText] = useState("");
   const [failure, setFailure] = useState("");
-  const [undo, setUndo] = useState<Move | null>(null);
+
+  function setStatus(message: string, moveToUndo?: Move) {
+    setStatusText(message);
+    toast({
+      title: message,
+      ...(moveToUndo && {
+        id: `stage-undo-${moveToUndo.projectId}`,
+        duration: COMMENT_UNDO_MS,
+        action: { label: "Undo", onAction: () => move(moveToUndo, true) },
+      }),
+    });
+  }
 
   function move({ projectId, name, from, to }: Move, isUndo = false) {
+    dismissStageUndo(projectId);
     setFailure("");
     setStage.mutate(
       { projectId, stage: to },
       {
-        onSuccess: () => {
-          setStatus(
-            isUndo
-              ? `${name} moved back to ${stageLabels[to]}`
-              : `${name} moved to ${stageLabels[to]}`,
-          );
-          setUndo(isUndo ? null : { projectId, name, from, to });
-        },
-        onError: () => {
-          setUndo(null);
-          setFailure(`Could not move ${name}. It stays in ${stageLabels[from]}. Try again.`);
-        },
+        onSuccess: () =>
+          isUndo
+            ? setStatus(`${name} moved back to ${stageLabels[to]}`)
+            : setStatus(`${name} moved to ${stageLabels[to]}`, {
+                projectId,
+                name,
+                from: to,
+                to: from,
+              }),
+        onError: () =>
+          setFailure(`Could not move ${name}. It stays in ${stageLabels[from]}. Try again.`),
       },
     );
   }
@@ -47,30 +63,17 @@ export function useProjectStageMoves() {
   }
 
   const feedback = (
-    <div
-      className={
-        status || undo || failure ? "flex flex-wrap items-center gap-2 text-sm" : "contents"
-      }
-    >
-      <p role="status" className={status ? "" : "sr-only"}>
+    <>
+      <p role="status" className="sr-only">
         {status}
       </p>
-      {undo && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => move({ ...undo, from: undo.to, to: undo.from }, true)}
-        >
-          Undo
-        </Button>
-      )}
       {failure && (
-        <p role="alert" className="text-destructive wrap-anywhere">
+        <p role="alert" className="text-sm text-destructive wrap-anywhere">
           {failure}
         </p>
       )}
-    </div>
+    </>
   );
 
-  return { move, stageActions, feedback, setStatus, setFailure, setUndo };
+  return { move, stageActions, feedback, setStatus, setFailure };
 }

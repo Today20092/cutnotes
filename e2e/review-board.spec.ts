@@ -26,6 +26,12 @@ test("the home board moves a Project between Stages by keyboard, with Undo", asy
   await page.goto("/");
   await expect(column(page, "New").getByRole("article")).toHaveCount(1);
   await expectNoViolations(page);
+  const columnTop = () =>
+    board(page)
+      .getByRole("heading", { level: 3 })
+      .first()
+      .evaluate((el) => el.getBoundingClientRect().top);
+  const initialTop = await columnTop();
 
   await card(page, "New").focus();
   await page.keyboard.press("Space");
@@ -38,7 +44,8 @@ test("the home board moves a Project between Stages by keyboard, with Undo", asy
   await expect.poll(() => announcements(page)).toMatch(/Editing/);
   await expect(board(page).getByRole("status")).toHaveText("Playback project moved to Editing");
 
-  await board(page).getByRole("button", { name: "Undo", exact: true }).click();
+  expect(await columnTop()).toBe(initialTop);
+  await page.locator("[data-front]").getByRole("button", { name: "Undo", exact: true }).click();
   await expect(card(page, "New")).toBeVisible();
   await expect(board(page).getByRole("status")).toHaveText("Playback project moved back to New");
   await page.reload();
@@ -53,7 +60,7 @@ test("a card's menu and, on desktop, a drag move it; the Stage filter is in the 
   await board(page).getByRole("button", { name: "More actions for Playback project" }).click();
   await page.getByRole("menuitem", { name: "Move to In review" }).click();
   await expect(card(page, "In review")).toBeVisible();
-  // The saved move shows a status line above the board, which shifts the cards; measure after it.
+  // The saved move shows a toast over the page; it does not shift the cards.
   await expect(board(page).getByRole("status")).toHaveText("Playback project moved to In review");
 
   if (testInfo.project.name === "desktop") {
@@ -149,9 +156,10 @@ test("the Project Stage badge moves the Project and offers Undo to its Editor", 
   await page.getByRole("button", { name: "Stage: New" }).press("Enter");
   await page.getByRole("menuitem", { name: "Move to Editing" }).click();
   await expect(page.getByRole("button", { name: "Stage: Editing" })).toBeVisible();
-  await expect(page.getByText("Playback project moved to Editing")).toBeVisible();
-  await page.getByRole("button", { name: "Undo", exact: true }).click();
-  await expect(page.getByText("Playback project moved back to New")).toBeVisible();
+  const toast = page.locator("[data-front]");
+  await expect(toast.getByText("Playback project moved to Editing")).toBeVisible();
+  await toast.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(toast.getByText("Playback project moved back to New")).toBeVisible();
   await page.reload();
   await expect(page.getByRole("button", { name: "Stage: New" })).toBeVisible();
 });

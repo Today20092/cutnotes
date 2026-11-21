@@ -84,7 +84,7 @@ jobs:
       VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY }}
       APP_ORIGIN: ${{ vars.APP_ORIGIN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.candidate.outputs.sha }}
           persist-credentials: false

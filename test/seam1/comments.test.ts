@@ -42,6 +42,22 @@ it.each(["owner", "editor", "viewer"])(
   },
 );
 
+it("only undoes the matching Resolve", async () => {
+  await call(fn.createComment, "user_owner", input);
+  const { resolvedAt } = await resultOf<{ resolvedAt: number }>(
+    await call(fn.resolveComment, "user_owner", { ...input, resolved: true }),
+  );
+  const undo = { ...input, resolved: false, expectedResolvedAt: resolvedAt };
+  await expectRefused(
+    await call(fn.resolveComment, "user_owner", { ...undo, expectedResolvedAt: resolvedAt - 1 }),
+    404,
+    "not-found",
+  );
+  expect((await review()).comments[0]?.resolvedAt).toBe(resolvedAt);
+  expect((await call(fn.resolveComment, "user_owner", undo)).status).toBe(200);
+  expect((await review()).comments[0]?.resolvedAt).toBeNull();
+});
+
 const input = {
   videoId: "v",
   revisionId: "r",

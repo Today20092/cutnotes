@@ -37,6 +37,7 @@ export const getSharePreview = createServerFn({ method: "POST" })
         title: `${link.permission === "view" ? "View" : "Review"} ${link.title}`,
         description: `${env.TEAM_NAME} invited you to ${link.permission === "view" ? "view" : "review"} ${link.title}. ${link.permission === "view" ? "View only." : "Leave timestamped comments and drawings."} No account needed.`,
         image: env.TEAM_LOGO_URL,
+        permission: link.permission,
       };
     } catch (error) {
       if (error instanceof Response && error.status === 404) return null;
@@ -78,7 +79,7 @@ export const createShareLink = createServerFn({ method: "POST" })
     const [created] = await getDb()
       .insert(shareLinks)
       .select(sql`
-      SELECT ${crypto.randomUUID()}, ${videoId}, ${name}, ${newShareToken()}, ${data.permission}, ${member.id}, ${Date.now()}, NULL, r.id
+      SELECT ${crypto.randomUUID()}, ${videoId}, ${name}, ${newShareToken()}, ${data.permission}, ${member.id}, ${Date.now()}, NULL, r.id, NULL
       FROM revisions AS r
       WHERE r.video_id = ${videoId} AND r.state = 'ready'
         ${revisionId === null ? sql`` : sql`AND r.id = ${revisionId}`}
@@ -98,7 +99,12 @@ export const listShareLinks = createServerFn({ method: "POST" })
       results: [links],
     } = await readAsMember("owner", (db) => [
       db
-        .select({ ...linkFields, revisionNumber: revisions.number })
+        .select({
+          ...linkFields,
+          revisionNumber: revisions.number,
+          lastOpenedAt: shareLinks.lastOpenedAt,
+          commentCount: sql<number>`(SELECT count(*) FROM comments WHERE comments.share_link_id = share_links.id)`,
+        })
         .from(shareLinks)
         .leftJoin(revisions, eq(revisions.id, shareLinks.revisionId))
         .where(and(eq(shareLinks.videoId, videoId), isNull(shareLinks.revokedAt)))
@@ -131,21 +137,28 @@ export const revokeShareLink = createServerFn({ method: "POST" })
  * Team's notes or another link's. toComment drops IDs, so no Clerk or Member ID leaves.
  */
 export const getGuestReview = createServerFn({ method: "POST" })
-  .validator((data: { token: string }) => data)
+  .validator((data: { token: string; opened?: boolean }) => data)
   .handler(async ({ data }) => {
     const link = await readShareLink(data?.token);
     const [rows, playback] = await Promise.all([
-      getDb()
-        .select(commentColumns)
-        .from(comments)
-        .leftJoin(members, eq(comments.memberId, members.id))
-        .where(and(eq(comments.revisionId, link.revisionId), eq(comments.shareLinkId, link.id)))
-        .orderBy(asc(comments.timecodeMs), asc(comments.createdAt), asc(comments.id)),
+      link.permission === "view"
+        ? []
+        : getDb()
+            .select(commentColumns)
+            .from(comments)
+            .leftJoin(members, eq(comments.memberId, members.id))
+            .where(and(eq(comments.revisionId, link.revisionId), eq(comments.shareLinkId, link.id)))
+            .orderBy(asc(comments.timecodeMs), asc(comments.createdAt), asc(comments.id)),
       getMuxGateway().createPlayback({
         playbackId: link.playbackId,
         durationSeconds: link.durationMs / 1000,
       }),
     ]);
+    if (data.opened === true)
+      await getDb()
+        .update(shareLinks)
+        .set({ lastOpenedAt: sql`MAX(COALESCE(${shareLinks.lastOpenedAt}, 0), ${Date.now()})` })
+        .where(and(eq(shareLinks.id, link.id), isNull(shareLinks.revokedAt)));
     return {
       title: link.title,
       permission: link.permission,

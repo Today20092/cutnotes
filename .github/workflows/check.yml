@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Run by dependabot-auto-merge.yml on main after a bot merge, which creates no push event.
+  workflow_dispatch:
 
 jobs:
   checks:

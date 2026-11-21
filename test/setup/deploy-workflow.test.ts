@@ -49,13 +49,21 @@ function select(overrides: Record<string, string | undefined>) {
   }
 }
 
-test("passing main and development pushes automatically select their own installs", () => {
-  expect(workflow).toContain("branches: [main, development]");
+test("only a passing main push deploys automatically, to production", () => {
+  expect(workflow).toContain("branches: [main]");
   expect(select({})).toEqual({ status: 0, output: "environment=production\nsha=tested\n" });
-  expect(select({ CHECKED_BRANCH: "development" })).toEqual({
-    status: 0,
-    output: "environment=staging\nsha=tested\n",
-  });
+  expect(select({ CHECKED_BRANCH: "development" }).status).not.toBe(0);
+});
+
+test("staging is deployed by hand from a passing main commit", () => {
+  expect(
+    select({
+      EVENT: "workflow_dispatch",
+      REQUESTED_ENVIRONMENT: "staging",
+      REQUESTED_REF: "refs/heads/main",
+      REQUESTED_SHA: "tested",
+    }),
+  ).toEqual({ status: 0, output: "environment=staging\nsha=tested\n" });
 });
 
 test.each([

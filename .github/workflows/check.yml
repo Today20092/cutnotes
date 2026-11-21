@@ -2,7 +2,7 @@ name: Check
 
 on:
   push:
-    branches: [main, development, "integration/**"]
+    branches: [main]
   pull_request:
 
 jobs:
@@ -24,7 +24,7 @@ jobs:
       - run: git diff --exit-code src/routeTree.gen.ts
 
   browser:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development' || github.base_ref == 'main'
+    if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -57,7 +57,7 @@ jobs:
         env:
           CHECKS_RESULT: ${{ needs.checks.result }}
           BROWSER_RESULT: ${{ needs.browser.result }}
-          BROWSER_REQUIRED: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development' || github.base_ref == 'main' }}
+          BROWSER_REQUIRED: ${{ github.ref == 'refs/heads/main' || github.base_ref == 'main' }}
         run: |
           test "$CHECKS_RESULT" = success
           if [ "$BROWSER_REQUIRED" = true ]; then

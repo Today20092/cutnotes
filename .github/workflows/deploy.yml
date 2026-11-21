@@ -4,11 +4,11 @@ on:
   workflow_run:
     workflows: [Check]
     types: [completed]
-    branches: [main, development]
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
-        description: Target install (run from development for staging, main for production)
+        description: Target install (run from main; production also deploys automatically)
         type: choice
         options: [staging, production]
         default: staging
@@ -43,19 +43,16 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$EVENT" = workflow_run ]; then
-            case "$CHECKED_BRANCH" in
-              main) target=production ;;
-              development) target=staging ;;
-              *) exit 1 ;;
-            esac
+            # Only main deploys automatically; staging is deployed by hand.
+            test "$CHECKED_BRANCH" = main
+            target=production
             sha="$CHECKED_SHA"
           else
             target="$REQUESTED_ENVIRONMENT"
             sha="$REQUESTED_SHA"
           fi
           case "$target" in
-            staging) branch=development ;;
-            production) branch=main ;;
+            staging | production) branch=main ;;
             *) exit 1 ;;
           esac
           if [ "$EVENT" = workflow_dispatch ]; then
@@ -105,7 +102,7 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           test -n "$VITE_CLERK_PUBLISHABLE_KEY"
-          case "$TARGET" in staging) branch=development ;; production) branch=main ;; *) exit 1 ;; esac
+          case "$TARGET" in staging | production) branch=main ;; *) exit 1 ;; esac
           test "$RELEASE_SHA" = "$(gh api "repos/$REPOSITORY/branches/$branch" --jq .commit.sha)"
           jq -e --arg account "$CLOUDFLARE_ACCOUNT_ID" --arg origin "$APP_ORIGIN" \
             '.account_id == $account and .vars.APP_ORIGIN == $origin' "$CLOUDFLARE_VITE_WRANGLER_CONFIG_PATH"

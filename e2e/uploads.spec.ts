@@ -1,4 +1,5 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { openNewProjectSheet } from "./support/home";
 import { fakeSignature } from "../test/seam1/support/fake-mux";
 import { assignProjectMember, seedMember } from "./support/database";
 import { signInAs } from "./support/session";
@@ -62,7 +63,7 @@ const assetEvent = (type: string, passthrough: string, data = {}) => ({
 async function openNewProject(page: Page, label: string, testInfo: TestInfo) {
   const name = `${label} ${testInfo.project.name} ${Date.now()}`;
   await page.goto("/");
-  await page.getByRole("button", { name: "New project" }).click();
+  await openNewProjectSheet(page);
   await page.getByLabel("Project name").fill(name);
   await page.getByRole("button", { name: "Create Project" }).click();
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();

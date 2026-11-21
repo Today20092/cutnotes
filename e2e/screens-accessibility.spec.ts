@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import { openNewProjectSheet } from "./support/home";
 import { expect, test, type Browser, type Page, type TestInfo } from "@playwright/test";
 import { fakeSignature } from "../test/seam1/support/fake-mux";
 import {
@@ -78,7 +79,7 @@ function seededViewer(label: string, testInfo: TestInfo): Person {
 async function openNewProject(page: Page, testInfo: TestInfo) {
   const name = uniqueName("Axe", testInfo);
   await page.goto("/");
-  await page.getByRole("button", { name: "New project" }).click();
+  await openNewProjectSheet(page);
   await page.getByLabel("Project name").fill(name);
   await page.getByRole("button", { name: "Create Project" }).click();
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
@@ -172,7 +173,7 @@ test("the Projects screen", async ({ page }, testInfo) => {
   await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
   await expectAccessible(page, "Projects");
 
-  await page.getByRole("button", { name: "New project" }).click();
+  await openNewProjectSheet(page);
   await expectAccessible(page, "new Project form");
 
   await page.getByRole("button", { name: "Create Project" }).click();

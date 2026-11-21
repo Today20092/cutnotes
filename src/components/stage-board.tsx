@@ -9,7 +9,6 @@ import { canWrite, Poster } from "@/components/project-parts";
 import { StageBadge } from "@/components/stage-badge";
 import { Badge } from "@/components/ui/badge";
 import { useProjectStageMoves } from "@/components/project-stage-moves";
-import { NativeSelect } from "@/components/ui/native-select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { projectStages, stageLabels, type ProjectStage } from "@/lib/project-stage";
@@ -51,7 +50,7 @@ export function StageBoard({
   onCompletingChange: (projectId: string | undefined) => void;
 }) {
   const help = useId();
-  const stagePicker = useId();
+  const [allDone, setAllDone] = useState(false);
   const { move, stageActions, feedback, setStatus, setFailure, setUndo } = useProjectStageMoves();
   const setComplete = useSetProjectComplete();
   // Order inside a column is local: the server stores only the Stage.
@@ -84,6 +83,9 @@ export function StageBoard({
   const locked = projects.filter((project) => !movable(project)).map((project) => project.id);
   const anyMovable = locked.length < projects.length;
   const shown = stage ? [stage] : projectStages;
+  const needsYou = stage
+    ? []
+    : projects.filter((project) => !isPendingProject(project) && needsAttention(project, list));
 
   function change(next: TransferLists) {
     setOrder(projectStages.flatMap((column) => next[column] ?? []));
@@ -137,33 +139,10 @@ export function StageBoard({
         <h2 id="board-heading" className="sr-only">
           Board
         </h2>
-        {/* A sibling label: wrapping the select would add every option to the label's text. */}
-        <div className="flex min-w-0 items-center gap-2 md:hidden">
-          <label htmlFor={stagePicker} className="text-sm font-medium">
-            Stage
-          </label>
-          <NativeSelect
-            id={stagePicker}
-            value={stage ?? "all"}
-            onChange={(event) =>
-              onStageChange(
-                event.target.value === "all" ? undefined : (event.target.value as ProjectStage),
-              )
-            }
-          >
-            <option value="all">All Stages ({projects.length})</option>
-            {projectStages.map((value) => (
-              <option key={value} value={value}>
-                {stageLabels[value]} ({lists[value]!.length})
-              </option>
-            ))}
-          </NativeSelect>
-        </div>
         <ToggleGroup
           aria-label="Show Stage"
-          variant="outline"
-          // A phone gets the Stage select below: five buttons do not fit its width.
-          className="max-md:hidden"
+          // Pills that scroll sideways on a phone, edge to edge with the page padding.
+          className="gap-1.5 max-md:-mx-4 max-md:w-[calc(100%+2rem)] max-md:overflow-x-auto max-md:px-4 max-md:[scrollbar-width:none]"
           value={[stage ?? "all"]}
           onValueChange={(next: string[]) => {
             if (next[0]) onStageChange(next[0] === "all" ? undefined : (next[0] as ProjectStage));
@@ -173,7 +152,7 @@ export function StageBoard({
             <ToggleGroupItem
               key={value}
               value={value}
-              className="h-11 shrink-0 sm:pointer-fine:h-9"
+              className="h-11 shrink-0 rounded-full bg-muted/60 px-4 data-pressed:bg-primary data-pressed:text-primary-foreground hover:data-pressed:bg-primary/90 sm:pointer-fine:h-9"
             >
               {value === "all" ? "All" : stageLabels[value]}{" "}
               <span className="tabular-nums opacity-70">
@@ -200,8 +179,10 @@ export function StageBoard({
         </ToggleGroup>
       </div>
       {feedback}
+      {needsYou.length > 0 && <NeedsYou projects={needsYou} list={list} />}
       {anyMovable && (
-        <details className="text-meta">
+        // A phone moves Projects only from the More actions menu, which the ⋯ button already shows.
+        <details className="text-meta max-md:hidden">
           <summary className="w-fit cursor-pointer py-3">How to move a Project</summary>
           <p id={help} className="mt-1">
             <span className="md:hidden">
@@ -227,51 +208,81 @@ export function StageBoard({
             : "grid gap-3 max-md:gap-6 md:grid-cols-2 xl:grid-cols-4"
         }
       >
-        {(state) =>
-          shown.map((column) => (
-            <section
-              key={column}
-              aria-labelledby={`stage-${column}`}
-              // On a phone the Stages are plain sections of one list, not boxed columns.
-              className="flex min-w-0 flex-col gap-2 md:rounded-card md:bg-muted/40 md:p-2"
-            >
-              <h3
-                id={`stage-${column}`}
-                className="flex items-center gap-2 pt-1 text-sm font-semibold md:px-2"
+        {(state) => {
+          // A phone with every Stage shown lists empty Stages on one line and keeps Done short.
+          const emptyStages = stage
+            ? []
+            : projectStages.filter((column) => !state.lists[column]?.length);
+          return [
+            ...shown.map((column) => (
+              <section
+                key={column}
+                aria-labelledby={`stage-${column}`}
+                // On a phone the Stages are plain sections of one list, not boxed columns.
+                className={`flex min-w-0 flex-col gap-2 md:rounded-card md:bg-muted/40 md:p-2 ${emptyStages.includes(column) ? "max-md:hidden" : ""}`}
               >
-                {stageLabels[column]}
-                <span className="font-normal text-muted-foreground">
-                  {state.lists[column]?.length ?? 0}
-                </span>
-              </h3>
-              {!state.lists[column]?.length && (
-                <p className="text-sm text-muted-foreground md:px-2">No Projects</p>
-              )}
-              <Board.Column value={column} className="flex min-h-16 flex-col gap-2">
-                {(state.lists[column] ?? []).map((id) => {
-                  const project = projects.find((row) => row.id === id);
-                  return (
-                    project && (
-                      <li key={id} className="min-w-0">
-                        <ProjectCard
-                          project={project}
-                          list={list}
-                          help={movable(project) ? help : undefined}
-                          showStage={view === "list"}
-                          actions={actions(project)}
-                          completing={completing === project.id}
-                          onCompletingChange={(open) =>
-                            onCompletingChange(open ? project.id : undefined)
+                <h3
+                  id={`stage-${column}`}
+                  className="flex items-center gap-2 pt-1 text-sm font-semibold md:px-2"
+                >
+                  {stageLabels[column]}
+                  <span className="font-normal text-muted-foreground">
+                    {state.lists[column]?.length ?? 0}
+                  </span>
+                </h3>
+                {!state.lists[column]?.length && (
+                  <p className="text-sm text-muted-foreground md:px-2">No Projects</p>
+                )}
+                <Board.Column value={column} className="flex flex-col gap-2 md:min-h-16">
+                  {(state.lists[column] ?? []).map((id, index) => {
+                    const project = projects.find((row) => row.id === id);
+                    return (
+                      project && (
+                        <li
+                          key={id}
+                          className={
+                            column === "done" && !stage && !allDone && index >= DONE_SHOWN
+                              ? "min-w-0 max-md:hidden"
+                              : "min-w-0"
                           }
-                        />
-                      </li>
-                    )
-                  );
-                })}
-              </Board.Column>
-            </section>
-          ))
-        }
+                        >
+                          <ProjectCard
+                            project={project}
+                            list={list}
+                            help={movable(project) ? help : undefined}
+                            showStage={view === "list"}
+                            actions={actions(project)}
+                            completing={completing === project.id}
+                            onCompletingChange={(open) =>
+                              onCompletingChange(open ? project.id : undefined)
+                            }
+                          />
+                        </li>
+                      )
+                    );
+                  })}
+                </Board.Column>
+                {column === "done" &&
+                  !stage &&
+                  !allDone &&
+                  (state.lists.done?.length ?? 0) > DONE_SHOWN && (
+                    <button
+                      type="button"
+                      onClick={() => setAllDone(true)}
+                      className="min-h-11 w-fit text-sm font-medium text-muted-foreground underline-offset-4 hover:underline md:hidden"
+                    >
+                      Show all {state.lists.done!.length} in Done
+                    </button>
+                  )}
+              </section>
+            )),
+            emptyStages.length > 0 && (
+              <p key="empty" className="text-sm text-muted-foreground md:hidden">
+                No Projects in {emptyStages.map((column) => stageLabels[column]).join(", ")}
+              </p>
+            ),
+          ];
+        }}
       </Board.Root>
     </section>
   );
@@ -362,6 +373,54 @@ function ProjectCard({
         <AvatarStack people={project.people} label="People with access" className="ml-auto" />
       </div>
     </Board.Card>
+  );
+}
+
+/** Done Projects a phone shows before "Show all". */
+const DONE_SHOWN = 5;
+
+/** A phone's inbox above the board: the Projects that need someone, each one tap away. */
+function NeedsYou({ projects, list }: { projects: ProjectSummary[]; list: ProjectList }) {
+  return (
+    <section aria-labelledby="needs-you" className="flex flex-col gap-2 md:hidden">
+      <h3 id="needs-you" className="flex items-center gap-2 pt-1 text-sm font-semibold">
+        Needs you <span className="font-normal text-muted-foreground">{projects.length}</span>
+      </h3>
+      <ul className="divide-y overflow-hidden rounded-card border bg-card">
+        {projects.map((project) => {
+          const poster =
+            list.videos.find((video) => video.projectId === project.id && video.posterUrl)
+              ?.posterUrl ?? null;
+          const changes =
+            project.stage === "editing" &&
+            project.changesRequested &&
+            project.latestRevision !== null;
+          return (
+            <li key={project.id}>
+              <Link
+                to="/projects/$projectId"
+                params={{ projectId: project.id }}
+                className="flex min-h-11 items-center gap-3 p-3 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+              >
+                <span className="w-16 shrink-0">
+                  <Poster key={poster} url={poster} />
+                </span>
+                <span className="flex min-w-0 flex-col text-sm">
+                  <span className="truncate font-semibold">{project.name}</span>
+                  {changes ? (
+                    <span className="font-medium text-stage-editing-foreground">
+                      Changes requested · Rev {project.latestRevision}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Unread activity</span>
+                  )}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

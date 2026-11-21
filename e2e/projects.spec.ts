@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openNewProjectSheet } from "./support/home";
 import { assignProjectMember, seedMember } from "./support/database";
 import { signInAs } from "./support/session";
 import { appAlert } from "./support/ui-sdk";
@@ -16,7 +17,7 @@ const callTo = (name: string) => (url: URL) =>
     .includes(name);
 
 async function createProjectInUi(page: Page, name: string) {
-  await page.getByRole("button", { name: "New project" }).click();
+  await openNewProjectSheet(page);
   await page.getByLabel("Project name").fill(name);
   await page.getByRole("button", { name: "Create Project" }).click();
 }
@@ -59,7 +60,7 @@ test("a failed create rolls back and says so", async ({ page }, testInfo) => {
 
 test("an empty name is explained and nothing is sent", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "New project" }).click();
+  await openNewProjectSheet(page);
 
   await page.getByRole("button", { name: "Create Project" }).click();
 
@@ -140,6 +141,6 @@ test("a Viewer can browse but gets no create or rename controls", async ({ page 
   await page.goto("/");
 
   await expect(page.getByRole("link", { name })).toBeVisible();
-  await expect(page.getByRole("button", { name: "New project" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "New", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^Rename/ })).toHaveCount(0);
 });

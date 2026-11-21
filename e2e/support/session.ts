@@ -9,7 +9,9 @@ export type Person = { clerkUserId: string; email: string };
 export function sessionToken(person: Person, expiresInSeconds = 3600) {
   const now = Math.floor(Date.now() / 1000);
   const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
-  const unsigned = `${encode({ alg: "RS256", typ: "JWT", kid: "seam2" })}.${encode({
+  // Clerk requires `cat` to identify a session token passed in an Authorization header.
+  const header = { alg: "RS256", typ: "JWT", kid: "seam2", cat: "cl_B7d4PD111AAA" };
+  const unsigned = `${encode(header)}.${encode({
     sub: person.clerkUserId,
     sid: `sess_${person.clerkUserId}`,
     iss: "https://clerk.example.test",

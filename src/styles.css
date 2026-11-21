@@ -247,8 +247,10 @@ h1[tabindex="-1"]:focus-visible {
     color: #fff;
     padding: 0.25rem 0.5rem 0.5rem;
   }
-  /* Unpin for Comment work and the decision row, but keep the picture on screen while using the Drawing controls. */
-  .review-layout:has(#comments:focus-within, [aria-label="Review decision"] :focus-visible):not(
+  /* Unpin for Comment work and the decision row, but keep the picture on screen while using the Drawing controls.
+     Any focus in the decision row counts: a tap moving focus from Comments to Approve must not re-pin the
+     picture over the button between press and release. */
+  .review-layout:has(#comments:focus-within, [aria-label="Review decision"]:focus-within):not(
       :has([aria-label="Drawing controls"] :focus)
     )
     .review-picture {

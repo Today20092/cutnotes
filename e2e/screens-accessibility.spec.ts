@@ -474,7 +474,7 @@ test("the Invites and accept-Invite screens", async ({ page, browser }, testInfo
     },
     second,
   );
-  await expect(revoked.getByRole("heading", { name: "This Invite was cancelled" })).toBeVisible();
+  await expect(revoked.getByRole("heading", { name: "This Invite was revoked" })).toBeVisible();
   await expectAccessible(revoked, "invite, revoked");
   await revoked.context().close();
 });

@@ -90,12 +90,13 @@ test("Approve and Request changes both offer Undo", async ({ page }) => {
   await openVideo(page, id);
   const decision = page.getByRole("region", { name: "Review decision" });
   for (const [action, status] of [
-    ["Approve", "Approved"],
-    ["Request changes", "Changes requested"],
+    ["Approve", "Done"],
+    ["Request changes", "Rework"],
   ] as const) {
     await decision.getByRole("button", { name: action }).click();
     await expect(decision.getByText(status, { exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Undo", exact: true }).click();
-    await expect(decision.getByText("In review", { exact: true })).toBeVisible();
+    // The previous decision's toast can still be closing, so use the newest toast's Undo.
+    await page.locator("[data-front]").getByRole("button", { name: "Undo", exact: true }).click();
+    await expect(decision.getByText("Review", { exact: true })).toBeVisible();
   }
 });

@@ -282,7 +282,7 @@ function ManagePeople({ projectId }: { projectId: string }) {
         <Link
           to="/invites"
           search={{ project: projectId }}
-          className="w-fit underline underline-offset-4"
+          className="inline-flex min-h-11 w-fit items-center underline underline-offset-4"
         >
           See all Invites for this Project
         </Link>

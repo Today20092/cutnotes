@@ -284,7 +284,7 @@ test("opening a Video clears the Member's unread marker", async ({ page }) => {
   await page.goto(`/projects/${id}`);
   const tile = pageListItem(page).filter({ hasText: "Playback cut" });
   await expect(tile.getByText("Unread activity", { exact: true })).toBeVisible();
-  await tile.getByRole("link").click();
+  await tile.getByRole("link", { name: "Playback cut", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Playback cut" })).toBeVisible();
   await expect(
     pageListItem(page).filter({ hasText: "New feedback from someone else" }),

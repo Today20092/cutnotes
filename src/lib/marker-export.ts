@@ -13,8 +13,7 @@ export const markerRates = [
 export type MarkerRate = (typeof markerRates)[number];
 const xml = (value: string) =>
   value
-    // XML 1.0 forbids these control characters in user-entered text.
-    // eslint-disable-next-line no-control-regex
+    // eslint-disable-next-line no-control-regex -- XML 1.0 forbids these control characters in user-entered text.
     .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "")
     .replace(
       /[&<>"']/g,

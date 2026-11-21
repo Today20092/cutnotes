@@ -1,7 +1,7 @@
 import { Field, FieldLabel } from "@/components/ui/field";
 import { VideoStatusBadge } from "@/components/video-status";
 import { Link } from "@tanstack/react-router";
-import { Clapperboard, Pencil } from "lucide-react";
+import { Clapperboard } from "lucide-react";
 import {
   useEffect,
   useId,
@@ -219,35 +219,6 @@ export function ProjectNameSheet({
   );
 }
 
-export function RenameProjectButton({
-  name,
-  onRename,
-  labeled = false,
-}: {
-  name: string;
-  onRename: (name: string) => void;
-  labeled?: boolean;
-}) {
-  return (
-    <ProjectNameSheet
-      title="Rename Project"
-      submitLabel="Save name"
-      initialName={name}
-      onSubmit={onRename}
-      trigger={
-        <Button
-          variant={labeled ? "secondary" : "ghost"}
-          size={labeled ? "default" : "icon"}
-          aria-label={`Rename ${name}`}
-        >
-          <Pencil aria-hidden />
-          {labeled && " Rename"}
-        </Button>
-      }
-    />
-  );
-}
-
 /** Shows a confirmation that everyone can see; the status region still speaks it. */
 export function useStatusToast(status: string) {
   useEffect(() => {
@@ -328,8 +299,6 @@ export function WriteFeedback({ status, failure }: { status: string; failure: st
     </>
   );
 }
-
-export { statusLabels } from "@/components/video-status";
 
 function formatUpdated(timestamp: number | null | undefined) {
   if (!timestamp) return "";

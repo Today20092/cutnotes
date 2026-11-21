@@ -1,0 +1,29 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    // vite.config.ts swaps these in through aliases, so no import names them.
+    "scripts/preview/auth.tsx",
+    "e2e/support/fake-auth-client.tsx",
+    "e2e/support/fake-clerk-profile.ts",
+    "e2e/support/fake-mux-module.ts",
+    "scripts/**/*.ts",
+    "test/**/*.ts",
+  ],
+  "project": [
+    "src/**/*.{ts,tsx,css}",
+    "scripts/**/*.{ts,tsx}",
+    "test/**/*.ts",
+    "e2e/**/*.{ts,tsx}",
+  ],
+  // The vendored component library: unused parts are expected.
+  "ignore": ["src/components/ui/**"],
+  "ignoreDependencies": [
+    // Pinned next to vitest so every package resolves one version.
+    "@vitest/runner",
+    "@vitest/snapshot",
+  ],
+  // The local preview needs ffmpeg on PATH.
+  "ignoreBinaries": ["ffmpeg", "ffprobe"],
+  // Scripts pass this path to Bun as an argument, not as an import.
+  "ignoreUnresolved": ["scripts/node.ts"],
+}

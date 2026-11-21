@@ -36,7 +36,7 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * Share Link (32 characters) and Invite (43) tokens are credentials and can appear in paths
  * and query keys, so any token-like run is removed before storage. UUIDs are not secret.
  */
-export const withoutTokens = (value: string) =>
+const withoutTokens = (value: string) =>
   value
     .replace(/\/(share|invite)\/[^\s"?/#]+/gi, "/$1/[removed]")
     .replace(/(?:Bearer\s+\S+|(?:sk|pk)_(?:live|test)_\w+|eyJ[\w-]+\.[\w-]+\.[\w-]+)/g, "[removed]")

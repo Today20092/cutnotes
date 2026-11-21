@@ -15,13 +15,14 @@
     "fmt": "oxfmt src e2e test scripts vite.config.ts vitest.config.ts playwright.config.ts drizzle.config.ts",
     "fmt:check": "oxfmt --check src e2e test scripts vite.config.ts vitest.config.ts playwright.config.ts drizzle.config.ts",
     "audit": "bun audit --audit-level=high",
+    "knip": "knip --no-progress",
     "test:seam1": "bun scripts/node.ts node_modules/vitest/vitest.mjs run",
     "test:seam2": "bun scripts/node.ts node_modules/@playwright/test/cli.js test",
     "test:player": "bun test test/player",
     "test:setup": "bun test test/setup",
     "test:structure": "bun test test/structure",
     "setup": "bun scripts/setup.ts",
-    "check": "bun run typecheck && bun run lint && bun run fmt:check && bun run test:player && bun run test:setup && bun run test:structure && bun run test:seam1",
+    "check": "bun run typecheck && bun run lint && bun run fmt:check && bun run knip && bun run test:player && bun run test:setup && bun run test:structure && bun run test:seam1",
     "check:full": "bun run check && bun run test:seam2"
   },
   "dependencies": {
@@ -59,6 +60,7 @@
     "@vitest/runner": "4.1.12",
     "@vitest/snapshot": "4.1.12",
     "drizzle-kit": "0.31.11",
+    "knip": "6.47.0",
     "oxfmt": "0.78.0",
     "oxlint": "1.93.0",
     "seroval": "1.7.10",

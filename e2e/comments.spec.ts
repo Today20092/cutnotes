@@ -571,7 +571,7 @@ test("a Guest goes from the welcome screen to a saved Comment, then sees a plain
   await expect(guestComment).toContainText("Dana");
   await expect(guest.getByRole("button", { name: /^(Edit|Delete)/ })).toHaveCount(0);
 
-  await page.reload();
+  await page.goto(`/videos/${videoId}`);
   await expect(page.getByText("Dana · Guest")).toBeVisible();
   await pageListItem(page)
     .filter({ hasText: "Too dark here" })

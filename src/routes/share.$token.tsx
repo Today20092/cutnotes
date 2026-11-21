@@ -55,7 +55,7 @@ function GuestPage() {
   const preview = Route.useLoaderData();
   const [name, setName] = useState(storedName);
   const entered = useRef(false);
-  if (!preview || (!name && preview.permission === "comment"))
+  if (!name && preview?.permission !== "view")
     return (
       <Welcome
         preview={preview}

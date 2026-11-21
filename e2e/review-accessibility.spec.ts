@@ -128,7 +128,10 @@ test("Comments stay reachable at narrow widths, short heights and enlarged text"
       const overflow = await page.evaluate(() => ({
         pixels: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         elements: [...document.querySelectorAll("body *")]
-          .filter((element) => element.getBoundingClientRect().right > innerWidth + 1)
+          .filter(
+            (element) =>
+              element.getBoundingClientRect().right > document.documentElement.clientWidth + 1,
+          )
           .slice(-10)
           .map((element) => `${element.tagName}: ${element.textContent?.slice(0, 60)}`),
       }));

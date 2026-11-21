@@ -133,7 +133,7 @@ export function CommentFilter({
     <ToggleGroup
       aria-label="Comment filters"
       variant="outline"
-      className="mt-6 mb-1"
+      className="mt-6 mb-1 max-w-full flex-wrap"
       value={[resolved ? "resolved" : "todo"]}
       onValueChange={(next: string[]) => {
         if (next[0]) setResolved(next[0] === "resolved");

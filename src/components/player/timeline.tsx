@@ -89,11 +89,12 @@ export function Timeline({
     : 1;
   return (
     <div className="relative">
+      {/* z-20: on phones the sticky picture is z-10 and would cover the preview. */}
       {tile && storyboard && (
         <div
           role="img"
           aria-label={`Preview at ${preview!.toFixed(2)} seconds`}
-          className="pointer-events-none absolute bottom-full left-0 max-w-full overflow-hidden border border-white bg-black"
+          className="pointer-events-none absolute bottom-full left-0 z-20 max-w-full overflow-hidden border border-white bg-black"
           style={{ width: storyboard.tile_width * scale, height: storyboard.tile_height * scale }}
         >
           <div

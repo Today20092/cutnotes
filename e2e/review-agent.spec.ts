@@ -101,9 +101,7 @@ test("browser-style tools: read the ARIA tree, then click and type", async ({ pa
   results.browser = m.done();
   // Let the decision save before leaving the page, or Home can still show the old Stage.
   await expect(
-    page
-      .getByRole("region", { name: "Review decision" })
-      .getByText("Changes requested", { exact: true }),
+    page.getByRole("region", { name: "Review decision" }).getByText("Rework", { exact: true }),
   ).toBeVisible();
 
   await expectTaskDone(page, id);
@@ -156,9 +154,7 @@ test("ui-sdk agent bridge: the decision bar offers approve and requestChanges", 
   ).toBe(true);
   const done = await agent.act([{ ref: "review-decision", action: "requestChanges" }]);
   expect(done.ok).toBe(true);
-  await expect(page.getByRole("region", { name: "Review decision" })).toContainText(
-    "Changes requested",
-  );
+  await expect(page.getByRole("region", { name: "Review decision" })).toContainText("Rework");
 });
 
 test("an older Revision offers no decision, to the reviewer or an agent", async ({ page }) => {

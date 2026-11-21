@@ -40,7 +40,7 @@ export const routeIndex: RouteEntry[] = [
     who: "Owners, and people assigned to the Project",
     params: {
       sheet:
-        "people | upload | rename | complete | delete | rename-video | delete-video | retry-video: the open sheet",
+        "people | upload | rename | complete | delete | rename-video | delete-video | retry-video | upload-revision: the open sheet",
       video: "the Video a *-video sheet is for, by its ID",
     },
     actions: ["Upload", "Manage people", "More actions", "Rename", "Complete", "Delete"],

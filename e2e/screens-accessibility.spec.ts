@@ -121,7 +121,7 @@ async function deliver(page: Page, type: string, passthrough: string, data = {})
 }
 
 async function startUpload(page: Page, title: string) {
-  await page.getByRole("button", { name: "Upload" }).click();
+  await page.getByRole("button", { name: /^(New Video|Upload first cut)$/ }).click();
   await page
     .getByLabel("Video file")
     .setInputFiles({ name: "cut.mp4", mimeType: "video/mp4", buffer: Buffer.alloc(2048) });
@@ -202,7 +202,7 @@ test("the Project screen", async ({ page }, testInfo) => {
   // The sheet is in the URL, so a reload would reopen it.
   await page.goto(new URL(page.url()).pathname);
 
-  await page.getByRole("button", { name: "Upload" }).click();
+  await page.getByRole("button", { name: /^(New Video|Upload first cut)$/ }).click();
   await expect(page.getByText(/1080p H\.264 MP4/)).toBeVisible();
   await expectAccessible(page, "upload form");
 
@@ -277,7 +277,7 @@ test("a Video through upload, processing, and ready", async ({ page }, testInfo)
   await signInAs(page, projectReviewer);
   await page.reload();
   await expect(page.getByText("Main cut")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Upload" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^(New Video|Upload first cut)$/ })).toHaveCount(0);
   await expectAccessible(page, "Project as a Viewer");
   await expect(page.getByRole("button", { name: "More actions for Main cut" })).toHaveCount(0);
   await signInAs(page, owner);

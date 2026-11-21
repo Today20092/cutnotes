@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { stageLabels, type ProjectStage } from "@/lib/project-stage";
 import { cn } from "@/lib/utils";
 
-/** The tint and text color of each Stage; Video Statuses borrow them. */
+/** The tint and text color of each Stage. */
 export const stageTone = {
   new: "bg-stage-new/12 text-stage-new-foreground",
   editing: "bg-stage-editing/12 text-stage-editing-foreground",

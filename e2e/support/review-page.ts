@@ -47,8 +47,5 @@ export async function openVideo(page: Page, id: string, query = "") {
 export const announcements = (page: Page) =>
   page.locator("[aria-live]").evaluateAll((regions) => regions.map((r) => r.textContent).join(" "));
 
-/** The queue sits in a closed Collapsible so the Comment list isn't shown twice. */
-export async function openQueue(page: Page) {
-  await page.getByRole("button", { name: /^Review queue/ }).click();
-  return page.getByRole("list", { name: "Open notes" });
-}
+export const commentList = (page: Page) =>
+  page.getByRole("list", { name: "Comments", exact: true });

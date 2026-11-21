@@ -85,6 +85,8 @@ function FeedbackList() {
       </p>
       <label className="flex min-h-11 items-center gap-2">
         <Checkbox
+          aria-label="Show handled reports"
+          className="rounded-[3px] [&_[data-slot=checkbox-indicator]]:rounded-[3px]"
           checked={showHandled}
           onCheckedChange={(checked) =>
             void navigate({
@@ -120,7 +122,13 @@ function FeedbackList() {
                 {kindLabel[report.kind]}
               </Badge>{" "}
               · {new Date(report.createdAt).toLocaleString()} ·{" "}
-              {report.memberName ?? report.contact ?? "No name given"}
+              {report.memberName ? (
+                <Link to="/members" search={{ q: report.memberName }} className="underline">
+                  {report.memberName}
+                </Link>
+              ) : (
+                (report.contact ?? "No name given")
+              )}
               {report.handledAt !== null && " · Handled"}
             </p>
             <p className="whitespace-pre-wrap">{report.message}</p>

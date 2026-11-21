@@ -8,7 +8,7 @@ import { AvatarStack } from "@/components/people";
 import { canWrite, Poster } from "@/components/project-parts";
 import { StageBadge } from "@/components/stage-badge";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useProjectStageMoves } from "@/components/project-stage-moves";
 import { NativeSelect } from "@/components/ui/native-select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -16,15 +16,12 @@ import { projectStages, stageLabels, type ProjectStage } from "@/lib/project-sta
 import {
   isPendingProject,
   useSetProjectComplete,
-  useSetProjectStage,
   type ProjectList,
   type ProjectSummary,
 } from "@/lib/projects";
 import { reviewBoard } from "@/lib/review-board";
 
 const Board = createParts(reviewBoard, { root: "div", column: "ul", card: "article" });
-
-type Move = { projectId: string; name: string; from: ProjectStage; to: ProjectStage };
 
 /** Owners and the Project's Editors move an open Project; everyone else reads the board. */
 const movable = (project: ProjectSummary) =>
@@ -55,13 +52,10 @@ export function StageBoard({
 }) {
   const help = useId();
   const stagePicker = useId();
-  const setStage = useSetProjectStage();
+  const { move, stageActions, feedback, setStatus, setFailure, setUndo } = useProjectStageMoves();
   const setComplete = useSetProjectComplete();
   // Order inside a column is local: the server stores only the Stage.
   const [order, setOrder] = useState<string[]>([]);
-  const [status, setStatus] = useState("");
-  const [failure, setFailure] = useState("");
-  const [undo, setUndo] = useState<Move | null>(null);
   const { projects } = list;
   const rank = (id: string) => {
     const index = order.indexOf(id);
@@ -91,27 +85,6 @@ export function StageBoard({
   const anyMovable = locked.length < projects.length;
   const shown = stage ? [stage] : projectStages;
 
-  function move({ projectId, name, from, to }: Move, isUndo = false) {
-    setFailure("");
-    setStage.mutate(
-      { projectId, stage: to },
-      {
-        onSuccess: () => {
-          setStatus(
-            isUndo
-              ? `${name} moved back to ${stageLabels[to]}`
-              : `${name} moved to ${stageLabels[to]}`,
-          );
-          setUndo(isUndo ? null : { projectId, name, from, to });
-        },
-        onError: () => {
-          setUndo(null);
-          setFailure(`Could not move ${name}. It stays in ${stageLabels[from]}. Try again.`);
-        },
-      },
-    );
-  }
-
   function change(next: TransferLists) {
     setOrder(projectStages.flatMap((column) => next[column] ?? []));
     for (const column of projectStages)
@@ -138,13 +111,7 @@ export function StageBoard({
   function actions(project: ProjectSummary): Action[] {
     if (!movable(project)) return [];
     return [
-      ...projectStages
-        .filter((to) => to !== project.stage)
-        .map((to) => ({
-          label: `Move to ${stageLabels[to]}`,
-          onSelect: () =>
-            move({ projectId: project.id, name: project.name, from: project.stage, to }),
-        })),
+      ...stageActions(project),
       ...(project.stage === "done" && list.member.role === "owner"
         ? [
             {
@@ -232,29 +199,7 @@ export function StageBoard({
           </ToggleGroupItem>
         </ToggleGroup>
       </div>
-      <div
-        className={
-          status || undo || failure ? "flex flex-wrap items-center gap-2 text-sm" : "contents"
-        }
-      >
-        <p role="status" className={status ? "" : "sr-only"}>
-          {status}
-        </p>
-        {undo && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => move({ ...undo, from: undo.to, to: undo.from }, true)}
-          >
-            Undo
-          </Button>
-        )}
-        {failure && (
-          <p role="alert" className="text-destructive wrap-anywhere">
-            {failure}
-          </p>
-        )}
-      </div>
+      {feedback}
       {anyMovable && (
         <details className="text-meta">
           <summary className="w-fit cursor-pointer py-3">How to move a Project</summary>
@@ -362,8 +307,19 @@ function ProjectCard({
       // A phone shows a compact row: a small thumbnail beside the name, status and meta.
       className="grid gap-2 rounded-card border bg-card p-4 text-sm select-none focus-visible:outline-2 data-grabbed:ring-2 data-grabbed:ring-ring max-md:grid-cols-[6rem_minmax(0,1fr)] max-md:gap-x-3 max-md:gap-y-0 max-md:p-3 sm:touch-none"
     >
-      <div className={poster ? "max-md:row-span-4" : "max-md:row-span-4 md:hidden"}>
+      <div
+        className={poster ? "relative max-md:row-span-4" : "relative max-md:row-span-4 md:hidden"}
+      >
         <Poster key={poster} url={poster} />
+        {!pending && (
+          <Link
+            to="/projects/$projectId"
+            params={{ projectId: project.id }}
+            tabIndex={-1}
+            aria-hidden
+            className="absolute inset-0 md:hidden"
+          />
+        )}
       </div>
       <div className="flex items-start justify-between gap-2">
         {pending ? (
@@ -402,12 +358,8 @@ function ProjectCard({
           </p>
         )}
       <div className="text-meta flex items-center justify-between gap-2">
-        <span className={project.openNotes > 0 ? undefined : "max-md:hidden"}>
-          {project.openNotes > 0
-            ? `${project.openNotes} open ${project.openNotes === 1 ? "note" : "notes"}`
-            : "No open notes"}
-        </span>
-        <AvatarStack people={project.people} label="People with access" />
+        {project.openNotes > 0 && <span>{project.openNotes} to do</span>}
+        <AvatarStack people={project.people} label="People with access" className="ml-auto" />
       </div>
     </Board.Card>
   );

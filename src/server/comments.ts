@@ -26,7 +26,11 @@ const newCommentSchema = v.object({
   drawing: v.nullish(v.custom<Shape[]>(validDrawing)),
 });
 const editCommentSchema = v.object({ ...targetShape, body: v.string() });
-const resolveCommentSchema = v.object({ ...targetShape, resolved: v.boolean() });
+const resolveCommentSchema = v.object({
+  ...targetShape,
+  resolved: v.boolean(),
+  expectedResolvedAt: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0))),
+});
 
 export type CommentTarget = v.InferInput<typeof targetSchema>;
 export type NewComment = v.InferInput<typeof newCommentSchema>;
@@ -129,8 +133,19 @@ export const resolveComment = createServerFn({ method: "POST" })
         resolvedAt: data.resolved ? Date.now() : null,
         resolvedBy: data.resolved ? member.id : null,
       })
-      .where(and(targetComment(data, member), videoAccess(member.id, data.videoId, "editor")))
-      .returning({ id: comments.id });
+      .where(
+        and(
+          targetComment(data, member),
+          videoAccess(member.id, data.videoId, "editor"),
+          data.expectedResolvedAt === undefined
+            ? undefined
+            : and(
+                eq(comments.resolvedAt, data.expectedResolvedAt),
+                eq(comments.resolvedBy, member.id),
+              ),
+        ),
+      )
+      .returning({ id: comments.id, resolvedAt: comments.resolvedAt });
     if (!written) refuse(404, "not-found");
     return written;
   });

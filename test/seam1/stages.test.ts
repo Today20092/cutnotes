@@ -197,6 +197,42 @@ describe("automatic Stages", () => {
     expect(await stage()).toBe("done");
   });
 
+  it("undoes both decisions and refuses to undo a superseded decision or newer Stage", async () => {
+    await seedVideo("v", projectId);
+    await seedRevision({ id: "r1", videoId: "v", state: "ready" });
+    await env.DB.exec("UPDATE projects SET stage = 'in_review'");
+    const target = { videoId: "v", revisionId: "r1" };
+    const decide = async (action: typeof fn.approveVideo | typeof fn.requestChanges) => ({
+      ...target,
+      ...(await resultOf<{ decisionId: string }>(await call(action, owner, target))),
+    });
+
+    const approve = await decide(fn.approveVideo);
+    expect(await stage()).toBe("done");
+    await addMember("viewer");
+    await expectRefused(
+      await call(fn.undoReviewDecision, "user_viewer", approve),
+      404,
+      "not-found",
+    );
+    expect((await call(fn.undoReviewDecision, owner, approve)).status).toBe(200);
+    expect(await status("v")).toBe("review");
+    expect(await stage()).toBe("in_review");
+
+    const changes = await decide(fn.requestChanges);
+    expect(await stage()).toBe("editing");
+    await expectRefused(await call(fn.undoReviewDecision, owner, approve), 409, "decision-changed");
+    expect((await call(fn.undoReviewDecision, owner, changes)).status).toBe(200);
+    expect(await status("v")).toBe("review");
+    expect(await stage()).toBe("in_review");
+
+    const stale = await decide(fn.approveVideo);
+    await setStage(owner, "new");
+    await expectRefused(await call(fn.undoReviewDecision, owner, stale), 409, "decision-changed");
+    expect(await status("v")).toBe("done");
+    expect(await stage()).toBe("new");
+  });
+
   it("a new cut after Approve is in review again, and only it can be decided", async () => {
     await seedVideo("v", projectId);
     await seedRevision({ id: "r1", videoId: "v", state: "ready" });

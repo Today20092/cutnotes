@@ -136,7 +136,7 @@ export function MembersManager({
   return (
     <div className="w-full max-w-xl space-y-6">
       <PageHeading title="Team">
-        <Link to="/invites" className={buttonVariants({ variant: "secondary" })}>
+        <Link to="/invites" className={buttonVariants()}>
           Invite someone
         </Link>
       </PageHeading>
@@ -241,7 +241,14 @@ function MemberRow({
         </ItemTitle>
         <p className="text-sm text-muted-foreground">
           Joined {new Date(member.createdAt).toLocaleDateString()}
-          {member.invitedBy ? ` · Invited by ${member.invitedBy}` : ""}
+          {member.invitedBy && (
+            <>
+              {" · Invited by "}
+              <Link to="/members" search={{ q: member.invitedBy }} className="underline">
+                {member.invitedBy}
+              </Link>
+            </>
+          )}
         </p>
         {member.invitationNote && (
           <p className="text-sm text-muted-foreground">Invitation note: {member.invitationNote}</p>

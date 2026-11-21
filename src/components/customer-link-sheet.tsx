@@ -35,8 +35,11 @@ const permissionLabels: Record<SharePermission, string> = {
   view: "View only",
   comment: "Comment and draw",
 };
-const formatDate = (timestamp: number) =>
-  new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(timestamp);
+const formatDate = (timestamp: number, withTime = false) =>
+  new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: withTime ? "short" : undefined,
+  }).format(timestamp);
 
 /**
  * Share Links for one Video: each pins one Revision, so the customer sees exactly that cut.
@@ -46,6 +49,7 @@ export function CustomerLinkSheet({
   videoId,
   title,
   revision,
+  latestNumber,
   requested,
   open,
   onOpenChange,
@@ -56,6 +60,7 @@ export function CustomerLinkSheet({
   revision: Revision | null;
   /** The Revision number the URL asked for. */
   requested: number | undefined;
+  latestNumber: number | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -82,7 +87,12 @@ export function CustomerLinkSheet({
               The customer opens it without an account. They see only that Revision and their own
               comments, never your Team's notes.
             </p>
-            <CustomerLinks videoId={videoId} title={title} revision={revision} />
+            <CustomerLinks
+              videoId={videoId}
+              title={title}
+              revision={revision}
+              latestNumber={latestNumber}
+            />
           </>
         ) : (
           // Never retarget a link to another cut than the one asked for.
@@ -108,10 +118,12 @@ function CustomerLinks({
   videoId,
   title,
   revision,
+  latestNumber,
 }: {
   videoId: string;
   title: string;
   revision: Revision;
+  latestNumber: number | undefined;
 }) {
   const team = useTeam().data;
   const client = useQueryClient();
@@ -235,8 +247,20 @@ function CustomerLinks({
                     ? "Follows latest"
                     : `Revision ${link.revisionNumber}`}
                 </Badge>
+                {link.revisionNumber !== null &&
+                  latestNumber !== undefined &&
+                  link.revisionNumber < latestNumber && (
+                    <Badge variant="outline">Older Revision</Badge>
+                  )}
                 <Badge variant="outline">{permissionLabels[link.permission]}</Badge>
                 <span>Created {formatDate(link.createdAt)}</span>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {link.lastOpenedAt === null
+                  ? "Never opened"
+                  : `Last opened ${formatDate(link.lastOpenedAt, true)}`}
+                {" · "}
+                {link.commentCount} {link.commentCount === 1 ? "Comment" : "Comments"}
               </p>
               <div className="flex flex-wrap gap-2">
                 <a

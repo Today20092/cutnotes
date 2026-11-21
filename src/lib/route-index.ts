@@ -14,10 +14,9 @@ export type RouteEntry = {
   actions: string[];
 };
 
-const reviewParams = {
+const playbackParams = {
   t: "moment to open at, in seconds from the start",
   comment: "the selected Comment, by its ID",
-  filter: "todo | resolved: which Comments the list shows (default todo)",
 };
 
 export const routeIndex: RouteEntry[] = [
@@ -40,7 +39,7 @@ export const routeIndex: RouteEntry[] = [
     who: "Owners, and people assigned to the Project",
     params: {
       sheet:
-        "people | upload | rename | complete | delete | rename-video | delete-video | retry-video: the open sheet",
+        "people | upload | rename | complete | delete | rename-video | delete-video | retry-video | upload-revision: the open sheet",
       video: "the Video a *-video sheet is for, by its ID",
     },
     actions: ["Upload", "Manage people", "More actions", "Rename", "Complete", "Delete"],
@@ -52,7 +51,8 @@ export const routeIndex: RouteEntry[] = [
     params: {
       sheet: "customer | upload | markers: the open sheet",
       revision: "the Revision number (default: the latest)",
-      ...reviewParams,
+      ...playbackParams,
+      filter: "todo | resolved: which Comments the list shows (default todo)",
     },
     actions: [
       "Request changes",
@@ -103,9 +103,10 @@ export const routeIndex: RouteEntry[] = [
   },
   {
     path: "/share/$token",
-    purpose: "A Guest reviews exactly one Revision and the Comments made through the same link.",
+    purpose:
+      "A Guest watches one Revision. Comment-and-draw links also show Comments made through that link.",
     who: "Whoever holds the Share Link; no sign-in",
-    params: reviewParams,
+    params: playbackParams,
     actions: ["Continue", "Send Comment"],
   },
 ];

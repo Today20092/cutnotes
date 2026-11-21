@@ -9,7 +9,13 @@ import {
   reopenProject,
   setProjectStage,
 } from "@/server/projects";
-import { approveVideo, deleteVideo, renameVideo, requestChanges } from "@/server/videos";
+import {
+  approveVideo,
+  deleteVideo,
+  renameVideo,
+  requestChanges,
+  undoReviewDecision,
+} from "@/server/videos";
 import type { ProjectStage } from "@/lib/project-stage";
 import {
   confirmedProjectWrite,
@@ -209,15 +215,22 @@ export const useRenameVideo = (videoId: string) =>
  */
 export function useReviewDecision(videoId: string, revisionId: string) {
   const client = useQueryClient();
-  return useMutation({
-    mutationFn: (decision: "requestChanges" | "approve") =>
-      (decision === "approve" ? approveVideo : requestChanges)({ data: { videoId, revisionId } }),
-    onSettled: () =>
-      Promise.all([
-        client.invalidateQueries({ queryKey: reviewKey(videoId) }),
-        client.invalidateQueries({ queryKey: projectsKey }),
-      ]),
+  const refresh = () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: reviewKey(videoId) }),
+      client.invalidateQueries({ queryKey: projectsKey }),
+    ]);
+  const decision = useMutation({
+    mutationFn: (choice: "requestChanges" | "approve") =>
+      (choice === "approve" ? approveVideo : requestChanges)({ data: { videoId, revisionId } }),
+    onSettled: refresh,
   });
+  const undo = useMutation({
+    mutationFn: (decisionId: string) =>
+      undoReviewDecision({ data: { videoId, revisionId, decisionId } }),
+    onSettled: refresh,
+  });
+  return { decision, undo };
 }
 
 export function useDeleteWork(kind: "Project" | "Video", id: string) {

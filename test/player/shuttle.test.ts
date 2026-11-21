@@ -220,3 +220,15 @@ test("Final Cut half-speed and reverse shortcuts preserve modifier guards", () =
   );
   assert.equal(playbackShortcut({ ...event, key: "l", altKey: true }, null, false), null);
 });
+
+test("ordinary Play after pausing reverse or high speed resumes at 1x forward", () => {
+  const { controller, media, state } = fixture();
+  for (const rate of [-1, 4, 32]) {
+    controller.playAt(rate);
+    assert.deepEqual(state(), { playing: true, rate });
+    controller.pause();
+    controller.toggle();
+    assert.deepEqual(state(), { playing: true, rate: 1 });
+    assert.equal(media.playbackRate, 1);
+  }
+});

@@ -17,6 +17,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
 import { getReview } from "@/server/playback";
 import type { Playback } from "@/server/mux/gateway";
+import { frameTime, spokenFrameTime } from "@/lib/comment-time";
 import { bindPlaybackShortcuts, createShuttleController } from "./shuttle";
 import { createVideoPlaybackHealthState, observeVideoPlayback } from "./videoPlaybackHealth";
 import { recordProblem, reportDiagnostic } from "@/lib/diagnostics";
@@ -40,9 +41,6 @@ function ControlTip({ label, children }: { label: string; children: ReactElement
     </Tooltip>
   );
 }
-
-const clock = (seconds: number) =>
-  `${Math.floor(seconds / 60)}:${String(Math.floor(seconds) % 60).padStart(2, "0")}`;
 
 export function VideoPlayer({
   videoId,
@@ -75,14 +73,14 @@ export function VideoPlayer({
   const [attempt, setAttempt] = useState(0);
   const [poster, setPoster] = useState(playback.posterUrl);
   const [storyboardUrl, setStoryboardUrl] = useState(playback.storyboardUrl);
-  const [media, setMedia] = useState({ paused: true, muted: false, waiting: false });
+  const [media, setMedia] = useState({ muted: false, waiting: false });
+  const [transport, setTransport] = useState({ playing: false, rate: 1 });
   const { position, duration } = useVideoClock(videoRef);
 
   useEffect(() => {
     const video = videoRef.current!;
     const sync = () =>
       setMedia({
-        paused: video.paused,
         muted: video.muted,
         waiting: !video.paused && video.readyState < 3,
       });
@@ -108,8 +106,14 @@ export function VideoPlayer({
     let hls: Hls | undefined;
     let resume: { time: number; playing: boolean } | undefined;
     let health = createVideoPlaybackHealthState();
-    const shuttle = createShuttleController(video, () => {});
+    const shuttle = createShuttleController(video, (playing, rate) =>
+      setTransport({ playing, rate }),
+    );
     shuttleRef.current = shuttle;
+    const syncTransport = () => setTransport({ playing: shuttle.playing, rate: shuttle.rate });
+    const transportEvents = ["play", "pause", "ended", "emptied"];
+    transportEvents.forEach((event) => video.addEventListener(event, syncTransport));
+    syncTransport();
 
     function failed() {
       if (disposed) return;
@@ -251,6 +255,7 @@ export function VideoPlayer({
       stopReporting();
       window.clearInterval(timer);
       unbind();
+      transportEvents.forEach((event) => video.removeEventListener(event, syncTransport));
       shuttle.dispose();
       hls?.destroy();
       shuttleRef.current = null;
@@ -333,10 +338,10 @@ export function VideoPlayer({
             maxHeight: isFullscreen ? `calc(100dvh - ${timelineMarkers ? 8 : 6.5}rem)` : undefined,
           }}
         />
-        {media.waiting && !media.paused && (
+        {media.waiting && transport.playing && (
           <Spinner className="pointer-events-none absolute top-1/2 left-1/2 size-10 -translate-1/2" />
         )}
-        {media.paused && position === 0 && !drawing?.active && (
+        {!transport.playing && position === 0 && !drawing?.active && (
           <span
             aria-hidden
             className="pointer-events-none absolute top-1/2 left-1/2 flex size-16 -translate-1/2 items-center justify-center rounded-full bg-black/60"
@@ -368,14 +373,14 @@ export function VideoPlayer({
               <StepBack aria-hidden />
             </Button>
           </ControlTip>
-          <ControlTip label={media.paused ? "Play" : "Pause"}>
+          <ControlTip label={!transport.playing ? "Play" : "Pause"}>
             <Button
               variant="ghost"
               className={controlClass}
-              aria-label={media.paused ? "Play" : "Pause"}
+              aria-label={!transport.playing ? "Play" : "Pause"}
               onClick={() => shuttleRef.current?.toggle()}
             >
-              {media.paused ? (
+              {!transport.playing ? (
                 <Play aria-hidden className="fill-current" />
               ) : (
                 <Pause aria-hidden className="fill-current" />
@@ -393,8 +398,26 @@ export function VideoPlayer({
             </Button>
           </ControlTip>
           <span className="text-xs tabular-nums sm:ml-2 sm:text-sm">
-            {clock(position)} / {clock(duration)}
+            <span aria-hidden="true">
+              {frameTime(position * 1000, frameRate)} / {frameTime(duration * 1000, frameRate)}
+            </span>
+            <span className="sr-only">
+              {spokenFrameTime(position * 1000, frameRate)} of{" "}
+              {spokenFrameTime(duration * 1000, frameRate)}
+            </span>
           </span>
+          {transport.playing && transport.rate !== 1 && (
+            <span className="ml-2 text-xs font-medium tabular-nums">
+              <span aria-hidden="true">
+                {transport.rate < 0 ? "−" : ""}
+                {Math.abs(transport.rate)}x
+              </span>
+              <span className="sr-only">
+                {Math.abs(transport.rate)} times speed{" "}
+                {transport.rate < 0 ? "in reverse" : "forward"}
+              </span>
+            </span>
+          )}
           <span className="ml-auto" />
           <ControlTip label="Mute">
             <Toggle

@@ -20,14 +20,16 @@ export async function sessionToken(
   options: { expiresInSeconds?: number; azp?: string } = {},
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
-  const exp = now + (options.expiresInSeconds ?? 60);
+  // A cold Worker can compile its server functions after the request has already been signed.
+  const exp = now + (options.expiresInSeconds ?? 300);
+  const issuedAt = Math.min(now - 60, exp - 120);
   const unsigned = `${encode({ alg: "RS256", typ: "JWT", kid: "seam1" })}.${encode({
     sub: person.clerkUserId,
     sid: `sess_${person.clerkUserId}`,
     iss: "https://clerk.example.test",
     azp: options.azp ?? env.APP_ORIGIN,
-    iat: exp - 120,
-    nbf: exp - 120,
+    iat: issuedAt,
+    nbf: issuedAt,
     exp,
     email: person.email,
     email_verified: person.emailVerified,

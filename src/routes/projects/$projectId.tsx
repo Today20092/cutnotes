@@ -7,7 +7,7 @@ import { CopyPageLink } from "@/components/copy-page-link";
 import { createFileRoute, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { CompleteBanner, CompleteProject } from "@/components/complete-project";
 import { DeleteWork } from "@/components/delete-work";
-import { ChevronLeft, Clapperboard, Upload, Users } from "lucide-react";
+import { ChevronDown, ChevronLeft, Clapperboard, Upload, Users } from "lucide-react";
 import { useState } from "react";
 import { MemberScreen } from "@/components/member-screen";
 import {
@@ -26,6 +26,8 @@ import {
 import { UploadSheet } from "@/components/upload-parts";
 import { VideoTile } from "@/components/video-tile";
 import { StageBadge } from "@/components/stage-badge";
+import { useProjectStageMoves } from "@/components/project-stage-moves";
+import { stageLabels } from "@/lib/project-stage";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -51,6 +53,7 @@ const sheets = [
   "rename-video",
   "delete-video",
   "retry-video",
+  "upload-revision",
 ] as const;
 
 // An unknown value is dropped rather than shown as an error page.
@@ -100,6 +103,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
   const goTo = Route.useNavigate();
   const renameProject = useRenameProject();
   const setComplete = useSetProjectComplete();
+  const { stageActions, feedback, setUndo } = useProjectStageMoves();
   const [status, setStatus] = useState("");
   const [failure, setFailure] = useState("");
   const { project, videos, member } = page;
@@ -130,6 +134,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
   }
 
   function changeComplete(complete: boolean) {
+    setUndo(null);
     setFailure("");
     setStatus("");
     setComplete.mutate(
@@ -228,7 +233,22 @@ function ProjectView({ page }: { page: ProjectPage }) {
       />
       <PageHeading
         title={project.name}
-        badge={<StageBadge stage={project.stage} />}
+        badge={
+          writable && isOpen ? (
+            <ActionMenu
+              label={`Stage: ${stageLabels[project.stage]}`}
+              actions={stageActions(project)}
+              triggerContent={
+                <>
+                  <StageBadge stage={project.stage} />
+                  <ChevronDown aria-hidden />
+                </>
+              }
+            />
+          ) : (
+            <StageBadge stage={project.stage} />
+          )
+        }
         menu={
           <ActionMenu
             label={`More actions for ${project.name}`}
@@ -238,7 +258,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
           />
         }
       >
-        {uploadable && isOpen && videos.length > 0 && uploadSheet("Upload")}
+        {uploadable && isOpen && videos.length > 0 && uploadSheet("New Video")}
         <CopyPageLink kind="project" path={`/projects/${project.id}`} />
       </PageHeading>
       <PeopleStrip projectId={project.id} people={project.people} canManage={isOwner} />
@@ -251,6 +271,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
         onOpenChange={(next) => setSheet(next ? "people" : undefined)}
       />
       <WriteFeedback status={status} failure={failure} />
+      {feedback}
       {project.deleteAfter !== null && (
         <CompleteBanner
           deleteAfter={project.deleteAfter}
@@ -304,6 +325,7 @@ function ProjectView({ page }: { page: ProjectPage }) {
                 <VideoTile
                   video={video}
                   writable={writable}
+                  uploadable={writable || (uploadable && video.createdBy === member.id)}
                   deletable={canDelete({ ...member, role: project.role }, video)}
                   sheet={search.video === video.id ? search.sheet : undefined}
                   onSheetChange={(sheet) => setSheet(sheet, sheet ? video.id : undefined)}

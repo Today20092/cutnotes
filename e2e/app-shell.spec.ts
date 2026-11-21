@@ -37,6 +37,15 @@ test("Sign out lives in Settings, not the navigation", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
 });
 
+test("an unknown URL keeps the app shell and links back to Projects", async ({ page }) => {
+  await signInAs(page, owner);
+  expect((await page.goto("/no-such-page"))?.status()).toBe(404);
+  await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Page not found", level: 1 })).toBeVisible();
+  await page.getByRole("link", { name: "Back to Projects" }).click();
+  await expect(page.getByRole("heading", { name: "Projects", level: 1 })).toBeVisible();
+});
+
 test("every server call carries a Bearer token, even with an expired cookie", async ({
   page,
   context,

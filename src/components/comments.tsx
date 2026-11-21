@@ -37,9 +37,9 @@ const CommentList = createParts(commentList, {
 export const selectedRowClass =
   "aria-[current=true]:border-l-4 aria-[current=true]:border-current aria-[current=true]:pl-2 aria-[current=true]:font-semibold";
 
-/** Shared by the Member and Guest lists; the underline marks the choice without relying on colour. */
+/** A raised segment; the border and weight mark the choice without relying on colour. */
 const segmentClass =
-  "h-11 aria-pressed:underline aria-pressed:decoration-2 aria-pressed:underline-offset-4 sm:pointer-fine:h-8";
+  "h-10 px-3 text-muted-foreground hover:bg-transparent hover:text-foreground data-pressed:border-input data-pressed:bg-background data-pressed:font-semibold data-pressed:text-foreground data-pressed:shadow-xs sm:pointer-fine:h-7";
 
 export function CommentMarkers<
   Row extends { id: string; timecodeMs: number; body: string; resolvedAt: number | null },
@@ -132,8 +132,7 @@ export function CommentFilter({
   return (
     <ToggleGroup
       aria-label="Comment filters"
-      variant="outline"
-      className="mt-6 mb-1 max-w-full flex-wrap"
+      className="mt-6 mb-1 max-w-full flex-wrap rounded-lg bg-muted p-0.5"
       value={[resolved ? "resolved" : "todo"]}
       onValueChange={(next: string[]) => {
         if (next[0]) setResolved(next[0] === "resolved");

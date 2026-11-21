@@ -39,7 +39,7 @@ export const selectedRowClass =
 
 /** A raised segment; the border and weight mark the choice without relying on colour. */
 const segmentClass =
-  "h-10 px-3 text-muted-foreground hover:bg-transparent hover:text-foreground data-pressed:border-input data-pressed:bg-background data-pressed:font-semibold data-pressed:text-foreground data-pressed:shadow-xs sm:pointer-fine:h-7";
+  "h-11 px-3 hover:bg-transparent data-pressed:border-input data-pressed:bg-background data-pressed:font-semibold data-pressed:text-foreground data-pressed:shadow-xs sm:pointer-fine:h-7";
 
 export function CommentMarkers<
   Row extends { id: string; timecodeMs: number; body: string; resolvedAt: number | null },

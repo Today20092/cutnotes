@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import { openNewProjectSheet } from "./support/home";
 import { expect, test } from "@playwright/test";
 import { seedMember, seedReview } from "./support/database";
 import { signInAs } from "./support/session";
@@ -21,7 +22,7 @@ test("an Owner assigns a project, sends a scoped invitation, and removes access"
   await expect(
     page.getByRole("heading", { name: "Projects", exact: true, level: 1 }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "New project", exact: true }).click();
+  await openNewProjectSheet(page);
   const name = `Private project ${suffix}`;
   await page.getByLabel("Project name").fill(name);
   await page.getByRole("button", { name: "Create Project", exact: true }).click();
@@ -113,12 +114,10 @@ test("an Owner assigns a project, sends a scoped invitation, and removes access"
   ).toBeVisible();
   await invitedPage.goto("/");
   await expect(invitedPage.getByRole("link", { name, exact: true })).toBeVisible();
-  await expect(invitedPage.getByRole("button", { name: "New project", exact: true })).toHaveCount(
-    0,
-  );
-  await expect(
-    invitedPage.getByRole("button", { name: /^(New Video|Upload first cut)$/ }),
-  ).toBeVisible();
+  await invitedPage.getByRole("button", { name: "New", exact: true }).click();
+  await expect(invitedPage.getByRole("menuitem", { name: "Upload Video" })).toBeVisible();
+  await expect(invitedPage.getByRole("menuitem", { name: "New Project" })).toHaveCount(0);
+  await invitedPage.keyboard.press("Escape");
 
   await page.goto("/invites");
   const historyProject = page
@@ -198,7 +197,7 @@ test("a team Editor creates private projects and can reopen a direct video URL",
   await page.reload();
   await expect(page.getByRole("heading", { name: "Playback cut", exact: true })).toBeVisible();
   await page.goto("/");
-  await page.getByRole("button", { name: "New project", exact: true }).click();
+  await openNewProjectSheet(page);
   const name = `Created by editor ${testInfo.project.name} ${Date.now()}`;
   await page.getByLabel("Project name").fill(name);
   await page.getByRole("button", { name: "Create Project", exact: true }).click();

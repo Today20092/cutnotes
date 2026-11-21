@@ -31,7 +31,7 @@ export const routeIndex: RouteEntry[] = [
       sheet: "new-project | upload | complete: the open sheet",
       project: "the Project a complete sheet is for, by its ID",
     },
-    actions: ["New project", "Upload", "Move to <Stage>", "Complete…"],
+    actions: ["New Project", "Upload Video", "Move to <Stage>", "Complete…"],
   },
   {
     path: "/projects/$projectId",

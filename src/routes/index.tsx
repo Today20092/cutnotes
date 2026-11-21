@@ -1,7 +1,7 @@
 import * as v from "valibot";
 import { createFileRoute } from "@tanstack/react-router";
-import { FolderOpen, Plus, Upload } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, FolderOpen, FolderPlus, Plus, Upload } from "lucide-react";
+import { useRef, useState } from "react";
 import { MemberScreen } from "@/components/member-screen";
 import {
   canUpload,
@@ -14,6 +14,7 @@ import {
 import { StageBoard } from "@/components/stage-board";
 import { UploadSheet } from "@/components/upload-parts";
 import { Button } from "@/components/ui/button";
+import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
 import {
   Empty,
   EmptyContent,
@@ -67,6 +68,12 @@ function ProjectBoard({ list }: { list: ProjectList }) {
     });
   const createProject = useCreateProject();
   const [failure, setFailure] = useState("");
+  const newButton = useRef<HTMLButtonElement>(null);
+  // A sheet opened from the New menu returns focus to it, as a sheet trigger would.
+  const openSheet = (next: boolean, name: (typeof sheets)[number]) => {
+    setSearch({ sheet: next ? name : undefined });
+    if (!next) requestAnimationFrame(() => newButton.current?.focus());
+  };
   const writable = canWrite(list.member.role);
   const uploadTargets = list.projects.filter(
     (project) =>
@@ -87,38 +94,60 @@ function ProjectBoard({ list }: { list: ProjectList }) {
 
   const newProjectSheet = (
     <ProjectNameSheet
-      title="New project"
+      title="New Project"
       submitLabel="Create Project"
       onSubmit={create}
       open={sheet === "new-project"}
-      onOpenChange={(next) => setSearch({ sheet: next ? "new-project" : undefined })}
+      onOpenChange={(next) => openSheet(next, "new-project")}
+      // With no Projects yet the empty state carries the button; otherwise the New menu opens it.
       trigger={
-        <Button>
-          <Plus aria-hidden /> New project
-        </Button>
+        list.projects.length === 0 ? (
+          <Button>
+            <Plus aria-hidden /> New Project
+          </Button>
+        ) : undefined
       }
     />
   );
+  const canCreate = writable || list.projects.some((project) => canUpload(project.role));
+  const canCreateProject = writable && list.projects.length > 0;
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeading title="Projects">
-        {(writable || list.projects.some((project) => canUpload(project.role))) && (
-          <>
-            <UploadSheet
-              open={sheet === "upload"}
-              onOpenChange={(next) => setSearch({ sheet: next ? "upload" : undefined })}
-              destination={{ kind: "new", projects: uploadTargets }}
-              trigger={
-                <Button variant="secondary">
-                  <Upload aria-hidden /> New Video
-                </Button>
-              }
-            />
-            {writable && list.projects.length > 0 && newProjectSheet}
-          </>
-        )}
-      </PageHeading>
+      <PageHeading
+        title="Projects"
+        // One compact control in the title row: uploading is the common job, a new Project the rarer one.
+        menu={
+          canCreate && (
+            <Menu>
+              <MenuTrigger render={<Button ref={newButton} className="rounded-full px-4" />}>
+                <Plus aria-hidden /> New <ChevronDown aria-hidden className="opacity-70" />
+              </MenuTrigger>
+              <MenuPopup align="end">
+                <MenuItem className="min-h-11" onSelect={() => setSearch({ sheet: "upload" })}>
+                  <Upload aria-hidden /> Upload Video
+                </MenuItem>
+                {canCreateProject && (
+                  <MenuItem
+                    className="min-h-11"
+                    onSelect={() => setSearch({ sheet: "new-project" })}
+                  >
+                    <FolderPlus aria-hidden /> New Project
+                  </MenuItem>
+                )}
+              </MenuPopup>
+            </Menu>
+          )
+        }
+      />
+      {canCreate && (
+        <UploadSheet
+          open={sheet === "upload"}
+          onOpenChange={(next) => openSheet(next, "upload")}
+          destination={{ kind: "new", projects: uploadTargets }}
+        />
+      )}
+      {canCreateProject && newProjectSheet}
       <WriteFeedback status="" failure={failure} />
 
       {list.projects.length === 0 ? (

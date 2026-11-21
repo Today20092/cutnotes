@@ -96,19 +96,15 @@ test("the home board's params", async ({ page }, testInfo) => {
 
   // A Stage filter shows one column; an unknown value is dropped, not an error page.
   await page.goto("/?stage=editing");
-  const phone = testInfo.project.name === "phone";
-  if (phone) await expect(page.getByLabel("Stage", { exact: true })).toHaveValue("editing");
-  else
-    await expect(page.getByRole("button", { name: /^Editing/ })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+  await expect(page.getByRole("button", { name: /^Editing/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(page.getByRole("region", { name: /^Done \d+$/ })).toHaveCount(0);
   await expect(page.getByRole("article", { name: `${projectName}, Editing` })).toBeVisible();
   await page.goto("/?stage=nonsense&view=sideways&sheet=nothing");
   await expect(page.getByRole("region", { name: /^Done \d+$/ })).toBeVisible();
-  if (phone) await page.getByLabel("Stage", { exact: true }).selectOption("in_review");
-  else await page.getByRole("button", { name: /^In review/ }).click();
+  await page.getByRole("button", { name: /^In review/ }).click();
   await expect(page).toHaveURL(/stage=in_review/);
 
   // Sheets open from the URL and closing one removes its param.
